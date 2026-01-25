@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Copy, Check, ExternalLink, Key, Mail, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Copy, Check, ExternalLink, Key, Mail, Eye, EyeOff, Loader2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 export function SettingsPage() {
   const [emailSignature, setEmailSignature] = useState('');
   const [resendApiKey, setResendApiKey] = useState('');
+  const [senderName, setSenderName] = useState('');
+  const [senderEmail, setSenderEmail] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -33,6 +34,8 @@ export function SettingsPage() {
       if (data) {
         setEmailSignature(data.email_signature || '');
         setResendApiKey((data as any).resend_api_key || '');
+        setSenderName((data as any).sender_name || '');
+        setSenderEmail((data as any).sender_email || '');
       }
     };
     
@@ -83,16 +86,20 @@ export function SettingsPage() {
         .limit(1)
         .maybeSingle();
 
+      const settingsData = {
+        email_signature: emailSignature,
+        resend_api_key: resendApiKey,
+        resend_api_key_configured: !!resendApiKey,
+        sender_name: senderName,
+        sender_email: senderEmail,
+        updated_at: new Date().toISOString()
+      };
+
       if (existingSettings) {
         // Update existing settings
         const { error } = await supabase
           .from('settings')
-          .update({ 
-            email_signature: emailSignature,
-            resend_api_key: resendApiKey,
-            resend_api_key_configured: !!resendApiKey,
-            updated_at: new Date().toISOString() 
-          } as any)
+          .update(settingsData as any)
           .eq('id', existingSettings.id);
         
         if (error) throw error;
@@ -100,11 +107,7 @@ export function SettingsPage() {
         // Insert new settings
         const { error } = await supabase
           .from('settings')
-          .insert({ 
-            email_signature: emailSignature,
-            resend_api_key: resendApiKey,
-            resend_api_key_configured: !!resendApiKey
-          } as any);
+          .insert(settingsData as any);
         
         if (error) throw error;
       }
@@ -223,6 +226,48 @@ export function SettingsPage() {
                 'Salvar Configurações'
               )}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Sender Identity Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Identidade do E-mail
+            </CardTitle>
+            <CardDescription>
+              Configure como seus e-mails aparecerão na caixa de entrada dos clientes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="sender-name">Nome de Exibição</Label>
+              <Input
+                id="sender-name"
+                type="text"
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+                placeholder="Ex: Sophia - Ivory Saint"
+              />
+              <p className="text-xs text-muted-foreground">
+                Este é o nome que aparecerá na caixa de entrada do seu cliente.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="sender-email">E-mail de Envio</Label>
+              <Input
+                id="sender-email"
+                type="email"
+                value={senderEmail}
+                onChange={(e) => setSenderEmail(e.target.value)}
+                placeholder="Ex: suporte@seudominio.com"
+              />
+              <p className="text-xs text-muted-foreground">
+                O e-mail verificado no seu painel do Resend.
+              </p>
+            </div>
           </CardContent>
         </Card>
 

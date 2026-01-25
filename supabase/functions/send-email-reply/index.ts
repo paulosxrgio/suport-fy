@@ -10,7 +10,6 @@ const corsHeaders = {
 interface SendEmailRequest {
   ticketId: string;
   content: string;
-  senderEmail: string;
 }
 
 serve(async (req: Request) => {
@@ -19,36 +18,83 @@ serve(async (req: Request) => {
   }
 
   try {
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+    // Fetch settings including sender identity and API key
+    const { data: settings, error: settingsError } = await supabase
+      .from('settings')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+
+    if (settingsError) {
+      console.error('Error fetching settings:', settingsError);
+    }
+
+    // Get API key from settings or fallback to env
+    const resendApiKey = settings?.resend_api_key || Deno.env.get('RESEND_API_KEY');
     if (!resendApiKey) {
       return new Response(
-        JSON.stringify({ error: 'RESEND_API_KEY não configurada.' }),
+        JSON.stringify({ error: 'RESEND_API_KEY não configurada. Configure nas Configurações ou como variável de ambiente.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const resend = new Resend(resendApiKey);
-    const { ticketId, content, senderEmail }: SendEmailRequest = await req.json();
+    const { ticketId, content }: SendEmailRequest = await req.json();
 
-    const { data: ticket, error: ticketError } = await supabase.from('tickets').select('*').eq('id', ticketId).single();
-    if (ticketError || !ticket) throw new Error('Ticket não encontrado');
+    // Fetch ticket details
+    const { data: ticket, error: ticketError } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('id', ticketId)
+      .single();
 
-    const { data: settings } = await supabase.from('settings').select('email_signature').limit(1).maybeSingle();
-    const fullContent = settings?.email_signature ? `${content}\n\n${settings.email_signature}` : content;
+    if (ticketError || !ticket) {
+      console.error('Ticket error:', ticketError);
+      throw new Error('Ticket não encontrado');
+    }
 
-    await resend.emails.send({
-      from: senderEmail,
+    // Build sender identity from settings or use fallback
+    const senderName = settings?.sender_name || 'Suporte';
+    const senderEmail = settings?.sender_email || 'suporte@exemplo.com';
+    const fromAddress = `${senderName} <${senderEmail}>`;
+
+    // Append signature if configured
+    const fullContent = settings?.email_signature 
+      ? `${content}\n\n${settings.email_signature}` 
+      : content;
+
+    console.log(`Sending email from: ${fromAddress} to: ${ticket.customer_email}`);
+
+    // Send email via Resend
+    const emailResult = await resend.emails.send({
+      from: fromAddress,
       to: [ticket.customer_email],
       subject: `Re: ${ticket.subject}`,
       text: fullContent,
     });
 
-    await supabase.from('messages').insert({ ticket_id: ticketId, content, direction: 'outbound', sender_email: senderEmail });
+    console.log('Email sent successfully:', emailResult);
 
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // Save outbound message to database
+    await supabase.from('messages').insert({
+      ticket_id: ticketId,
+      content,
+      direction: 'outbound',
+      sender_email: senderEmail,
+    });
+
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    console.error('Error in send-email-reply:', message);
+    return new Response(
+      JSON.stringify({ error: message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 });
