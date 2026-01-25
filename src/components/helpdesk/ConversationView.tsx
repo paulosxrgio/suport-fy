@@ -15,10 +15,9 @@ interface ConversationViewProps {
   ticket: Ticket | null;
   messages: Message[] | undefined;
   isLoading: boolean;
-  userEmail: string;
 }
 
-export function ConversationView({ ticket, messages, isLoading, userEmail }: ConversationViewProps) {
+export function ConversationView({ ticket, messages, isLoading }: ConversationViewProps) {
   const [replyContent, setReplyContent] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const updateStatus = useUpdateTicketStatus();
@@ -36,7 +35,6 @@ export function ConversationView({ ticket, messages, isLoading, userEmail }: Con
       await sendMessage.mutateAsync({
         ticketId: ticket.id,
         content: replyContent.trim(),
-        senderEmail: userEmail,
       });
       setReplyContent('');
       toast.success('Resposta enviada com sucesso!');
