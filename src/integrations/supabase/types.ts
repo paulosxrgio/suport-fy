@@ -22,6 +22,7 @@ export type Database = {
           email_message_id: string | null
           html_body: string | null
           id: string
+          resend_email_id: string | null
           sender_email: string
           ticket_id: string
         }
@@ -32,6 +33,7 @@ export type Database = {
           email_message_id?: string | null
           html_body?: string | null
           id?: string
+          resend_email_id?: string | null
           sender_email: string
           ticket_id: string
         }
@@ -42,6 +44,7 @@ export type Database = {
           email_message_id?: string | null
           html_body?: string | null
           id?: string
+          resend_email_id?: string | null
           sender_email?: string
           ticket_id?: string
         }
