@@ -55,13 +55,12 @@ export function useSendMessage() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ ticketId, content, senderEmail }: { 
+    mutationFn: async ({ ticketId, content }: { 
       ticketId: string; 
       content: string;
-      senderEmail: string;
     }) => {
       const { data, error } = await supabase.functions.invoke('send-email-reply', {
-        body: { ticketId, content, senderEmail },
+        body: { ticketId, content },
       });
       
       if (error) throw error;

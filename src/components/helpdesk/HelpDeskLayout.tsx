@@ -6,6 +6,7 @@ import { ConversationView } from './ConversationView';
 import { CustomerInfoSidebar } from './CustomerInfoSidebar';
 import { SettingsPage } from './SettingsPage';
 import { AnalyticsPage } from './AnalyticsPage';
+import { NewTicketDialog } from './NewTicketDialog';
 import { useTickets, useTicket } from '@/hooks/useTickets';
 import { useMessages } from '@/hooks/useMessages';
 
@@ -15,9 +16,6 @@ export function HelpDeskLayout() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCustomerInfoOpen, setIsCustomerInfoOpen] = useState(true);
-  
-  // Mock user email - in production this would come from auth
-  const userEmail = 'support@yourcompany.com';
 
   // Fetch tickets
   const { data: allTickets, isLoading: isLoadingTickets } = useTickets(
@@ -57,6 +55,11 @@ export function HelpDeskLayout() {
           <div className="flex-1 flex">
             {/* Ticket List */}
             <div className="w-80 border-r border-border flex flex-col bg-card">
+              {/* New Ticket Button */}
+              <div className="p-3 border-b border-border">
+                <NewTicketDialog />
+              </div>
+              
               <TicketListHeader
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
@@ -78,7 +81,6 @@ export function HelpDeskLayout() {
                 ticket={selectedTicket ?? null}
                 messages={messages}
                 isLoading={isLoadingMessages}
-                userEmail={userEmail}
               />
               
               <CustomerInfoSidebar

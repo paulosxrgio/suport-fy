@@ -1,30 +1,60 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Ticket } from '@/types/helpdesk';
 
 export function useTickets(status?: 'open' | 'closed') {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
     queryKey: ['tickets', status],
     queryFn: async () => {
-      let query = supabase
+      let q = supabase
         .from('tickets')
         .select('*')
         .order('last_message_at', { ascending: false });
       
       if (status) {
-        query = query.eq('status', status);
+        q = q.eq('status', status);
       }
       
-      const { data, error } = await query;
+      const { data, error } = await q;
       
       if (error) throw error;
       return data as Ticket[];
     },
   });
+
+  // Subscribe to realtime updates for tickets
+  useEffect(() => {
+    const channel = supabase
+      .channel('tickets-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tickets',
+        },
+        () => {
+          // Invalidate all ticket queries when any change happens
+          queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  return query;
 }
 
 export function useTicket(ticketId: string | null) {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
     queryKey: ['ticket', ticketId],
     queryFn: async () => {
       if (!ticketId) return null;
@@ -40,6 +70,33 @@ export function useTicket(ticketId: string | null) {
     },
     enabled: !!ticketId,
   });
+
+  // Subscribe to realtime updates for the specific ticket
+  useEffect(() => {
+    if (!ticketId) return;
+
+    const channel = supabase
+      .channel(`ticket-${ticketId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tickets',
+          filter: `id=eq.${ticketId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [ticketId, queryClient]);
+
+  return query;
 }
 
 export function useUpdateTicketStatus() {
