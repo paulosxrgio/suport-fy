@@ -18,7 +18,27 @@ serve(async (req: Request) => {
   }
 
   try {
+    console.log('=== SEND EMAIL REPLY START ===');
+    
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+    // Parse request body
+    const requestBody = await req.json();
+    const { ticketId, content }: SendEmailRequest = requestBody;
+    
+    console.log('Step 1 - Request recebido:', { 
+      ticketId, 
+      contentLength: content?.length || 0,
+      contentPreview: content?.substring(0, 100) || '[VAZIO]'
+    });
+
+    if (!content || content.trim() === '') {
+      console.error('Step 1 - ERRO: Content está vazio!');
+      return new Response(
+        JSON.stringify({ error: 'Conteúdo da mensagem está vazio' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Fetch settings including sender identity and API key
     const { data: settings, error: settingsError } = await supabase
@@ -28,7 +48,7 @@ serve(async (req: Request) => {
       .maybeSingle();
 
     if (settingsError) {
-      console.error('Error fetching settings:', settingsError);
+      console.error('Step 2 - Error fetching settings:', settingsError);
     }
 
     // Get API key from settings or fallback to env
@@ -40,8 +60,9 @@ serve(async (req: Request) => {
       );
     }
 
+    console.log('Step 2 - Settings carregadas');
+
     const resend = new Resend(resendApiKey);
-    const { ticketId, content }: SendEmailRequest = await req.json();
 
     // Fetch ticket details
     const { data: ticket, error: ticketError } = await supabase
@@ -51,9 +72,11 @@ serve(async (req: Request) => {
       .single();
 
     if (ticketError || !ticket) {
-      console.error('Ticket error:', ticketError);
+      console.error('Step 3 - Ticket error:', ticketError);
       throw new Error('Ticket não encontrado');
     }
+
+    console.log('Step 3 - Ticket encontrado:', { id: ticket.id, customer_email: ticket.customer_email });
 
     // Fetch the last inbound message to get its Message-ID for threading
     const { data: lastInboundMessage, error: messageError } = await supabase
@@ -66,8 +89,13 @@ serve(async (req: Request) => {
       .maybeSingle();
 
     if (messageError) {
-      console.error('Error fetching last inbound message:', messageError);
+      console.error('Step 4 - Error fetching last inbound message:', messageError);
     }
+
+    console.log('Step 4 - Last inbound message:', { 
+      found: !!lastInboundMessage, 
+      email_message_id: lastInboundMessage?.email_message_id 
+    });
 
     // Build sender identity from settings or use fallback
     const senderName = settings?.sender_name || 'Suporte';
@@ -79,7 +107,7 @@ serve(async (req: Request) => {
       ? `${content}\n\n${settings.email_signature}` 
       : content;
 
-    console.log(`Sending email from: ${fromAddress} to: ${ticket.customer_email}`);
+    console.log('Step 5 - Enviando email:', { from: fromAddress, to: ticket.customer_email });
 
     // Build email headers for threading
     const emailHeaders: Record<string, string> = {};
@@ -88,7 +116,7 @@ serve(async (req: Request) => {
       const replyToId = lastInboundMessage.email_message_id;
       emailHeaders['In-Reply-To'] = replyToId;
       emailHeaders['References'] = replyToId;
-      console.log('Adding threading headers:', { 'In-Reply-To': replyToId, 'References': replyToId });
+      console.log('Step 5 - Threading headers:', { 'In-Reply-To': replyToId });
     }
 
     // Send email via Resend
@@ -100,31 +128,51 @@ serve(async (req: Request) => {
       headers: Object.keys(emailHeaders).length > 0 ? emailHeaders : undefined,
     });
 
-    console.log('Email sent successfully:', emailResult);
+    console.log('Step 6 - Email enviado:', emailResult);
 
     // Extract the message ID from the response
     const sentMessageId = emailResult.data?.id ? `<${emailResult.data.id}@resend.dev>` : null;
 
-    // Save outbound message to database with message ID
-    const { error: insertError } = await supabase.from('messages').insert({
+    // CRITICAL: Save outbound message to database
+    console.log('Step 7 - Salvando mensagem no banco:', {
       ticket_id: ticketId,
-      content,
+      content: content,
+      contentLength: content.length,
       direction: 'outbound',
       sender_email: senderEmail,
       email_message_id: sentMessageId,
     });
 
+    const { data: insertedMessage, error: insertError } = await supabase
+      .from('messages')
+      .insert({
+        ticket_id: ticketId,
+        content: content,
+        direction: 'outbound',
+        sender_email: senderEmail,
+        email_message_id: sentMessageId,
+      })
+      .select()
+      .single();
+
     if (insertError) {
-      console.error('Error inserting message:', insertError);
+      console.error('Step 7 - ERRO ao inserir mensagem:', insertError);
+      throw new Error(`Erro ao salvar mensagem: ${insertError.message}`);
     }
 
+    console.log('Step 7 - Mensagem salva com sucesso:', { 
+      id: insertedMessage?.id,
+      content: insertedMessage?.content?.substring(0, 50)
+    });
+    console.log('=== SEND EMAIL REPLY COMPLETE ===');
+
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, messageId: insertedMessage?.id }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error('Error in send-email-reply:', message);
+    console.error('=== SEND EMAIL REPLY ERROR ===', message);
     return new Response(
       JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
