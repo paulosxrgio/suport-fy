@@ -131,14 +131,30 @@ serve(async (req: Request) => {
     }
     console.log('Step 5 - Subject formatado:', { original: ticket.subject, final: emailSubject });
 
-    // Send email via Resend
-    const emailResult = await resend.emails.send({
+    // Generate Idempotency Key to prevent duplicate sends (from Resend docs)
+    const idempotencyKey = `reply-${ticketId}-${Date.now()}`;
+    console.log('Step 5.1 - Idempotency Key gerada:', idempotencyKey);
+
+    // Convert plain text to simple HTML (preserving line breaks)
+    const htmlContent = `<p>${fullContent.replace(/\n/g, '<br>')}</p>`;
+
+    // Build the complete email payload for debugging
+    const emailPayload = {
       from: fromAddress,
       to: [ticket.customer_email],
       subject: emailSubject,
+      html: htmlContent,
       text: fullContent,
-      headers: Object.keys(emailHeaders).length > 0 ? emailHeaders : undefined,
-    });
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+        ...(Object.keys(emailHeaders).length > 0 ? emailHeaders : {}),
+      },
+    };
+
+    console.log('Step 5.2 - Payload COMPLETO do Resend:', JSON.stringify(emailPayload, null, 2));
+
+    // Send email via Resend with both HTML and text versions
+    const emailResult = await resend.emails.send(emailPayload);
 
     console.log('Step 6 - Email enviado:', emailResult);
 
