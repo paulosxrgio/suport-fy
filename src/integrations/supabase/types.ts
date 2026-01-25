@@ -98,8 +98,11 @@ export type Database = {
           customer_name: string | null
           id: string
           last_message_at: string | null
+          last_message_id: string | null
+          references_chain: string[] | null
           status: string
           subject: string
+          thread_subject: string | null
         }
         Insert: {
           created_at?: string
@@ -107,8 +110,11 @@ export type Database = {
           customer_name?: string | null
           id?: string
           last_message_at?: string | null
+          last_message_id?: string | null
+          references_chain?: string[] | null
           status?: string
           subject: string
+          thread_subject?: string | null
         }
         Update: {
           created_at?: string
@@ -116,8 +122,11 @@ export type Database = {
           customer_name?: string | null
           id?: string
           last_message_at?: string | null
+          last_message_id?: string | null
+          references_chain?: string[] | null
           status?: string
           subject?: string
+          thread_subject?: string | null
         }
         Relationships: []
       }

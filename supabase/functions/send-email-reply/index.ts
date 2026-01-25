@@ -64,10 +64,10 @@ serve(async (req: Request) => {
 
     const resend = new Resend(resendApiKey);
 
-    // Fetch ticket details
+    // Fetch ticket details including threading info
     const { data: ticket, error: ticketError } = await supabase
       .from('tickets')
-      .select('*')
+      .select('id, customer_email, subject, thread_subject, last_message_id, references_chain')
       .eq('id', ticketId)
       .single();
 
@@ -76,25 +76,12 @@ serve(async (req: Request) => {
       throw new Error('Ticket não encontrado');
     }
 
-    console.log('Step 3 - Ticket encontrado:', { id: ticket.id, customer_email: ticket.customer_email });
-
-    // Fetch the last inbound message to get its Message-ID for threading
-    const { data: lastInboundMessage, error: messageError } = await supabase
-      .from('messages')
-      .select('email_message_id')
-      .eq('ticket_id', ticketId)
-      .eq('direction', 'inbound')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (messageError) {
-      console.error('Step 4 - Error fetching last inbound message:', messageError);
-    }
-
-    console.log('Step 4 - Last inbound message:', { 
-      found: !!lastInboundMessage, 
-      email_message_id: lastInboundMessage?.email_message_id 
+    console.log('Step 3 - Ticket encontrado:', { 
+      id: ticket.id, 
+      customer_email: ticket.customer_email,
+      thread_subject: ticket.thread_subject,
+      last_message_id: ticket.last_message_id,
+      references_count: ticket.references_chain?.length || 0,
     });
 
     // Build sender identity from settings or use fallback
@@ -107,53 +94,69 @@ serve(async (req: Request) => {
       ? `${content}\n\n${settings.email_signature}` 
       : content;
 
-    console.log('Step 5 - Enviando email:', { from: fromAddress, to: ticket.customer_email });
-
-    // Build email headers for threading - CRITICAL for Gmail/Outlook grouping
-    const emailHeaders: Record<string, string> = {};
+    // ========================================
+    // THREADING CORRETO (Padrão RFC 2822)
+    // ========================================
     
-    if (lastInboundMessage?.email_message_id) {
-      const replyToId = lastInboundMessage.email_message_id;
-      emailHeaders['In-Reply-To'] = replyToId;
-      emailHeaders['References'] = replyToId;
-      console.log('Step 5 - Threading headers configurados:', { 
-        'In-Reply-To': replyToId, 
-        'References': replyToId 
-      });
-    } else {
-      console.log('Step 5 - AVISO: Nenhum email_message_id encontrado, enviando sem threading');
-    }
-
-    // Smart subject handling - avoid "Re: Re: Re:" duplication
-    let emailSubject = ticket.subject;
+    // 1) Usar o thread_subject original (ou subject se não existir)
+    const originalSubject = ticket.thread_subject || ticket.subject;
+    let emailSubject = originalSubject;
+    
+    // Adicionar "Re: " apenas se ainda não tiver
     if (!emailSubject.toLowerCase().startsWith('re:')) {
       emailSubject = `Re: ${emailSubject}`;
     }
-    console.log('Step 5 - Subject formatado:', { original: ticket.subject, final: emailSubject });
+    
+    console.log('Step 4 - Subject para threading:', { 
+      original: originalSubject, 
+      final: emailSubject 
+    });
 
-    // Generate Idempotency Key to prevent duplicate sends (from Resend docs)
+    // 2) In-Reply-To: aponta para o ÚLTIMO message_id (a mensagem que estamos respondendo)
+    const inReplyTo = ticket.last_message_id;
+    
+    // 3) References: toda a cadeia de message_ids anteriores (espaço-separada)
+    const references = ticket.references_chain?.join(' ') || '';
+    
+    console.log('Step 4.1 - Threading headers:', { 
+      'In-Reply-To': inReplyTo,
+      'References': references,
+      'References count': ticket.references_chain?.length || 0,
+    });
+
+    // Build email headers
+    const emailHeaders: Record<string, string> = {};
+    
+    if (inReplyTo) {
+      emailHeaders['In-Reply-To'] = inReplyTo;
+    }
+    
+    if (references) {
+      emailHeaders['References'] = references;
+    }
+
+    // Generate Idempotency Key to prevent duplicate sends
     const idempotencyKey = `reply-${ticketId}-${Date.now()}`;
-    console.log('Step 5.1 - Idempotency Key gerada:', idempotencyKey);
+    emailHeaders['Idempotency-Key'] = idempotencyKey;
+    
+    console.log('Step 4.2 - Idempotency Key:', idempotencyKey);
 
     // Convert plain text to simple HTML (preserving line breaks)
     const htmlContent = `<p>${fullContent.replace(/\n/g, '<br>')}</p>`;
 
-    // Build the complete email payload for debugging
+    // Build the complete email payload
     const emailPayload = {
       from: fromAddress,
       to: [ticket.customer_email],
       subject: emailSubject,
       html: htmlContent,
       text: fullContent,
-      headers: {
-        'Idempotency-Key': idempotencyKey,
-        ...(Object.keys(emailHeaders).length > 0 ? emailHeaders : {}),
-      },
+      headers: emailHeaders,
     };
 
-    console.log('Step 5.2 - Payload COMPLETO do Resend:', JSON.stringify(emailPayload, null, 2));
+    console.log('Step 5 - Payload COMPLETO do Resend:', JSON.stringify(emailPayload, null, 2));
 
-    // Send email via Resend with both HTML and text versions
+    // Send email via Resend
     const emailResult = await resend.emails.send(emailPayload);
 
     console.log('Step 6 - Email enviado:', emailResult);
@@ -161,15 +164,8 @@ serve(async (req: Request) => {
     // Extract the message ID from the response
     const sentMessageId = emailResult.data?.id ? `<${emailResult.data.id}@resend.dev>` : null;
 
-    // CRITICAL: Save outbound message to database
-    console.log('Step 7 - Salvando mensagem no banco:', {
-      ticket_id: ticketId,
-      content: content,
-      contentLength: content.length,
-      direction: 'outbound',
-      sender_email: senderEmail,
-      email_message_id: sentMessageId,
-    });
+    // Save outbound message to database
+    console.log('Step 7 - Salvando mensagem no banco');
 
     const { data: insertedMessage, error: insertError } = await supabase
       .from('messages')
@@ -188,9 +184,36 @@ serve(async (req: Request) => {
       throw new Error(`Erro ao salvar mensagem: ${insertError.message}`);
     }
 
-    console.log('Step 7 - Mensagem salva com sucesso:', { 
+    // ========================================
+    // STEP 8: ATUALIZAR THREADING DO TICKET
+    // Adicionar o message_id da nossa resposta à cadeia
+    // ========================================
+    if (sentMessageId) {
+      const updatedReferences = [...(ticket.references_chain || [])];
+      if (!updatedReferences.includes(sentMessageId)) {
+        updatedReferences.push(sentMessageId);
+      }
+
+      const { error: updateError } = await supabase
+        .from('tickets')
+        .update({
+          last_message_id: sentMessageId,
+          references_chain: updatedReferences,
+        })
+        .eq('id', ticketId);
+
+      if (updateError) {
+        console.error('Step 8 - ERRO ao atualizar threading:', updateError);
+      } else {
+        console.log('Step 8 - Threading atualizado:', {
+          last_message_id: sentMessageId,
+          references_count: updatedReferences.length,
+        });
+      }
+    }
+
+    console.log('Step 9 - Mensagem salva com sucesso:', { 
       id: insertedMessage?.id,
-      content: insertedMessage?.content?.substring(0, 50)
     });
     console.log('=== SEND EMAIL REPLY COMPLETE ===');
 
