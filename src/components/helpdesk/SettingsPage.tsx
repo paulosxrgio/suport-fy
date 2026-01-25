@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, Check, ExternalLink, Key, Mail, AlertCircle } from 'lucide-react';
+import { Copy, Check, ExternalLink, Key, Mail, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 export function SettingsPage() {
   const [emailSignature, setEmailSignature] = useState('');
+  const [resendApiKey, setResendApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Webhook URL - this is the URL users need to copy to Resend
@@ -29,6 +32,7 @@ export function SettingsPage() {
       
       if (data) {
         setEmailSignature(data.email_signature || '');
+        setResendApiKey((data as any).resend_api_key || '');
       }
     };
     
@@ -42,6 +46,78 @@ export function SettingsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleVerifyConnection = async () => {
+    if (!resendApiKey.trim()) {
+      toast.error('Digite a API Key para verificar');
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-resend-key', {
+        body: { apiKey: resendApiKey }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success(data.message || 'Conexão realizada com sucesso!');
+      } else {
+        toast.error(data.error || 'API Key inválida');
+      }
+    } catch (error) {
+      console.error('Error verifying key:', error);
+      toast.error('Erro ao verificar conexão');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setIsSaving(true);
+    try {
+      // Check if settings row exists
+      const { data: existingSettings } = await supabase
+        .from('settings')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+
+      if (existingSettings) {
+        // Update existing settings
+        const { error } = await supabase
+          .from('settings')
+          .update({ 
+            email_signature: emailSignature,
+            resend_api_key: resendApiKey,
+            resend_api_key_configured: !!resendApiKey,
+            updated_at: new Date().toISOString() 
+          } as any)
+          .eq('id', existingSettings.id);
+        
+        if (error) throw error;
+      } else {
+        // Insert new settings
+        const { error } = await supabase
+          .from('settings')
+          .insert({ 
+            email_signature: emailSignature,
+            resend_api_key: resendApiKey,
+            resend_api_key_configured: !!resendApiKey
+          } as any);
+        
+        if (error) throw error;
+      }
+
+      toast.success('Configurações salvas!');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error('Erro ao salvar configurações');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveSignature = async () => {
     setIsSaving(true);
     try {
@@ -51,9 +127,9 @@ export function SettingsPage() {
         .not('id', 'is', null);
       
       if (error) throw error;
-      toast.success('Configurações salvas!');
+      toast.success('Assinatura salva!');
     } catch (error) {
-      toast.error('Erro ao salvar configurações');
+      toast.error('Erro ao salvar assinatura');
     } finally {
       setIsSaving(false);
     }
@@ -71,6 +147,85 @@ export function SettingsPage() {
 
         <Separator />
 
+        {/* Resend Integration Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Key className="w-5 h-5" />
+              Integração Resend
+            </CardTitle>
+            <CardDescription>
+              Configure sua API Key do Resend para habilitar o envio de e-mails.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="resend-api-key">API Key do Resend</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="resend-api-key"
+                    type={showApiKey ? 'text' : 'password'}
+                    value={resendApiKey}
+                    onChange={(e) => setResendApiKey(e.target.value)}
+                    placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxxx"
+                    className="pr-10 font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                  >
+                    {showApiKey ? (
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleVerifyConnection}
+                  disabled={isVerifying || !resendApiKey.trim()}
+                >
+                  {isVerifying ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Verificando...
+                    </>
+                  ) : (
+                    'Verificar Conexão'
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Você pode obter sua API Key em{' '}
+                <a 
+                  href="https://resend.com/api-keys" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  resend.com/api-keys
+                </a>
+              </p>
+            </div>
+
+            <Button onClick={handleSaveSettings} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar Configurações'
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Webhook Configuration */}
         <Card>
           <CardHeader>
@@ -83,14 +238,6 @@ export function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Para receber e-mails, você precisa configurar um domínio no Resend e adicionar
-                esta URL como webhook de inbound.
-              </AlertDescription>
-            </Alert>
-            
             <div className="space-y-2">
               <Label>URL do Webhook</Label>
               <div className="flex gap-2">
@@ -137,28 +284,6 @@ export function SettingsPage() {
                 </a>
               </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* API Key Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Key className="w-5 h-5" />
-              API Key do Resend
-            </CardTitle>
-            <CardDescription>
-              A API Key é armazenada de forma segura nas variáveis de ambiente do backend.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Para configurar a API Key do Resend, adicione-a como secret no Lovable Cloud 
-                com o nome <code className="bg-muted px-1 rounded">RESEND_API_KEY</code>.
-              </AlertDescription>
-            </Alert>
           </CardContent>
         </Card>
 
