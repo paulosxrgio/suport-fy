@@ -6,6 +6,7 @@ import { ConversationView } from './ConversationView';
 import { CustomerInfoSidebar } from './CustomerInfoSidebar';
 import { SettingsPage } from './SettingsPage';
 import { AnalyticsPage } from './AnalyticsPage';
+import { AIAgentPage } from './AIAgentPage';
 import { NewTicketDialog } from './NewTicketDialog';
 import { useTickets, useTicket } from '@/hooks/useTickets';
 import { useMessages } from '@/hooks/useMessages';
@@ -13,7 +14,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export function HelpDeskLayout() {
-  const [activeNav, setActiveNav] = useState<'inbox' | 'analytics' | 'settings'>('inbox');
+  const [activeNav, setActiveNav] = useState<'inbox' | 'ai-agent' | 'analytics' | 'settings'>('inbox');
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,6 +66,8 @@ export function HelpDeskLayout() {
         return <SettingsPage />;
       case 'analytics':
         return <AnalyticsPage tickets={allTickets || []} />;
+      case 'ai-agent':
+        return <AIAgentPage />;
       case 'inbox':
       default:
         return (
