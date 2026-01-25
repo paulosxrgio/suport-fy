@@ -55,6 +55,20 @@ serve(async (req: Request) => {
       throw new Error('Ticket não encontrado');
     }
 
+    // Fetch the last inbound message to get its Message-ID for threading
+    const { data: lastInboundMessage, error: messageError } = await supabase
+      .from('messages')
+      .select('email_message_id')
+      .eq('ticket_id', ticketId)
+      .eq('direction', 'inbound')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (messageError) {
+      console.error('Error fetching last inbound message:', messageError);
+    }
+
     // Build sender identity from settings or use fallback
     const senderName = settings?.sender_name || 'Suporte';
     const senderEmail = settings?.sender_email || 'suporte@exemplo.com';
@@ -67,23 +81,42 @@ serve(async (req: Request) => {
 
     console.log(`Sending email from: ${fromAddress} to: ${ticket.customer_email}`);
 
+    // Build email headers for threading
+    const emailHeaders: Record<string, string> = {};
+    
+    if (lastInboundMessage?.email_message_id) {
+      const replyToId = lastInboundMessage.email_message_id;
+      emailHeaders['In-Reply-To'] = replyToId;
+      emailHeaders['References'] = replyToId;
+      console.log('Adding threading headers:', { 'In-Reply-To': replyToId, 'References': replyToId });
+    }
+
     // Send email via Resend
     const emailResult = await resend.emails.send({
       from: fromAddress,
       to: [ticket.customer_email],
       subject: `Re: ${ticket.subject}`,
       text: fullContent,
+      headers: Object.keys(emailHeaders).length > 0 ? emailHeaders : undefined,
     });
 
     console.log('Email sent successfully:', emailResult);
 
-    // Save outbound message to database
-    await supabase.from('messages').insert({
+    // Extract the message ID from the response
+    const sentMessageId = emailResult.data?.id ? `<${emailResult.data.id}@resend.dev>` : null;
+
+    // Save outbound message to database with message ID
+    const { error: insertError } = await supabase.from('messages').insert({
       ticket_id: ticketId,
       content,
       direction: 'outbound',
       sender_email: senderEmail,
+      email_message_id: sentMessageId,
     });
+
+    if (insertError) {
+      console.error('Error inserting message:', insertError);
+    }
 
     return new Response(
       JSON.stringify({ success: true }),
