@@ -1,1 +1,13 @@
 project_id = "jtrzpznbdzgzxpwtdmod"
+
+[functions.generate-ai-reply]
+verify_jwt = false
+
+[functions.process-inbound-email]
+verify_jwt = false
+
+[functions.send-email-reply]
+verify_jwt = false
+
+[functions.verify-resend-key]
+verify_jwt = false

@@ -73,6 +73,11 @@ export default {
           selected: "hsl(var(--ticket-selected))",
           "selected-border": "hsl(var(--ticket-selected-border))",
         },
+        ai: {
+          accent: "hsl(var(--ai-accent))",
+          "accent-foreground": "hsl(var(--ai-accent-foreground))",
+          "accent-muted": "hsl(var(--ai-accent-muted))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

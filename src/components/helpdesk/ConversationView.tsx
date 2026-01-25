@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Send, CheckCircle, XCircle, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Ticket, Message } from '@/types/helpdesk';
 import { MessageBubble } from './MessageBubble';
 import { useUpdateTicketStatus } from '@/hooks/useTickets';
 import { useSendMessage } from '@/hooks/useMessages';
+import { useGenerateAIReply } from '@/hooks/useAIReply';
 import { toast } from 'sonner';
 
 interface ConversationViewProps {
@@ -22,6 +23,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const updateStatus = useUpdateTicketStatus();
   const sendMessage = useSendMessage();
+  const generateAIReply = useGenerateAIReply();
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -58,6 +60,25 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
       toast.success(status === 'closed' ? 'Ticket fechado!' : 'Ticket reaberto!');
     } catch (error) {
       toast.error('Erro ao atualizar status');
+    }
+  };
+
+  const handleGenerateAIReply = async () => {
+    if (!ticket || generateAIReply.isPending) return;
+
+    // Get the last inbound message content for context
+    const lastInboundMessage = messages?.filter(m => m.direction === 'inbound').pop();
+
+    try {
+      const reply = await generateAIReply.mutateAsync({
+        ticketId: ticket.id,
+        lastMessageContent: lastInboundMessage?.content,
+      });
+      setReplyContent(reply);
+      toast.success('Resposta gerada com sucesso!');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao gerar resposta';
+      toast.error(message);
     }
   };
 
@@ -139,6 +160,29 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
 
       {/* Reply Editor */}
       <div className="border-t border-border p-4 bg-card">
+        {/* Magic Reply Button */}
+        <div className="mb-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleGenerateAIReply}
+            disabled={generateAIReply.isPending}
+            className="border-ai-accent/30 text-ai-accent hover:bg-ai-accent-muted hover:text-ai-accent hover:border-ai-accent/50"
+          >
+            {generateAIReply.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Escrevendo...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Gerar Resposta IA
+              </>
+            )}
+          </Button>
+        </div>
+
         <div className="flex gap-3">
           <Textarea
             value={replyContent}
