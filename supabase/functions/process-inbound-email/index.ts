@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -17,117 +16,102 @@ serve(async (req: Request) => {
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Step 1: Parse the webhook payload from Resend
+    // Step 1: Parse webhook payload
     const rawPayload = await req.json();
-    console.log('Step 1 - Raw webhook payload:', JSON.stringify(rawPayload, null, 2));
+    console.log('Step 1 - Webhook received:', JSON.stringify(rawPayload, null, 2));
 
-    // Get Resend API key from settings
-    const { data: settings, error: settingsError } = await supabase
+    // Step 2: Get Resend API key
+    const { data: settings } = await supabase
       .from('settings')
       .select('resend_api_key')
       .limit(1)
       .maybeSingle();
 
-    if (settingsError) {
-      console.error('Step 2 - Error fetching settings:', settingsError);
-    }
-
     const resendApiKey = settings?.resend_api_key || Deno.env.get('RESEND_API_KEY');
     
     if (!resendApiKey) {
-      console.error('Step 2 - No Resend API key configured');
+      console.error('Step 2 - ERRO: Resend API key não configurada');
       return new Response(
         JSON.stringify({ error: 'RESEND_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    console.log('Step 2 - Resend API key encontrada');
 
-    console.log('Step 2 - Resend API key found');
-
-    // Step 3: Extract data from webhook
+    // Step 3: Extract email_id from webhook
     const webhookData = rawPayload.data || rawPayload;
-    const resendEmailId = webhookData.email_id;
-    // IMPORTANT: The webhook provides message_id which is the actual Message-ID header for threading
-    const messageIdFromWebhook = webhookData.message_id;
+    const emailId = webhookData.email_id;
+    const messageIdFromWebhook = webhookData.message_id; // Real Message-ID header for threading
     
-    console.log('Step 3 - Extracted IDs:', { 
-      resendEmailId, 
+    console.log('Step 3 - IDs extraídos:', { 
+      emailId, 
       messageIdFromWebhook,
       from: webhookData.from,
       subject: webhookData.subject
     });
 
-    if (!resendEmailId) {
-      console.error('Step 3 - No email_id in webhook payload');
+    if (!emailId) {
+      console.error('Step 3 - ERRO: email_id não encontrado no payload');
       return new Response(
         JSON.stringify({ error: 'No email_id found in webhook' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Step 4: Fetch full email content using Resend RECEIVING API
-    // The correct endpoint for inbound emails is /emails/receiving/{email_id}
-    console.log('Step 4 - Fetching full email content from Resend Receiving API...');
+    // Step 4: BUSCAR CONTEÚDO COMPLETO via API direta do Resend
+    // Endpoint: GET https://api.resend.com/emails/receiving/{email_id}
+    console.log('Step 4 - Buscando conteúdo completo via API Resend...');
     
-    const emailResponse = await fetch(`https://api.resend.com/emails/receiving/${resendEmailId}`, {
+    const emailResponse = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
       },
     });
 
-    let emailContent: {
-      from: string;
-      to: string[];
-      subject: string;
-      text: string;
-      html: string;
-    };
+    let emailFull: {
+      from?: string;
+      to?: string[];
+      subject?: string;
+      text?: string;
+      html?: string;
+    } | null = null;
 
     if (emailResponse.ok) {
-      const fullEmail = await emailResponse.json();
-      console.log('Step 4 - SUCCESS! Full email fetched:', JSON.stringify({
-        from: fullEmail.from,
-        subject: fullEmail.subject,
-        hasText: !!fullEmail.text,
-        hasHtml: !!fullEmail.html,
-        textLength: fullEmail.text?.length || 0,
-        htmlLength: fullEmail.html?.length || 0,
-      }, null, 2));
-      
-      emailContent = {
-        from: fullEmail.from || webhookData.from,
-        to: fullEmail.to || webhookData.to,
-        subject: fullEmail.subject || webhookData.subject,
-        text: fullEmail.text || '',
-        html: fullEmail.html || '',
-      };
+      emailFull = await emailResponse.json();
+      console.log('Step 4 - SUCESSO! E-mail completo baixado');
     } else {
-      const errorText = await emailResponse.text();
-      console.error('Step 4 - Failed to fetch email from Resend:', emailResponse.status, errorText);
-      console.log('Step 4 - Falling back to webhook metadata (no body content available)');
-      
-      // Fallback to webhook data - but there's no body content in webhook
-      emailContent = {
-        from: webhookData.from,
-        to: webhookData.to,
-        subject: webhookData.subject,
-        text: '[Conteúdo do e-mail não disponível - erro ao buscar do Resend]',
-        html: '',
-      };
+      const errorBody = await emailResponse.text();
+      console.error('Step 4 - ERRO ao buscar e-mail:', emailResponse.status, errorBody);
     }
 
-    console.log('Step 5 - Email content prepared:', {
+    // Debug: Log what we got
+    console.log('Conteúdo HTML baixado:', emailFull?.html ? 'Sim' : 'Não');
+    console.log('Conteúdo TEXT baixado:', emailFull?.text ? 'Sim' : 'Não');
+    console.log('Step 4 - Detalhes do e-mail:', {
+      from: emailFull?.from,
+      subject: emailFull?.subject,
+      textLength: emailFull?.text?.length || 0,
+      htmlLength: emailFull?.html?.length || 0,
+      textPreview: emailFull?.text?.substring(0, 200) || '[vazio]',
+    });
+
+    // Step 5: Prepare email content
+    const emailContent = {
+      from: emailFull?.from || webhookData.from,
+      to: emailFull?.to || webhookData.to,
+      subject: emailFull?.subject || webhookData.subject || 'Sem assunto',
+      text: emailFull?.text || '',
+      html: emailFull?.html || '',
+    };
+
+    console.log('Step 5 - Conteúdo preparado:', {
       from: emailContent.from,
-      to: emailContent.to,
       subject: emailContent.subject,
       hasText: !!emailContent.text,
       hasHtml: !!emailContent.html,
-      textPreview: emailContent.text?.substring(0, 100) || '',
     });
 
     // Helper functions
@@ -145,67 +129,58 @@ serve(async (req: Request) => {
 
     const customerEmail = extractEmail(emailContent.from);
     const customerName = extractName(emailContent.from);
-    const content = emailContent.text || emailContent.html || '';
+    const content = emailContent.text || emailContent.html || '[Sem conteúdo]';
     const htmlBody = emailContent.html || null;
-    const subject = emailContent.subject || 'Sem assunto';
-    
-    // Use the message_id from webhook for threading - this is the real Message-ID header
-    const emailMessageId = messageIdFromWebhook || `<${resendEmailId}@resend.dev>`;
+    const subject = emailContent.subject;
+    const emailMessageId = messageIdFromWebhook || `<${emailId}@resend.dev>`;
 
-    console.log('Step 6 - Parsed email data:', {
+    console.log('Step 6 - Dados parseados:', {
       customerEmail,
       customerName,
       subject,
-      resendEmailId,
       emailMessageId,
       contentLength: content.length,
       hasHtmlBody: !!htmlBody,
     });
 
     if (!customerEmail) {
-      console.error('Step 6 - No customer email found');
+      console.error('Step 6 - ERRO: E-mail do cliente não encontrado');
       return new Response(
         JSON.stringify({ error: 'No sender email found' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Step 7: Find or create ticket
     let ticketId: string | null = null;
 
-    // Step 7a: Try to find ticket by threading (check if this is a reply)
-    // Extract In-Reply-To and References from webhook if available
+    // Try threading first
     const headers = webhookData.headers || [];
     const inReplyTo = headers.find((h: { name: string }) => h.name?.toLowerCase() === 'in-reply-to')?.value;
     const references = headers.find((h: { name: string }) => h.name?.toLowerCase() === 'references')?.value;
 
-    console.log('Step 7a - Threading headers:', { inReplyTo, references });
+    console.log('Step 7a - Headers de threading:', { inReplyTo, references });
 
     if (inReplyTo || references) {
       const referencedIds = [inReplyTo, ...(references?.split(/\s+/) || [])].filter(Boolean);
       
-      console.log('Step 7a - Looking for ticket by referenced message IDs:', referencedIds);
-
       if (referencedIds.length > 0) {
-        const { data: referencedMessages, error: refError } = await supabase
+        const { data: referencedMessages } = await supabase
           .from('messages')
           .select('ticket_id')
           .in('email_message_id', referencedIds)
           .limit(1);
 
-        if (!refError && referencedMessages && referencedMessages.length > 0) {
+        if (referencedMessages && referencedMessages.length > 0) {
           ticketId = referencedMessages[0].ticket_id;
-          console.log('Step 7a - Found ticket by threading headers:', ticketId);
-        } else {
-          console.log('Step 7a - No ticket found by threading headers');
+          console.log('Step 7a - Ticket encontrado por threading:', ticketId);
         }
       }
     }
 
-    // Step 7b: Fallback - find by customer email and open status
+    // Fallback: find by email
     if (!ticketId) {
-      console.log('Step 7b - Looking for ticket by customer email:', customerEmail);
-      
-      const { data: existingTicket, error: ticketQueryError } = await supabase
+      const { data: existingTicket } = await supabase
         .from('tickets')
         .select('id')
         .eq('customer_email', customerEmail)
@@ -214,24 +189,15 @@ serve(async (req: Request) => {
         .limit(1)
         .maybeSingle();
 
-      if (ticketQueryError) {
-        console.error('Step 7b - Error querying tickets:', ticketQueryError);
-        throw ticketQueryError;
-      }
-
       if (existingTicket) {
         ticketId = existingTicket.id;
-        console.log('Step 7b - Found ticket by customer email:', ticketId);
-      } else {
-        console.log('Step 7b - No existing open ticket found');
+        console.log('Step 7b - Ticket encontrado por e-mail:', ticketId);
       }
     }
 
-    // Step 8: Create new ticket if none found
+    // Create new ticket if needed
     if (!ticketId) {
-      console.log('Step 8 - Creating new ticket...');
-      
-      const { data: newTicket, error: createTicketError } = await supabase
+      const { data: newTicket, error: createError } = await supabase
         .from('tickets')
         .insert({
           customer_email: customerEmail,
@@ -242,19 +208,19 @@ serve(async (req: Request) => {
         .select('id')
         .single();
 
-      if (createTicketError) {
-        console.error('Step 8 - Error creating ticket:', createTicketError);
-        throw createTicketError;
+      if (createError) {
+        console.error('Step 8 - ERRO ao criar ticket:', createError);
+        throw createError;
       }
 
       ticketId = newTicket.id;
-      console.log('Step 8 - Created new ticket:', ticketId);
+      console.log('Step 8 - Novo ticket criado:', ticketId);
     }
 
-    // Step 9: Add the message with all IDs for threading
-    console.log('Step 9 - Inserting message:', {
+    // Step 9: Insert message
+    console.log('Step 9 - Inserindo mensagem:', {
       ticketId,
-      resendEmailId,
+      emailId,
       emailMessageId,
       contentLength: content.length,
       hasHtml: !!htmlBody,
@@ -268,24 +234,21 @@ serve(async (req: Request) => {
         html_body: htmlBody,
         direction: 'inbound',
         sender_email: customerEmail,
-        resend_email_id: resendEmailId,
+        resend_email_id: emailId,
         email_message_id: emailMessageId,
       });
 
     if (messageError) {
-      console.error('Step 9 - Error creating message:', messageError);
+      console.error('Step 9 - ERRO ao inserir mensagem:', messageError);
       throw messageError;
     }
 
-    console.log('Step 9 - Message added successfully');
+    console.log('Step 9 - Mensagem inserida com sucesso!');
     console.log('=== PROCESS INBOUND EMAIL COMPLETE ===');
 
     return new Response(
-      JSON.stringify({ success: true, ticketId, emailMessageId }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ success: true, ticketId, emailMessageId, hasContent: !!content }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
