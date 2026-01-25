@@ -121,22 +121,6 @@ export function SettingsPage() {
     }
   };
 
-  const handleSaveSignature = async () => {
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from('settings')
-        .update({ email_signature: emailSignature, updated_at: new Date().toISOString() })
-        .not('id', 'is', null);
-      
-      if (error) throw error;
-      toast.success('Assinatura salva!');
-    } catch (error) {
-      toast.error('Erro ao salvar assinatura');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   return (
     <div className="flex-1 overflow-y-auto bg-background p-6">
@@ -215,17 +199,6 @@ export function SettingsPage() {
                 </a>
               </p>
             </div>
-
-            <Button onClick={handleSaveSettings} disabled={isSaving}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                'Salvar Configurações'
-              )}
-            </Button>
           </CardContent>
         </Card>
 
@@ -340,18 +313,29 @@ export function SettingsPage() {
               Esta assinatura será adicionada automaticamente às suas respostas.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             <Textarea
               value={emailSignature}
               onChange={(e) => setEmailSignature(e.target.value)}
               placeholder="Ex: Atenciosamente,&#10;Equipe de Suporte"
               rows={4}
             />
-            <Button onClick={handleSaveSignature} disabled={isSaving}>
-              {isSaving ? 'Salvando...' : 'Salvar Assinatura'}
-            </Button>
           </CardContent>
         </Card>
+
+        {/* Single Save Button */}
+        <div className="flex justify-end pt-4 pb-8">
+          <Button size="lg" onClick={handleSaveSettings} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              'Salvar Todas as Configurações'
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
