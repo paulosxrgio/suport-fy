@@ -118,17 +118,26 @@ serve(async (req: Request) => {
     const extractEmail = (emailString: string): string => {
       if (!emailString) return '';
       const match = emailString.match(/<(.+?)>/);
-      return match ? match[1] : emailString.trim();
+      return match ? match[1].trim() : emailString.trim();
     };
 
-    const extractName = (emailString: string): string | null => {
-      if (!emailString) return null;
+    const extractName = (emailString: string, fallbackEmail: string): string => {
+      if (!emailString) {
+        // Use part before @ as fallback
+        return fallbackEmail.split('@')[0] || 'Cliente';
+      }
+      // Try to extract "Name" from "Name <email>"
       const match = emailString.match(/^(.+?)\s*</);
-      return match ? match[1].trim() : null;
+      if (match && match[1].trim()) {
+        return match[1].trim();
+      }
+      // No name found, use email prefix as fallback
+      const email = extractEmail(emailString);
+      return email.split('@')[0] || 'Cliente';
     };
 
     const customerEmail = extractEmail(emailContent.from);
-    const customerName = extractName(emailContent.from);
+    const customerName = extractName(emailContent.from, customerEmail);
     const content = emailContent.text || emailContent.html || '[Sem conteúdo]';
     const htmlBody = emailContent.html || null;
     const subject = emailContent.subject;

@@ -3,6 +3,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { User, Headphones } from 'lucide-react';
 import { useMemo } from 'react';
+import DOMPurify from 'dompurify';
 
 interface Message {
   id: string;
@@ -16,26 +17,29 @@ interface Message {
 
 interface MessageBubbleProps {
   message: Message;
+  senderName?: string;
 }
 
-// Simple HTML sanitizer - removes script tags and event handlers
-function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/\s*on\w+\s*=\s*[^\s>]+/gi, '')
-    .replace(/javascript:/gi, '');
-}
-
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, senderName }: MessageBubbleProps) {
   const isOutbound = message.direction === 'outbound';
   
   const sanitizedHtml = useMemo(() => {
     if (message.html_body) {
-      return sanitizeHtml(message.html_body);
+      return DOMPurify.sanitize(message.html_body, {
+        ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'a', 'ul', 'ol', 'li', 'blockquote', 'span', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+        ALLOWED_ATTR: ['href', 'target', 'rel', 'style'],
+      });
     }
     return null;
   }, [message.html_body]);
+
+  // Extract display name for inbound messages
+  const displayName = useMemo(() => {
+    if (isOutbound) return null;
+    if (senderName) return senderName;
+    // Fallback: use email prefix
+    return message.sender_email.split('@')[0] || 'Cliente';
+  }, [isOutbound, senderName, message.sender_email]);
   
   return (
     <div
@@ -59,20 +63,32 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       </div>
       
       {/* Bubble */}
-      <div className={cn('flex flex-col max-w-[70%]', isOutbound ? 'items-end' : 'items-start')}>
+      <div className={cn('flex flex-col min-w-0 max-w-[75%]', isOutbound ? 'items-end' : 'items-start')}>
+        {/* Sender name for inbound messages */}
+        {displayName && (
+          <span className="text-xs font-semibold text-muted-foreground mb-1 px-1">
+            {displayName}
+          </span>
+        )}
+        
         <div
           className={cn(
-            'message-bubble',
+            'message-bubble min-w-0',
             isOutbound ? 'message-bubble-outbound' : 'message-bubble-inbound'
           )}
         >
           {sanitizedHtml ? (
             <div 
-              className="text-sm prose prose-sm max-w-none dark:prose-invert"
+              className="text-sm prose prose-sm max-w-none dark:prose-invert 
+                         prose-p:my-1 prose-p:leading-relaxed
+                         prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+                         break-words overflow-hidden"
               dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />
           ) : (
-            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+              {message.content}
+            </p>
           )}
         </div>
         
