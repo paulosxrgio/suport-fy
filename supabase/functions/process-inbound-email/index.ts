@@ -11,18 +11,83 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ========================================
+  // STEP 0: RESPONDER 200 RÁPIDO (evitar retry)
+  // Capturamos tudo que precisamos ANTES de processar
+  // ========================================
+  
   try {
     console.log('=== PROCESS INBOUND EMAIL START ===');
     
+    // Capturar svix-id do header para deduplicação
+    const svixId = req.headers.get('svix-id') || '';
+    console.log('Step 0 - Svix-ID recebido:', svixId);
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Step 1: Parse webhook payload
+    // Parse webhook payload
     const rawPayload = await req.json();
-    console.log('Step 1 - Webhook received:', JSON.stringify(rawPayload, null, 2));
+    const eventType = rawPayload.type;
+    
+    console.log('Step 1 - Evento recebido:', { type: eventType, svixId });
 
-    // Step 2: Get Resend API key
+    // ========================================
+    // STEP 1: FILTRAR EVENTO - SÓ email.received
+    // ========================================
+    if (eventType !== 'email.received') {
+      console.log('Step 1 - IGNORADO: Evento não é email.received, é:', eventType);
+      return new Response(
+        JSON.stringify({ ok: true, skipped: true, reason: 'Not email.received event' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========================================
+    // STEP 2: DEDUPLICAR PELO svix-id
+    // ========================================
+    if (svixId) {
+      // Verificar se já processamos este webhook
+      const { data: existingEvent } = await supabase
+        .from('webhook_events')
+        .select('id')
+        .eq('svix_id', svixId)
+        .maybeSingle();
+
+      if (existingEvent) {
+        console.log('Step 2 - DUPLICADO: svix-id já processado:', svixId);
+        return new Response(
+          JSON.stringify({ ok: true, skipped: true, reason: 'Duplicate webhook (svix-id)' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Registrar svix-id ANTES de processar (evita race condition)
+      const { error: insertError } = await supabase
+        .from('webhook_events')
+        .insert({ svix_id: svixId, event_type: eventType });
+
+      if (insertError) {
+        // Se falhou por unique constraint, outro worker já está processando
+        if (insertError.code === '23505') {
+          console.log('Step 2 - RACE CONDITION: outro worker já processando');
+          return new Response(
+            JSON.stringify({ ok: true, skipped: true, reason: 'Race condition - already processing' }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        console.error('Step 2 - Erro ao registrar svix-id:', insertError);
+      } else {
+        console.log('Step 2 - svix-id registrado com sucesso');
+      }
+    } else {
+      console.log('Step 2 - AVISO: Webhook sem svix-id header');
+    }
+
+    // ========================================
+    // STEP 3: BUSCAR API KEY DO RESEND
+    // ========================================
     const { data: settings } = await supabase
       .from('settings')
       .select('resend_api_key')
@@ -32,20 +97,23 @@ serve(async (req: Request) => {
     const resendApiKey = settings?.resend_api_key || Deno.env.get('RESEND_API_KEY');
     
     if (!resendApiKey) {
-      console.error('Step 2 - ERRO: Resend API key não configurada');
+      console.error('Step 3 - ERRO: Resend API key não configurada');
       return new Response(
         JSON.stringify({ error: 'RESEND_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    console.log('Step 2 - Resend API key encontrada');
+    console.log('Step 3 - Resend API key encontrada');
 
-    // Step 3: Extract email_id from webhook
+    // ========================================
+    // STEP 4: EXTRAIR email_id E BUSCAR CONTEÚDO COMPLETO
+    // (Receiving API - a forma CORRETA segundo a documentação)
+    // ========================================
     const webhookData = rawPayload.data || rawPayload;
     const emailId = webhookData.email_id;
-    const messageIdFromWebhook = webhookData.message_id; // Real Message-ID header for threading
+    const messageIdFromWebhook = webhookData.message_id;
     
-    console.log('Step 3 - IDs extraídos:', { 
+    console.log('Step 4 - IDs extraídos:', { 
       emailId, 
       messageIdFromWebhook,
       from: webhookData.from,
@@ -53,16 +121,15 @@ serve(async (req: Request) => {
     });
 
     if (!emailId) {
-      console.error('Step 3 - ERRO: email_id não encontrado no payload');
+      console.error('Step 4 - ERRO: email_id não encontrado no payload');
       return new Response(
         JSON.stringify({ error: 'No email_id found in webhook' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Step 4: BUSCAR CONTEÚDO COMPLETO via API direta do Resend
-    // Endpoint: GET https://api.resend.com/emails/receiving/{email_id}
-    console.log('Step 4 - Buscando conteúdo completo via API Resend...');
+    // BUSCAR CONTEÚDO COMPLETO via Receiving API do Resend
+    console.log('Step 4.1 - Buscando conteúdo completo via Receiving API...');
     
     const emailResponse = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
       method: 'GET',
@@ -81,24 +148,21 @@ serve(async (req: Request) => {
 
     if (emailResponse.ok) {
       emailFull = await emailResponse.json();
-      console.log('Step 4 - SUCESSO! E-mail completo baixado');
+      console.log('Step 4.1 - SUCESSO! E-mail completo baixado');
+      console.log('Step 4.1 - Detalhes:', {
+        from: emailFull?.from,
+        subject: emailFull?.subject,
+        textLength: emailFull?.text?.length || 0,
+        htmlLength: emailFull?.html?.length || 0,
+      });
     } else {
       const errorBody = await emailResponse.text();
-      console.error('Step 4 - ERRO ao buscar e-mail:', emailResponse.status, errorBody);
+      console.error('Step 4.1 - ERRO ao buscar e-mail via Receiving API:', emailResponse.status, errorBody);
     }
 
-    // Debug: Log what we got
-    console.log('Conteúdo HTML baixado:', emailFull?.html ? 'Sim' : 'Não');
-    console.log('Conteúdo TEXT baixado:', emailFull?.text ? 'Sim' : 'Não');
-    console.log('Step 4 - Detalhes do e-mail:', {
-      from: emailFull?.from,
-      subject: emailFull?.subject,
-      textLength: emailFull?.text?.length || 0,
-      htmlLength: emailFull?.html?.length || 0,
-      textPreview: emailFull?.text?.substring(0, 200) || '[vazio]',
-    });
-
-    // Step 5: Prepare email content
+    // ========================================
+    // STEP 5: PREPARAR DADOS DO E-MAIL
+    // ========================================
     const emailContent = {
       from: emailFull?.from || webhookData.from,
       to: emailFull?.to || webhookData.to,
@@ -107,13 +171,6 @@ serve(async (req: Request) => {
       html: emailFull?.html || '',
     };
 
-    console.log('Step 5 - Conteúdo preparado:', {
-      from: emailContent.from,
-      subject: emailContent.subject,
-      hasText: !!emailContent.text,
-      hasHtml: !!emailContent.html,
-    });
-
     // Helper functions
     const extractEmail = (emailString: string): string => {
       if (!emailString) return '';
@@ -121,7 +178,6 @@ serve(async (req: Request) => {
       return match ? match[1].trim() : emailString.trim();
     };
 
-    // Capitalize each word: "paulo sergio" -> "Paulo Sergio"
     const capitalizeWords = (str: string): string => {
       return str
         .toLowerCase()
@@ -130,53 +186,42 @@ serve(async (req: Request) => {
         .join(' ');
     };
 
-    // Smart fallback: extract name from email prefix
-    // "paulo.sergio@gmail.com" -> "Paulo Sergio"
     const nameFromEmailPrefix = (email: string): string => {
       const prefix = email.split('@')[0] || 'cliente';
-      // Replace dots, underscores, hyphens with spaces
       const cleaned = prefix.replace(/[._-]/g, ' ').trim();
       return capitalizeWords(cleaned);
     };
 
-    // Robust name extraction for Gmail/Outlook formats
     const extractName = (emailString: string, fallbackEmail: string): string => {
       if (!emailString) {
         return nameFromEmailPrefix(fallbackEmail);
       }
 
-      // Step 1: Try to extract everything before "<"
       const match = emailString.match(/^(.+?)\s*</);
       
       if (match && match[1]) {
-        // Step 2: Clean the extracted name
         let name = match[1].trim();
-        
-        // Remove surrounding quotes (single or double)
         name = name.replace(/^["']|["']$/g, '');
         name = name.trim();
         
-        // Step 3: Validate - if we have a valid name, return it
         if (name.length > 0) {
           console.log('Nome extraído do header:', name);
           return name;
         }
       }
 
-      // Step 4: Fallback - use email prefix with smart formatting
       console.log('Usando fallback do e-mail para nome');
       return nameFromEmailPrefix(fallbackEmail);
     };
 
     const customerEmail = extractEmail(emailContent.from);
     const customerName = extractName(emailContent.from, customerEmail);
-    console.log('Step 6 - Nome do cliente processado:', { original: emailContent.from, extracted: customerName });
     const content = emailContent.text || emailContent.html || '[Sem conteúdo]';
     const htmlBody = emailContent.html || null;
     const subject = emailContent.subject;
     const emailMessageId = messageIdFromWebhook || `<${emailId}@resend.dev>`;
 
-    console.log('Step 6 - Dados parseados:', {
+    console.log('Step 5 - Dados parseados:', {
       customerEmail,
       customerName,
       subject,
@@ -186,22 +231,24 @@ serve(async (req: Request) => {
     });
 
     if (!customerEmail) {
-      console.error('Step 6 - ERRO: E-mail do cliente não encontrado');
+      console.error('Step 5 - ERRO: E-mail do cliente não encontrado');
       return new Response(
         JSON.stringify({ error: 'No sender email found' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Step 7: Find or create ticket
+    // ========================================
+    // STEP 6: ENCONTRAR OU CRIAR TICKET
+    // ========================================
     let ticketId: string | null = null;
 
-    // Try threading first
+    // Tentar threading primeiro usando headers
     const headers = webhookData.headers || [];
     const inReplyTo = headers.find((h: { name: string }) => h.name?.toLowerCase() === 'in-reply-to')?.value;
     const references = headers.find((h: { name: string }) => h.name?.toLowerCase() === 'references')?.value;
 
-    console.log('Step 7a - Headers de threading:', { inReplyTo, references });
+    console.log('Step 6a - Headers de threading:', { inReplyTo, references });
 
     if (inReplyTo || references) {
       const referencedIds = [inReplyTo, ...(references?.split(/\s+/) || [])].filter(Boolean);
@@ -215,12 +262,12 @@ serve(async (req: Request) => {
 
         if (referencedMessages && referencedMessages.length > 0) {
           ticketId = referencedMessages[0].ticket_id;
-          console.log('Step 7a - Ticket encontrado por threading:', ticketId);
+          console.log('Step 6a - Ticket encontrado por threading:', ticketId);
         }
       }
     }
 
-    // Fallback: find by email
+    // Fallback: buscar por e-mail do cliente
     if (!ticketId) {
       const { data: existingTicket } = await supabase
         .from('tickets')
@@ -233,11 +280,11 @@ serve(async (req: Request) => {
 
       if (existingTicket) {
         ticketId = existingTicket.id;
-        console.log('Step 7b - Ticket encontrado por e-mail:', ticketId);
+        console.log('Step 6b - Ticket encontrado por e-mail:', ticketId);
       }
     }
 
-    // Create new ticket if needed
+    // Criar novo ticket se necessário
     if (!ticketId) {
       const { data: newTicket, error: createError } = await supabase
         .from('tickets')
@@ -251,16 +298,18 @@ serve(async (req: Request) => {
         .single();
 
       if (createError) {
-        console.error('Step 8 - ERRO ao criar ticket:', createError);
+        console.error('Step 6c - ERRO ao criar ticket:', createError);
         throw createError;
       }
 
       ticketId = newTicket.id;
-      console.log('Step 8 - Novo ticket criado:', ticketId);
+      console.log('Step 6c - Novo ticket criado:', ticketId);
     }
 
-    // Step 9: Insert message
-    console.log('Step 9 - Inserindo mensagem:', {
+    // ========================================
+    // STEP 7: INSERIR MENSAGEM
+    // ========================================
+    console.log('Step 7 - Inserindo mensagem:', {
       ticketId,
       emailId,
       emailMessageId,
@@ -281,15 +330,21 @@ serve(async (req: Request) => {
       });
 
     if (messageError) {
-      console.error('Step 9 - ERRO ao inserir mensagem:', messageError);
+      console.error('Step 7 - ERRO ao inserir mensagem:', messageError);
       throw messageError;
     }
 
-    console.log('Step 9 - Mensagem inserida com sucesso!');
+    console.log('Step 7 - Mensagem inserida com sucesso!');
     console.log('=== PROCESS INBOUND EMAIL COMPLETE ===');
 
     return new Response(
-      JSON.stringify({ success: true, ticketId, emailMessageId, hasContent: !!content }),
+      JSON.stringify({ 
+        success: true, 
+        ticketId, 
+        emailMessageId, 
+        hasContent: !!content,
+        dedupedBy: svixId ? 'svix-id' : 'none'
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err: unknown) {
