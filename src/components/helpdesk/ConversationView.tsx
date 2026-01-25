@@ -116,7 +116,11 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
           </div>
         ) : messages && messages.length > 0 ? (
           messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
+            <MessageBubble 
+              key={message.id} 
+              message={message} 
+              senderName={message.direction === 'inbound' ? (ticket?.customer_name || undefined) : undefined}
+            />
           ))
         ) : (
           <div className="text-center text-muted-foreground py-8">
