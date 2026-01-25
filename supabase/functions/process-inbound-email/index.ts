@@ -1,24 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// Resend inbound email webhook payload structure
-interface ResendWebhookPayload {
-  type: string;
-  created_at: string;
-  data: {
-    email_id: string;
-    from: string;
-    to: string[];
-    subject: string;
-    created_at: string;
-  };
-}
 
 serve(async (req: Request) => {
   // Handle CORS preflight
@@ -34,7 +20,7 @@ serve(async (req: Request) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Parse the webhook payload from Resend
+    // Step 1: Parse the webhook payload from Resend
     const rawPayload = await req.json();
     console.log('Step 1 - Raw webhook payload:', JSON.stringify(rawPayload, null, 2));
 
@@ -61,13 +47,20 @@ serve(async (req: Request) => {
 
     console.log('Step 2 - Resend API key found');
 
-    // Extract email_id from webhook - Resend webhook structure
+    // Step 3: Extract data from webhook
     const webhookData = rawPayload.data || rawPayload;
-    const emailId = webhookData.email_id;
+    const resendEmailId = webhookData.email_id;
+    // IMPORTANT: The webhook provides message_id which is the actual Message-ID header for threading
+    const messageIdFromWebhook = webhookData.message_id;
     
-    console.log('Step 3 - Extracted email_id:', emailId);
+    console.log('Step 3 - Extracted IDs:', { 
+      resendEmailId, 
+      messageIdFromWebhook,
+      from: webhookData.from,
+      subject: webhookData.subject
+    });
 
-    if (!emailId) {
+    if (!resendEmailId) {
       console.error('Step 3 - No email_id in webhook payload');
       return new Response(
         JSON.stringify({ error: 'No email_id found in webhook' }),
@@ -75,14 +68,11 @@ serve(async (req: Request) => {
       );
     }
 
-    // CRITICAL: Fetch full email content using Resend API
-    console.log('Step 4 - Fetching full email content from Resend API...');
+    // Step 4: Fetch full email content using Resend RECEIVING API
+    // The correct endpoint for inbound emails is /emails/receiving/{email_id}
+    console.log('Step 4 - Fetching full email content from Resend Receiving API...');
     
-    const resend = new Resend(resendApiKey);
-    
-    // Use the Resend API to get the full email
-    // Note: The receiving API endpoint for getting email details
-    const emailResponse = await fetch(`https://api.resend.com/emails/${emailId}`, {
+    const emailResponse = await fetch(`https://api.resend.com/emails/receiving/${resendEmailId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${resendApiKey}`,
@@ -90,26 +80,24 @@ serve(async (req: Request) => {
       },
     });
 
-    if (!emailResponse.ok) {
-      const errorText = await emailResponse.text();
-      console.error('Step 4 - Failed to fetch email from Resend:', emailResponse.status, errorText);
-      
-      // Fallback: use webhook data if API fails
-      console.log('Step 4 - Falling back to webhook metadata');
-    }
-
     let emailContent: {
       from: string;
       to: string[];
       subject: string;
-      text?: string;
-      html?: string;
-      headers?: Array<{ name: string; value: string }>;
+      text: string;
+      html: string;
     };
 
     if (emailResponse.ok) {
       const fullEmail = await emailResponse.json();
-      console.log('Step 4 - Full email fetched:', JSON.stringify(fullEmail, null, 2));
+      console.log('Step 4 - SUCCESS! Full email fetched:', JSON.stringify({
+        from: fullEmail.from,
+        subject: fullEmail.subject,
+        hasText: !!fullEmail.text,
+        hasHtml: !!fullEmail.html,
+        textLength: fullEmail.text?.length || 0,
+        htmlLength: fullEmail.html?.length || 0,
+      }, null, 2));
       
       emailContent = {
         from: fullEmail.from || webhookData.from,
@@ -117,17 +105,19 @@ serve(async (req: Request) => {
         subject: fullEmail.subject || webhookData.subject,
         text: fullEmail.text || '',
         html: fullEmail.html || '',
-        headers: fullEmail.headers || [],
       };
     } else {
-      // Fallback to webhook data
+      const errorText = await emailResponse.text();
+      console.error('Step 4 - Failed to fetch email from Resend:', emailResponse.status, errorText);
+      console.log('Step 4 - Falling back to webhook metadata (no body content available)');
+      
+      // Fallback to webhook data - but there's no body content in webhook
       emailContent = {
         from: webhookData.from,
         to: webhookData.to,
         subject: webhookData.subject,
-        text: webhookData.text || '',
-        html: webhookData.html || '',
-        headers: webhookData.headers || [],
+        text: '[Conteúdo do e-mail não disponível - erro ao buscar do Resend]',
+        html: '',
       };
     }
 
@@ -137,27 +127,20 @@ serve(async (req: Request) => {
       subject: emailContent.subject,
       hasText: !!emailContent.text,
       hasHtml: !!emailContent.html,
+      textPreview: emailContent.text?.substring(0, 100) || '',
     });
 
-    // Extract email address from "Name <email@example.com>" format
+    // Helper functions
     const extractEmail = (emailString: string): string => {
       if (!emailString) return '';
       const match = emailString.match(/<(.+?)>/);
       return match ? match[1] : emailString.trim();
     };
 
-    // Extract name from "Name <email@example.com>" format
     const extractName = (emailString: string): string | null => {
       if (!emailString) return null;
       const match = emailString.match(/^(.+?)\s*</);
       return match ? match[1].trim() : null;
-    };
-
-    // Get specific header value from headers array
-    const getHeader = (headers: Array<{ name: string; value: string }> | undefined, name: string): string | null => {
-      if (!headers) return null;
-      const header = headers.find(h => h.name.toLowerCase() === name.toLowerCase());
-      return header?.value || null;
     };
 
     const customerEmail = extractEmail(emailContent.from);
@@ -166,18 +149,15 @@ serve(async (req: Request) => {
     const htmlBody = emailContent.html || null;
     const subject = emailContent.subject || 'Sem assunto';
     
-    // The message_id for threading - use the email_id from Resend formatted as Message-ID
-    const messageId = getHeader(emailContent.headers, 'Message-ID') || `<${emailId}@resend.dev>`;
-    const inReplyTo = getHeader(emailContent.headers, 'In-Reply-To');
-    const references = getHeader(emailContent.headers, 'References');
+    // Use the message_id from webhook for threading - this is the real Message-ID header
+    const emailMessageId = messageIdFromWebhook || `<${resendEmailId}@resend.dev>`;
 
     console.log('Step 6 - Parsed email data:', {
       customerEmail,
       customerName,
       subject,
-      messageId,
-      inReplyTo,
-      references,
+      resendEmailId,
+      emailMessageId,
       contentLength: content.length,
       hasHtmlBody: !!htmlBody,
     });
@@ -192,7 +172,14 @@ serve(async (req: Request) => {
 
     let ticketId: string | null = null;
 
-    // First, try to find ticket by threading headers (In-Reply-To or References)
+    // Step 7a: Try to find ticket by threading (check if this is a reply)
+    // Extract In-Reply-To and References from webhook if available
+    const headers = webhookData.headers || [];
+    const inReplyTo = headers.find((h: { name: string }) => h.name?.toLowerCase() === 'in-reply-to')?.value;
+    const references = headers.find((h: { name: string }) => h.name?.toLowerCase() === 'references')?.value;
+
+    console.log('Step 7a - Threading headers:', { inReplyTo, references });
+
     if (inReplyTo || references) {
       const referencedIds = [inReplyTo, ...(references?.split(/\s+/) || [])].filter(Boolean);
       
@@ -214,7 +201,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // Fallback: find by customer email and open status
+    // Step 7b: Fallback - find by customer email and open status
     if (!ticketId) {
       console.log('Step 7b - Looking for ticket by customer email:', customerEmail);
       
@@ -240,7 +227,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // Create new ticket if none found
+    // Step 8: Create new ticket if none found
     if (!ticketId) {
       console.log('Step 8 - Creating new ticket...');
       
@@ -264,8 +251,14 @@ serve(async (req: Request) => {
       console.log('Step 8 - Created new ticket:', ticketId);
     }
 
-    // Add the message with email_message_id for threading
-    console.log('Step 9 - Inserting message with email_message_id:', messageId);
+    // Step 9: Add the message with all IDs for threading
+    console.log('Step 9 - Inserting message:', {
+      ticketId,
+      resendEmailId,
+      emailMessageId,
+      contentLength: content.length,
+      hasHtml: !!htmlBody,
+    });
     
     const { error: messageError } = await supabase
       .from('messages')
@@ -275,7 +268,8 @@ serve(async (req: Request) => {
         html_body: htmlBody,
         direction: 'inbound',
         sender_email: customerEmail,
-        email_message_id: messageId,
+        resend_email_id: resendEmailId,
+        email_message_id: emailMessageId,
       });
 
     if (messageError) {
@@ -287,7 +281,7 @@ serve(async (req: Request) => {
     console.log('=== PROCESS INBOUND EMAIL COMPLETE ===');
 
     return new Response(
-      JSON.stringify({ success: true, ticketId, messageId }),
+      JSON.stringify({ success: true, ticketId, emailMessageId }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
