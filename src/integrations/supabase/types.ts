@@ -59,6 +59,8 @@ export type Database = {
           id: string
           resend_api_key: string | null
           resend_api_key_configured: boolean | null
+          sender_email: string | null
+          sender_name: string | null
           updated_at: string
         }
         Insert: {
@@ -67,6 +69,8 @@ export type Database = {
           id?: string
           resend_api_key?: string | null
           resend_api_key_configured?: boolean | null
+          sender_email?: string | null
+          sender_name?: string | null
           updated_at?: string
         }
         Update: {
@@ -75,6 +79,8 @@ export type Database = {
           id?: string
           resend_api_key?: string | null
           resend_api_key_configured?: boolean | null
+          sender_email?: string | null
+          sender_name?: string | null
           updated_at?: string
         }
         Relationships: []
