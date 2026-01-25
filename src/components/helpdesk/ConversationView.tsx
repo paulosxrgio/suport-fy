@@ -29,17 +29,24 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
   }, [messages]);
 
   const handleSendReply = async () => {
-    if (!ticket || !replyContent.trim()) return;
+    // Double-check to prevent duplicate sends
+    if (!ticket || !replyContent.trim() || sendMessage.isPending) return;
 
+    const contentToSend = replyContent.trim();
+    
     try {
       await sendMessage.mutateAsync({
         ticketId: ticket.id,
-        content: replyContent.trim(),
+        content: contentToSend,
       });
+      // Clear input only after successful send
       setReplyContent('');
       toast.success('Resposta enviada com sucesso!');
-    } catch (error) {
-      toast.error('Erro ao enviar resposta. Verifique a configuração do Resend.');
+    } catch (error: any) {
+      // Don't show error for duplicate prevention
+      if (error?.message !== 'Envio já em andamento') {
+        toast.error('Erro ao enviar resposta. Verifique a configuração do Resend.');
+      }
     }
   };
 
@@ -139,7 +146,8 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
             placeholder="Digite sua resposta..."
             className="min-h-[80px] resize-none"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !sendMessage.isPending) {
+                e.preventDefault();
                 handleSendReply();
               }
             }}
