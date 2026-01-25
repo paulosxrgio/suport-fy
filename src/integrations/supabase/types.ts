@@ -57,6 +57,7 @@ export type Database = {
           created_at: string
           email_signature: string | null
           id: string
+          resend_api_key: string | null
           resend_api_key_configured: boolean | null
           updated_at: string
         }
@@ -64,6 +65,7 @@ export type Database = {
           created_at?: string
           email_signature?: string | null
           id?: string
+          resend_api_key?: string | null
           resend_api_key_configured?: boolean | null
           updated_at?: string
         }
@@ -71,6 +73,7 @@ export type Database = {
           created_at?: string
           email_signature?: string | null
           id?: string
+          resend_api_key?: string | null
           resend_api_key_configured?: boolean | null
           updated_at?: string
         }
