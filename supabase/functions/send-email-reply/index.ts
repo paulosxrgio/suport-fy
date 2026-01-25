@@ -109,21 +109,33 @@ serve(async (req: Request) => {
 
     console.log('Step 5 - Enviando email:', { from: fromAddress, to: ticket.customer_email });
 
-    // Build email headers for threading
+    // Build email headers for threading - CRITICAL for Gmail/Outlook grouping
     const emailHeaders: Record<string, string> = {};
     
     if (lastInboundMessage?.email_message_id) {
       const replyToId = lastInboundMessage.email_message_id;
       emailHeaders['In-Reply-To'] = replyToId;
       emailHeaders['References'] = replyToId;
-      console.log('Step 5 - Threading headers:', { 'In-Reply-To': replyToId });
+      console.log('Step 5 - Threading headers configurados:', { 
+        'In-Reply-To': replyToId, 
+        'References': replyToId 
+      });
+    } else {
+      console.log('Step 5 - AVISO: Nenhum email_message_id encontrado, enviando sem threading');
     }
+
+    // Smart subject handling - avoid "Re: Re: Re:" duplication
+    let emailSubject = ticket.subject;
+    if (!emailSubject.toLowerCase().startsWith('re:')) {
+      emailSubject = `Re: ${emailSubject}`;
+    }
+    console.log('Step 5 - Subject formatado:', { original: ticket.subject, final: emailSubject });
 
     // Send email via Resend
     const emailResult = await resend.emails.send({
       from: fromAddress,
       to: [ticket.customer_email],
-      subject: `Re: ${ticket.subject}`,
+      subject: emailSubject,
       text: fullContent,
       headers: Object.keys(emailHeaders).length > 0 ? emailHeaders : undefined,
     });
