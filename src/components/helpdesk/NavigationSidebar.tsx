@@ -1,0 +1,54 @@
+import { Inbox, Settings, BarChart3, HelpCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
+type NavItem = 'inbox' | 'analytics' | 'settings';
+
+interface NavigationSidebarProps {
+  activeNav: NavItem;
+  onNavChange: (nav: NavItem) => void;
+}
+
+export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarProps) {
+  const navItems = [
+    { id: 'inbox' as const, icon: Inbox, label: 'Tickets' },
+    { id: 'analytics' as const, icon: BarChart3, label: 'Analytics' },
+    { id: 'settings' as const, icon: Settings, label: 'Configurações' },
+  ];
+
+  return (
+    <div className="w-16 bg-sidebar flex flex-col items-center py-4 gap-2">
+      {/* Logo */}
+      <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center mb-6">
+        <HelpCircle className="w-6 h-6 text-sidebar-primary-foreground" />
+      </div>
+      
+      {/* Navigation Items */}
+      <nav className="flex flex-col items-center gap-1">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeNav === item.id;
+          
+          return (
+            <Tooltip key={item.id}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onNavChange(item.id)}
+                  className={cn(
+                    'nav-icon',
+                    isActive && 'nav-icon-active'
+                  )}
+                >
+                  <Icon className="w-5 h-5 text-sidebar-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {item.label}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
