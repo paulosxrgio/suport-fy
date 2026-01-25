@@ -19,6 +19,7 @@ export type Database = {
           content: string
           created_at: string
           direction: string
+          email_message_id: string | null
           html_body: string | null
           id: string
           sender_email: string
@@ -28,6 +29,7 @@ export type Database = {
           content: string
           created_at?: string
           direction: string
+          email_message_id?: string | null
           html_body?: string | null
           id?: string
           sender_email: string
@@ -37,6 +39,7 @@ export type Database = {
           content?: string
           created_at?: string
           direction?: string
+          email_message_id?: string | null
           html_body?: string | null
           id?: string
           sender_email?: string

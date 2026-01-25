@@ -6,13 +6,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface InboundEmailPayload {
-  from: string;
-  to: string;
-  subject: string;
-  text?: string;
-  html?: string;
-  headers?: Record<string, string>;
+// Resend inbound email webhook payload structure
+interface ResendInboundPayload {
+  type: string;
+  created_at: string;
+  data: {
+    from: string;
+    to: string[];
+    subject: string;
+    text?: string;
+    html?: string;
+    headers?: Array<{ name: string; value: string }>;
+    message_id?: string;
+  };
 }
 
 serve(async (req: Request) => {
@@ -28,54 +34,107 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse the inbound email payload from Resend
-    const payload: InboundEmailPayload = await req.json();
+    const rawPayload = await req.json();
+    console.log('Raw payload received:', JSON.stringify(rawPayload, null, 2));
+
+    // Resend webhook has the data nested under 'data' property
+    const payload = rawPayload.data || rawPayload;
     
     console.log('Received inbound email:', {
       from: payload.from,
       to: payload.to,
       subject: payload.subject,
+      message_id: payload.message_id,
     });
 
     // Extract email address from "Name <email@example.com>" format
     const extractEmail = (emailString: string): string => {
+      if (!emailString) return '';
       const match = emailString.match(/<(.+?)>/);
-      return match ? match[1] : emailString;
+      return match ? match[1] : emailString.trim();
     };
 
     // Extract name from "Name <email@example.com>" format
     const extractName = (emailString: string): string | null => {
+      if (!emailString) return null;
       const match = emailString.match(/^(.+?)\s*</);
       return match ? match[1].trim() : null;
+    };
+
+    // Get specific header value from headers array
+    const getHeader = (headers: Array<{ name: string; value: string }> | undefined, name: string): string | null => {
+      if (!headers) return null;
+      const header = headers.find(h => h.name.toLowerCase() === name.toLowerCase());
+      return header?.value || null;
     };
 
     const customerEmail = extractEmail(payload.from);
     const customerName = extractName(payload.from);
     const content = payload.text || payload.html || '';
     const subject = payload.subject || 'Sem assunto';
+    
+    // Extract threading headers
+    const messageId = payload.message_id || getHeader(payload.headers, 'Message-ID');
+    const inReplyTo = getHeader(payload.headers, 'In-Reply-To');
+    const references = getHeader(payload.headers, 'References');
 
-    // Check if there's an existing open ticket from this customer
-    const { data: existingTicket, error: ticketQueryError } = await supabase
-      .from('tickets')
-      .select('id')
-      .eq('customer_email', customerEmail)
-      .eq('status', 'open')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    console.log('Threading headers:', { messageId, inReplyTo, references });
 
-    if (ticketQueryError) {
-      console.error('Error querying tickets:', ticketQueryError);
-      throw ticketQueryError;
+    if (!customerEmail) {
+      console.error('No customer email found in payload');
+      return new Response(
+        JSON.stringify({ error: 'No sender email found' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    let ticketId: string;
+    let ticketId: string | null = null;
 
-    if (existingTicket) {
-      // Add message to existing ticket
-      ticketId = existingTicket.id;
-      console.log('Adding message to existing ticket:', ticketId);
-    } else {
-      // Create new ticket
+    // First, try to find ticket by threading headers (In-Reply-To or References)
+    if (inReplyTo || references) {
+      const referencedIds = [inReplyTo, ...(references?.split(/\s+/) || [])].filter(Boolean);
+      
+      console.log('Looking for ticket by referenced message IDs:', referencedIds);
+
+      if (referencedIds.length > 0) {
+        // Find messages that match any of the referenced message IDs
+        const { data: referencedMessages, error: refError } = await supabase
+          .from('messages')
+          .select('ticket_id')
+          .in('email_message_id', referencedIds)
+          .limit(1);
+
+        if (!refError && referencedMessages && referencedMessages.length > 0) {
+          ticketId = referencedMessages[0].ticket_id;
+          console.log('Found ticket by threading headers:', ticketId);
+        }
+      }
+    }
+
+    // Fallback: find by customer email and open status
+    if (!ticketId) {
+      const { data: existingTicket, error: ticketQueryError } = await supabase
+        .from('tickets')
+        .select('id')
+        .eq('customer_email', customerEmail)
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (ticketQueryError) {
+        console.error('Error querying tickets:', ticketQueryError);
+        throw ticketQueryError;
+      }
+
+      if (existingTicket) {
+        ticketId = existingTicket.id;
+        console.log('Found ticket by customer email:', ticketId);
+      }
+    }
+
+    // Create new ticket if none found
+    if (!ticketId) {
       const { data: newTicket, error: createTicketError } = await supabase
         .from('tickets')
         .insert({
@@ -96,7 +155,7 @@ serve(async (req: Request) => {
       console.log('Created new ticket:', ticketId);
     }
 
-    // Add the message
+    // Add the message with email_message_id for threading
     const { error: messageError } = await supabase
       .from('messages')
       .insert({
@@ -105,6 +164,7 @@ serve(async (req: Request) => {
         html_body: payload.html,
         direction: 'inbound',
         sender_email: customerEmail,
+        email_message_id: messageId,
       });
 
     if (messageError) {
@@ -112,7 +172,7 @@ serve(async (req: Request) => {
       throw messageError;
     }
 
-    console.log('Message added successfully');
+    console.log('Message added successfully with message_id:', messageId);
 
     return new Response(
       JSON.stringify({ success: true, ticketId }),

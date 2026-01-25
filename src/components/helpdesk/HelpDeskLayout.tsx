@@ -9,6 +9,8 @@ import { AnalyticsPage } from './AnalyticsPage';
 import { NewTicketDialog } from './NewTicketDialog';
 import { useTickets, useTicket } from '@/hooks/useTickets';
 import { useMessages } from '@/hooks/useMessages';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export function HelpDeskLayout() {
   const [activeNav, setActiveNav] = useState<'inbox' | 'analytics' | 'settings'>('inbox');
@@ -16,6 +18,8 @@ export function HelpDeskLayout() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCustomerInfoOpen, setIsCustomerInfoOpen] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
 
   // Fetch tickets
   const { data: allTickets, isLoading: isLoadingTickets } = useTickets(
@@ -23,10 +27,22 @@ export function HelpDeskLayout() {
   );
   
   // Fetch selected ticket details
-  const { data: selectedTicket, isLoading: isLoadingTicket } = useTicket(selectedTicketId);
+  const { data: selectedTicket } = useTicket(selectedTicketId);
   
   // Fetch messages for selected ticket
   const { data: messages, isLoading: isLoadingMessages } = useMessages(selectedTicketId);
+
+  // Handle manual refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      await queryClient.invalidateQueries({ queryKey: ['messages'] });
+      toast.success('Lista atualizada!');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Filter tickets by search query
   const filteredTickets = useMemo(() => {
@@ -66,6 +82,8 @@ export function HelpDeskLayout() {
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}
                 ticketCount={filteredTickets.length}
+                onRefresh={handleRefresh}
+                isRefreshing={isRefreshing}
               />
               <TicketList
                 tickets={filteredTickets}

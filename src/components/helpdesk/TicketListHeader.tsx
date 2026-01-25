@@ -1,4 +1,4 @@
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 interface TicketListHeaderProps {
   searchQuery: string;
@@ -14,6 +15,8 @@ interface TicketListHeaderProps {
   statusFilter: 'all' | 'open' | 'closed';
   onStatusFilterChange: (status: 'all' | 'open' | 'closed') => void;
   ticketCount: number;
+  onRefresh: () => void;
+  isRefreshing: boolean;
 }
 
 export function TicketListHeader({
@@ -22,6 +25,8 @@ export function TicketListHeader({
   statusFilter,
   onStatusFilterChange,
   ticketCount,
+  onRefresh,
+  isRefreshing,
 }: TicketListHeaderProps) {
   const statusLabels = {
     all: 'Todos',
@@ -39,25 +44,38 @@ export function TicketListHeader({
           </span>
         </h2>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8">
-              <Filter className="w-4 h-4 mr-1" />
-              {statusLabels[statusFilter]}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onStatusFilterChange('all')}>
-              Todos
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onStatusFilterChange('open')}>
-              Abertos
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onStatusFilterChange('closed')}>
-              Fechados
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            title="Atualizar lista"
+          >
+            <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8">
+                <Filter className="w-4 h-4 mr-1" />
+                {statusLabels[statusFilter]}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onStatusFilterChange('all')}>
+                Todos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onStatusFilterChange('open')}>
+                Abertos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onStatusFilterChange('closed')}>
+                Fechados
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       
       <div className="relative">
