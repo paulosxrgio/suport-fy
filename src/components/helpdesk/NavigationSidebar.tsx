@@ -1,8 +1,8 @@
-import { Inbox, Settings, BarChart3, HelpCircle, Bot } from 'lucide-react';
+import { Inbox, Settings, BarChart3, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-type NavItem = 'inbox' | 'ai-agent' | 'analytics' | 'settings';
+type NavItem = 'inbox' | 'analytics' | 'settings';
 
 interface NavigationSidebarProps {
   activeNav: NavItem;
@@ -12,7 +12,6 @@ interface NavigationSidebarProps {
 export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarProps) {
   const navItems = [
     { id: 'inbox' as const, icon: Inbox, label: 'Tickets' },
-    { id: 'ai-agent' as const, icon: Bot, label: 'Agente IA' },
     { id: 'analytics' as const, icon: BarChart3, label: 'Analytics' },
     { id: 'settings' as const, icon: Settings, label: 'Configurações' },
   ];
