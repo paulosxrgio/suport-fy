@@ -1,15 +1,41 @@
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Message } from '@/types/helpdesk';
 import { User, Headphones } from 'lucide-react';
+import { useMemo } from 'react';
+
+interface Message {
+  id: string;
+  ticket_id: string;
+  content: string;
+  html_body: string | null;
+  direction: 'inbound' | 'outbound';
+  sender_email: string;
+  created_at: string;
+}
 
 interface MessageBubbleProps {
   message: Message;
 }
 
+// Simple HTML sanitizer - removes script tags and event handlers
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\s*on\w+\s*=\s*[^\s>]+/gi, '')
+    .replace(/javascript:/gi, '');
+}
+
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isOutbound = message.direction === 'outbound';
+  
+  const sanitizedHtml = useMemo(() => {
+    if (message.html_body) {
+      return sanitizeHtml(message.html_body);
+    }
+    return null;
+  }, [message.html_body]);
   
   return (
     <div
@@ -33,14 +59,21 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       </div>
       
       {/* Bubble */}
-      <div className={cn('flex flex-col', isOutbound ? 'items-end' : 'items-start')}>
+      <div className={cn('flex flex-col max-w-[70%]', isOutbound ? 'items-end' : 'items-start')}>
         <div
           className={cn(
             'message-bubble',
             isOutbound ? 'message-bubble-outbound' : 'message-bubble-inbound'
           )}
         >
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          {sanitizedHtml ? (
+            <div 
+              className="text-sm prose prose-sm max-w-none dark:prose-invert"
+              dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+            />
+          ) : (
+            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          )}
         </div>
         
         {/* Timestamp */}

@@ -15,6 +15,7 @@ export interface Message {
   html_body: string | null;
   direction: 'inbound' | 'outbound';
   sender_email: string;
+  email_message_id: string | null;
   created_at: string;
 }
 
