@@ -6,6 +6,95 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ========================================
+// HELPER: Strip quoted text from email replies
+// ========================================
+function stripQuotedText(text: string): string {
+  if (!text) return '';
+  
+  const lines = text.split('\n');
+  const cleanLines: string[] = [];
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // A) Quoted message indicators (multi-language)
+    // PT-BR: "Em dom., 25 de jan. de 2026 às 19:26, Nome <email> escreveu:"
+    if (/^Em\s.+\sescreveu:\s*$/i.test(trimmed)) break;
+    // EN: "On Mon, Jan 25, 2026 at 7:26 PM, Name <email> wrote:"
+    if (/^On\s.+\swrote:\s*$/i.test(trimmed)) break;
+    // FR: "Le 25 janv. 2026 à 19:26, Nom <email> a écrit :"
+    if (/^Le\s.+\sa\s+écrit\s*:\s*$/i.test(trimmed)) break;
+    // ES: "El 25 ene 2026 a las 19:26, Nombre <email> escribió:"
+    if (/^El\s.+\sescribi[oó]:\s*$/i.test(trimmed)) break;
+    // DE: "Am 25.01.2026 um 19:26 schrieb Name <email>:"
+    if (/^Am\s.+\sschrieb\s*.+:\s*$/i.test(trimmed)) break;
+    
+    // B) Classic forwarding/reply delimiters
+    if (/^-{3,}\s*Original Message\s*-{3,}$/i.test(trimmed)) break;
+    if (/^-{3,}\s*Mensagem Original\s*-{3,}$/i.test(trimmed)) break;
+    if (/^-{5,}$/i.test(trimmed) && cleanLines.length > 0) break; // Generic separator
+    if (/^From:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^De:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^Sent:\s/i.test(trimmed)) break;
+    if (/^Enviado:\s/i.test(trimmed)) break;
+    if (/^To:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^Para:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^Subject:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^Assunto:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    
+    // C) Signature delimiters
+    if (/^--\s*$/.test(trimmed)) break; // Standard email signature delimiter
+    if (/^—\s*$/.test(trimmed)) break; // Em dash signature delimiter
+    if (/^_{3,}$/.test(trimmed) && cleanLines.length > 0) break; // Underscores separator
+    
+    // D) Gmail blockquote indicator (lines starting with ">")
+    if (trimmed.startsWith('>') && cleanLines.length > 0) {
+      // Skip quoted lines but continue checking
+      continue;
+    }
+    
+    cleanLines.push(line);
+  }
+  
+  // Trim trailing empty lines and return
+  let result = cleanLines.join('\n');
+  result = result.replace(/\n{3,}/g, '\n\n'); // Collapse multiple newlines
+  result = result.trim();
+  
+  return result;
+}
+
+// Helper: Convert HTML to plain text for cleaning
+function htmlToPlainText(html: string): string {
+  if (!html) return '';
+  
+  let text = html;
+  
+  // Remove Gmail's quoted content div
+  text = text.replace(/<div class="gmail_quote"[\s\S]*$/gi, '');
+  text = text.replace(/<blockquote[\s\S]*?<\/blockquote>/gi, '');
+  
+  // Convert <br> and block elements to newlines
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  text = text.replace(/<\/p>/gi, '\n\n');
+  text = text.replace(/<\/div>/gi, '\n');
+  text = text.replace(/<\/li>/gi, '\n');
+  
+  // Remove all remaining HTML tags
+  text = text.replace(/<[^>]+>/g, '');
+  
+  // Decode HTML entities
+  text = text.replace(/&nbsp;/gi, ' ');
+  text = text.replace(/&amp;/gi, '&');
+  text = text.replace(/&lt;/gi, '<');
+  text = text.replace(/&gt;/gi, '>');
+  text = text.replace(/&quot;/gi, '"');
+  text = text.replace(/&#39;/gi, "'");
+  
+  return text.trim();
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -183,7 +272,15 @@ serve(async (req: Request) => {
 
     const customerEmail = extractEmail(emailContent.from);
     const customerName = extractName(emailContent.from, customerEmail);
-    const content = emailContent.text || emailContent.html || '[Sem conteúdo]';
+    
+    // Clean quoted text from the email content
+    let rawText = emailContent.text || '';
+    if (!rawText && emailContent.html) {
+      rawText = htmlToPlainText(emailContent.html);
+    }
+    const cleanedContent = stripQuotedText(rawText) || '[Sem conteúdo]';
+    
+    // Keep raw HTML for reference but use cleaned text for display
     const htmlBody = emailContent.html || null;
     const subject = emailContent.subject;
     const emailMessageId = incomingMessageId || `<${emailId}@resend.dev>`;
@@ -193,7 +290,8 @@ serve(async (req: Request) => {
       customerName,
       subject,
       emailMessageId,
-      contentLength: content.length,
+      contentLength: cleanedContent.length,
+      rawLength: rawText.length,
     });
 
     if (!customerEmail) {
@@ -324,14 +422,14 @@ serve(async (req: Request) => {
       ticketId,
       emailId,
       emailMessageId,
-      contentLength: content.length,
+      contentLength: cleanedContent.length,
     });
     
     const { error: messageError } = await supabase
       .from('messages')
       .insert({
         ticket_id: ticketId,
-        content: content,
+        content: cleanedContent,
         html_body: htmlBody,
         direction: 'inbound',
         sender_email: customerEmail,
@@ -353,7 +451,7 @@ serve(async (req: Request) => {
         ticketId, 
         emailMessageId, 
         isNewTicket,
-        hasContent: !!content,
+        hasContent: !!cleanedContent,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
