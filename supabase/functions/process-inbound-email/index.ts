@@ -121,23 +121,56 @@ serve(async (req: Request) => {
       return match ? match[1].trim() : emailString.trim();
     };
 
+    // Capitalize each word: "paulo sergio" -> "Paulo Sergio"
+    const capitalizeWords = (str: string): string => {
+      return str
+        .toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    };
+
+    // Smart fallback: extract name from email prefix
+    // "paulo.sergio@gmail.com" -> "Paulo Sergio"
+    const nameFromEmailPrefix = (email: string): string => {
+      const prefix = email.split('@')[0] || 'cliente';
+      // Replace dots, underscores, hyphens with spaces
+      const cleaned = prefix.replace(/[._-]/g, ' ').trim();
+      return capitalizeWords(cleaned);
+    };
+
+    // Robust name extraction for Gmail/Outlook formats
     const extractName = (emailString: string, fallbackEmail: string): string => {
       if (!emailString) {
-        // Use part before @ as fallback
-        return fallbackEmail.split('@')[0] || 'Cliente';
+        return nameFromEmailPrefix(fallbackEmail);
       }
-      // Try to extract "Name" from "Name <email>"
+
+      // Step 1: Try to extract everything before "<"
       const match = emailString.match(/^(.+?)\s*</);
-      if (match && match[1].trim()) {
-        return match[1].trim();
+      
+      if (match && match[1]) {
+        // Step 2: Clean the extracted name
+        let name = match[1].trim();
+        
+        // Remove surrounding quotes (single or double)
+        name = name.replace(/^["']|["']$/g, '');
+        name = name.trim();
+        
+        // Step 3: Validate - if we have a valid name, return it
+        if (name.length > 0) {
+          console.log('Nome extraído do header:', name);
+          return name;
+        }
       }
-      // No name found, use email prefix as fallback
-      const email = extractEmail(emailString);
-      return email.split('@')[0] || 'Cliente';
+
+      // Step 4: Fallback - use email prefix with smart formatting
+      console.log('Usando fallback do e-mail para nome');
+      return nameFromEmailPrefix(fallbackEmail);
     };
 
     const customerEmail = extractEmail(emailContent.from);
     const customerName = extractName(emailContent.from, customerEmail);
+    console.log('Step 6 - Nome do cliente processado:', { original: emailContent.from, extracted: customerName });
     const content = emailContent.text || emailContent.html || '[Sem conteúdo]';
     const htmlBody = emailContent.html || null;
     const subject = emailContent.subject;
