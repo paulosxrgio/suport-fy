@@ -11,11 +11,6 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // ========================================
-  // STEP 0: RESPONDER 200 RÁPIDO (evitar retry)
-  // Capturamos tudo que precisamos ANTES de processar
-  // ========================================
-  
   try {
     console.log('=== PROCESS INBOUND EMAIL START ===');
     
@@ -48,7 +43,6 @@ serve(async (req: Request) => {
     // STEP 2: DEDUPLICAR PELO svix-id
     // ========================================
     if (svixId) {
-      // Verificar se já processamos este webhook
       const { data: existingEvent } = await supabase
         .from('webhook_events')
         .select('id')
@@ -63,17 +57,15 @@ serve(async (req: Request) => {
         );
       }
 
-      // Registrar svix-id ANTES de processar (evita race condition)
       const { error: insertError } = await supabase
         .from('webhook_events')
         .insert({ svix_id: svixId, event_type: eventType });
 
       if (insertError) {
-        // Se falhou por unique constraint, outro worker já está processando
         if (insertError.code === '23505') {
           console.log('Step 2 - RACE CONDITION: outro worker já processando');
           return new Response(
-            JSON.stringify({ ok: true, skipped: true, reason: 'Race condition - already processing' }),
+            JSON.stringify({ ok: true, skipped: true, reason: 'Race condition' }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -81,8 +73,6 @@ serve(async (req: Request) => {
       } else {
         console.log('Step 2 - svix-id registrado com sucesso');
       }
-    } else {
-      console.log('Step 2 - AVISO: Webhook sem svix-id header');
     }
 
     // ========================================
@@ -107,15 +97,14 @@ serve(async (req: Request) => {
 
     // ========================================
     // STEP 4: EXTRAIR email_id E BUSCAR CONTEÚDO COMPLETO
-    // (Receiving API - a forma CORRETA segundo a documentação)
     // ========================================
     const webhookData = rawPayload.data || rawPayload;
     const emailId = webhookData.email_id;
-    const messageIdFromWebhook = webhookData.message_id;
+    const incomingMessageId = webhookData.message_id; // O Message-ID real do e-mail recebido
     
     console.log('Step 4 - IDs extraídos:', { 
       emailId, 
-      messageIdFromWebhook,
+      incomingMessageId,
       from: webhookData.from,
       subject: webhookData.subject
     });
@@ -133,9 +122,7 @@ serve(async (req: Request) => {
     
     const emailResponse = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-      },
+      headers: { 'Authorization': `Bearer ${resendApiKey}` },
     });
 
     let emailFull: {
@@ -149,15 +136,9 @@ serve(async (req: Request) => {
     if (emailResponse.ok) {
       emailFull = await emailResponse.json();
       console.log('Step 4.1 - SUCESSO! E-mail completo baixado');
-      console.log('Step 4.1 - Detalhes:', {
-        from: emailFull?.from,
-        subject: emailFull?.subject,
-        textLength: emailFull?.text?.length || 0,
-        htmlLength: emailFull?.html?.length || 0,
-      });
     } else {
       const errorBody = await emailResponse.text();
-      console.error('Step 4.1 - ERRO ao buscar e-mail via Receiving API:', emailResponse.status, errorBody);
+      console.error('Step 4.1 - ERRO ao buscar e-mail:', emailResponse.status, errorBody);
     }
 
     // ========================================
@@ -179,9 +160,7 @@ serve(async (req: Request) => {
     };
 
     const capitalizeWords = (str: string): string => {
-      return str
-        .toLowerCase()
-        .split(' ')
+      return str.toLowerCase().split(' ')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
     };
@@ -193,24 +172,12 @@ serve(async (req: Request) => {
     };
 
     const extractName = (emailString: string, fallbackEmail: string): string => {
-      if (!emailString) {
-        return nameFromEmailPrefix(fallbackEmail);
-      }
-
+      if (!emailString) return nameFromEmailPrefix(fallbackEmail);
       const match = emailString.match(/^(.+?)\s*</);
-      
       if (match && match[1]) {
-        let name = match[1].trim();
-        name = name.replace(/^["']|["']$/g, '');
-        name = name.trim();
-        
-        if (name.length > 0) {
-          console.log('Nome extraído do header:', name);
-          return name;
-        }
+        let name = match[1].trim().replace(/^["']|["']$/g, '').trim();
+        if (name.length > 0) return name;
       }
-
-      console.log('Usando fallback do e-mail para nome');
       return nameFromEmailPrefix(fallbackEmail);
     };
 
@@ -219,7 +186,7 @@ serve(async (req: Request) => {
     const content = emailContent.text || emailContent.html || '[Sem conteúdo]';
     const htmlBody = emailContent.html || null;
     const subject = emailContent.subject;
-    const emailMessageId = messageIdFromWebhook || `<${emailId}@resend.dev>`;
+    const emailMessageId = incomingMessageId || `<${emailId}@resend.dev>`;
 
     console.log('Step 5 - Dados parseados:', {
       customerEmail,
@@ -227,7 +194,6 @@ serve(async (req: Request) => {
       subject,
       emailMessageId,
       contentLength: content.length,
-      hasHtmlBody: !!htmlBody,
     });
 
     if (!customerEmail) {
@@ -239,19 +205,21 @@ serve(async (req: Request) => {
     }
 
     // ========================================
-    // STEP 6: ENCONTRAR OU CRIAR TICKET
+    // STEP 6: ENCONTRAR OU CRIAR TICKET COM THREADING
     // ========================================
     let ticketId: string | null = null;
+    let existingReferences: string[] = [];
+    let isNewTicket = false;
 
-    // Tentar threading primeiro usando headers
+    // Tentar threading primeiro usando headers do webhook
     const headers = webhookData.headers || [];
     const inReplyTo = headers.find((h: { name: string }) => h.name?.toLowerCase() === 'in-reply-to')?.value;
-    const references = headers.find((h: { name: string }) => h.name?.toLowerCase() === 'references')?.value;
+    const incomingReferences = headers.find((h: { name: string }) => h.name?.toLowerCase() === 'references')?.value;
 
-    console.log('Step 6a - Headers de threading:', { inReplyTo, references });
+    console.log('Step 6a - Headers de threading do e-mail recebido:', { inReplyTo, incomingReferences });
 
-    if (inReplyTo || references) {
-      const referencedIds = [inReplyTo, ...(references?.split(/\s+/) || [])].filter(Boolean);
+    if (inReplyTo || incomingReferences) {
+      const referencedIds = [inReplyTo, ...(incomingReferences?.split(/\s+/) || [])].filter(Boolean);
       
       if (referencedIds.length > 0) {
         const { data: referencedMessages } = await supabase
@@ -263,6 +231,15 @@ serve(async (req: Request) => {
         if (referencedMessages && referencedMessages.length > 0) {
           ticketId = referencedMessages[0].ticket_id;
           console.log('Step 6a - Ticket encontrado por threading:', ticketId);
+          
+          // Buscar references existentes do ticket
+          const { data: ticketData } = await supabase
+            .from('tickets')
+            .select('references_chain')
+            .eq('id', ticketId)
+            .single();
+          
+          existingReferences = ticketData?.references_chain || [];
         }
       }
     }
@@ -271,7 +248,7 @@ serve(async (req: Request) => {
     if (!ticketId) {
       const { data: existingTicket } = await supabase
         .from('tickets')
-        .select('id')
+        .select('id, references_chain')
         .eq('customer_email', customerEmail)
         .eq('status', 'open')
         .order('created_at', { ascending: false })
@@ -280,18 +257,23 @@ serve(async (req: Request) => {
 
       if (existingTicket) {
         ticketId = existingTicket.id;
+        existingReferences = existingTicket.references_chain || [];
         console.log('Step 6b - Ticket encontrado por e-mail:', ticketId);
       }
     }
 
     // Criar novo ticket se necessário
     if (!ticketId) {
+      isNewTicket = true;
       const { data: newTicket, error: createError } = await supabase
         .from('tickets')
         .insert({
           customer_email: customerEmail,
           customer_name: customerName,
           subject: subject,
+          thread_subject: subject, // Armazena o assunto original para threading
+          last_message_id: emailMessageId,
+          references_chain: [emailMessageId], // Inicia a cadeia de references
           status: 'open',
         })
         .select('id')
@@ -303,18 +285,46 @@ serve(async (req: Request) => {
       }
 
       ticketId = newTicket.id;
-      console.log('Step 6c - Novo ticket criado:', ticketId);
+      console.log('Step 6c - Novo ticket criado com threading:', ticketId);
     }
 
     // ========================================
-    // STEP 7: INSERIR MENSAGEM
+    // STEP 7: ATUALIZAR THREADING DO TICKET (se não é novo)
     // ========================================
-    console.log('Step 7 - Inserindo mensagem:', {
+    if (!isNewTicket && ticketId) {
+      // Adicionar o novo message_id à cadeia de references
+      const updatedReferences = [...existingReferences];
+      if (!updatedReferences.includes(emailMessageId)) {
+        updatedReferences.push(emailMessageId);
+      }
+
+      const { error: updateError } = await supabase
+        .from('tickets')
+        .update({
+          last_message_id: emailMessageId,
+          references_chain: updatedReferences,
+        })
+        .eq('id', ticketId);
+
+      if (updateError) {
+        console.error('Step 7 - ERRO ao atualizar threading do ticket:', updateError);
+      } else {
+        console.log('Step 7 - Threading do ticket atualizado:', {
+          ticketId,
+          last_message_id: emailMessageId,
+          references_count: updatedReferences.length,
+        });
+      }
+    }
+
+    // ========================================
+    // STEP 8: INSERIR MENSAGEM
+    // ========================================
+    console.log('Step 8 - Inserindo mensagem:', {
       ticketId,
       emailId,
       emailMessageId,
       contentLength: content.length,
-      hasHtml: !!htmlBody,
     });
     
     const { error: messageError } = await supabase
@@ -330,11 +340,11 @@ serve(async (req: Request) => {
       });
 
     if (messageError) {
-      console.error('Step 7 - ERRO ao inserir mensagem:', messageError);
+      console.error('Step 8 - ERRO ao inserir mensagem:', messageError);
       throw messageError;
     }
 
-    console.log('Step 7 - Mensagem inserida com sucesso!');
+    console.log('Step 8 - Mensagem inserida com sucesso!');
     console.log('=== PROCESS INBOUND EMAIL COMPLETE ===');
 
     return new Response(
@@ -342,8 +352,8 @@ serve(async (req: Request) => {
         success: true, 
         ticketId, 
         emailMessageId, 
+        isNewTicket,
         hasContent: !!content,
-        dedupedBy: svixId ? 'svix-id' : 'none'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
