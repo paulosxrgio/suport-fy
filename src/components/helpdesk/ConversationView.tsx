@@ -25,10 +25,20 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
   const sendMessage = useSendMessage();
   const generateAIReply = useGenerateAIReply();
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when ticket changes or messages load
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messages && messages.length > 0) {
+      // Use instant scroll when changing tickets, smooth for new messages
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    }
+  }, [ticket?.id]);
+
+  // Scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages?.length]);
 
   const handleSendReply = async () => {
     // Double-check to prevent duplicate sends
