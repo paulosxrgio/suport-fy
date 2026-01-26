@@ -1,6 +1,7 @@
-import { Inbox, Settings, BarChart3, HelpCircle, Bot } from 'lucide-react';
+import { Inbox, Settings, BarChart3, HelpCircle, Bot, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/hooks/useAuth';
 
 type NavItem = 'inbox' | 'ai-agent' | 'analytics' | 'settings';
 
@@ -10,6 +11,8 @@ interface NavigationSidebarProps {
 }
 
 export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarProps) {
+  const { signOut } = useAuth();
+  
   const navItems = [
     { id: 'inbox' as const, icon: Inbox, label: 'Tickets' },
     { id: 'ai-agent' as const, icon: Bot, label: 'Agente IA' },
@@ -25,7 +28,7 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
       </div>
       
       {/* Navigation Items */}
-      <nav className="flex flex-col items-center gap-1">
+      <nav className="flex flex-col items-center gap-1 flex-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeNav === item.id;
@@ -50,6 +53,21 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
           );
         })}
       </nav>
+      
+      {/* Logout Button */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={signOut}
+            className="nav-icon hover:bg-destructive/20"
+          >
+            <LogOut className="w-5 h-5 text-sidebar-foreground" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          Sair
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }
