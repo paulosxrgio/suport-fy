@@ -22,11 +22,8 @@ function stripQuotedText(text: string): string {
     if (/^El\s.+escribi[oó]:/i.test(trimmed)) break;
     if (/^Am\s.+schrieb/i.test(trimmed)) break;
     
-    // Match "Name <email> wrote:" pattern anywhere in line
-    if (/<[^>]+@[^>]+>\s*(wrote|escreveu|a écrit|escribió|schrieb)\s*:/i.test(line)) break;
-    
-    // Match the exact pattern: "On Day, Mon DD, YYYY at HH:MM"
-    if (/^On\s+[A-Z][a-z]{2},\s+[A-Z][a-z]{2}\s+\d+,\s+\d{4}\s+at\s+\d+:\d+/i.test(trimmed)) break;
+    // Match "Name <email> wrote:" pattern
+    if (/<[^>]+@[^>]+>\s*(wrote|escreveu|a écrit|escribió|schrieb)\s*:/i.test(trimmed)) break;
     
     // Classic forwarding/reply delimiters
     if (/^-{3,}\s*Original Message\s*-{3,}$/i.test(trimmed)) break;
@@ -58,9 +55,9 @@ function stripQuotedHtml(html: string): string {
   // Remove blockquotes
   cleaned = cleaned.replace(/<blockquote[\s\S]*?<\/blockquote>/gi, '');
   
-  // Remove content after "wrote:" patterns - more aggressive
-  cleaned = cleaned.replace(/On\s+[A-Za-z]+,[\s\S]*?<[^>]+@[^>]+>[\s\S]*?(wrote|escreveu):[\s\S]*$/gi, '');
-  cleaned = cleaned.replace(/Em\s+[^:]+escreveu:[\s\S]*$/gi, '');
+  // Remove content after "wrote:" patterns
+  cleaned = cleaned.replace(/On\s[^<]+wrote:[\s\S]*$/gi, '');
+  cleaned = cleaned.replace(/Em\s[^<]+escreveu:[\s\S]*$/gi, '');
   
   // Remove content after email pattern with wrote
   cleaned = cleaned.replace(/<[^>]+@[^>]+>\s*(wrote|escreveu)[^<]*:[\s\S]*$/gi, '');

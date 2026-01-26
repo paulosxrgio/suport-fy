@@ -33,13 +33,7 @@ function stripQuotedText(text: string): string {
     
     // B) Detect email-style quoted headers anywhere in line
     // Match patterns like "Name <email@domain.com> wrote:" anywhere
-    if (/<[^>]+@[^>]+>\s*(wrote|escreveu|a écrit|escribió|schrieb)\s*:/i.test(line)) break;
-    
-    // Match the exact pattern: "On ... Name <email> wrote:" (can span line)
-    if (/^On\s+[A-Z][a-z]{2},\s+[A-Z][a-z]{2}\s+\d+,\s+\d{4}\s+at\s+\d+:\d+/i.test(trimmed)) {
-      // This is likely the start of a quoted section, skip this and everything after
-      break;
-    }
+    if (/<[^>]+@[^>]+>\s*(wrote|escreveu|a écrit|escribió|schrieb)\s*:/i.test(trimmed)) break;
     
     // C) Classic forwarding/reply delimiters
     if (/^-{3,}\s*Original Message\s*-{3,}$/i.test(trimmed)) break;
