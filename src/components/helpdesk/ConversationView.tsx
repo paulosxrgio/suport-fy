@@ -142,24 +142,31 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
+      <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin bg-muted/30">
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className={cn('flex gap-3', i % 2 === 0 ? '' : 'flex-row-reverse')}>
-                <Skeleton className="w-8 h-8 rounded-full" />
+              <div key={i} className={cn('flex gap-3', i % 2 === 0 ? 'justify-start' : 'justify-end')}>
+                <Skeleton className="w-9 h-9 rounded-full" />
                 <Skeleton className="h-20 w-64 rounded-2xl" />
               </div>
             ))}
           </div>
         ) : messages && messages.length > 0 ? (
-          messages.map((message) => (
-            <MessageBubble 
-              key={message.id} 
-              message={message} 
-              senderName={message.direction === 'inbound' ? (ticket?.customer_name || undefined) : undefined}
-            />
-          ))
+          (() => {
+            // Find last inbound message index
+            const lastInboundIndex = messages.reduce((lastIdx, msg, idx) => 
+              msg.direction === 'inbound' ? idx : lastIdx, -1);
+            
+            return messages.map((message, index) => (
+              <MessageBubble 
+                key={message.id} 
+                message={message} 
+                senderName={message.direction === 'inbound' ? (ticket?.customer_name || undefined) : undefined}
+                isLastInbound={index === lastInboundIndex && message.direction === 'inbound'}
+              />
+            ));
+          })()
         ) : (
           <div className="text-center text-muted-foreground py-8">
             Nenhuma mensagem neste ticket
