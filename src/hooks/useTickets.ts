@@ -117,3 +117,22 @@ export function useUpdateTicketStatus() {
     },
   });
 }
+
+export function useMarkTicketAsRead() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (ticketId: string) => {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ is_read: true })
+        .eq('id', ticketId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket'] });
+    },
+  });
+}

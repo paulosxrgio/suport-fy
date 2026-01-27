@@ -378,6 +378,7 @@ serve(async (req: Request) => {
           last_message_id: emailMessageId,
           references_chain: [emailMessageId], // Inicia a cadeia de references
           status: 'open',
+          is_read: false, // New tickets from inbound emails start as unread
         })
         .select('id')
         .single();
@@ -406,6 +407,7 @@ serve(async (req: Request) => {
         .update({
           last_message_id: emailMessageId,
           references_chain: updatedReferences,
+          is_read: false, // Mark as unread when new inbound message arrives
         })
         .eq('id', ticketId);
 
@@ -416,6 +418,7 @@ serve(async (req: Request) => {
           ticketId,
           last_message_id: emailMessageId,
           references_count: updatedReferences.length,
+          is_read: false,
         });
       }
     }
