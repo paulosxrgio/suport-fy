@@ -6,6 +6,7 @@ export interface Ticket {
   subject: string;
   last_message_at: string;
   created_at: string;
+  is_read: boolean;
 }
 
 export interface Message {

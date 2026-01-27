@@ -112,6 +112,7 @@ export type Database = {
           customer_email: string
           customer_name: string | null
           id: string
+          is_read: boolean
           last_message_at: string | null
           last_message_id: string | null
           references_chain: string[] | null
@@ -124,6 +125,7 @@ export type Database = {
           customer_email: string
           customer_name?: string | null
           id?: string
+          is_read?: boolean
           last_message_at?: string | null
           last_message_id?: string | null
           references_chain?: string[] | null
@@ -136,6 +138,7 @@ export type Database = {
           customer_email?: string
           customer_name?: string | null
           id?: string
+          is_read?: boolean
           last_message_at?: string | null
           last_message_id?: string | null
           references_chain?: string[] | null
