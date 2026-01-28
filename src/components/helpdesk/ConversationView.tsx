@@ -1,15 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, CheckCircle, XCircle, Loader2, Sparkles } from 'lucide-react';
+import { Send, Loader2, Sparkles, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Ticket, Message } from '@/types/helpdesk';
 import { MessageBubble } from './MessageBubble';
-import { useUpdateTicketStatus } from '@/hooks/useTickets';
 import { useSendMessage } from '@/hooks/useMessages';
 import { useGenerateAIReply } from '@/hooks/useAIReply';
+import { useTranslation } from '@/hooks/useTranslation';
 import { toast } from 'sonner';
 
 interface ConversationViewProps {
@@ -20,10 +19,17 @@ interface ConversationViewProps {
 
 export function ConversationView({ ticket, messages, isLoading }: ConversationViewProps) {
   const [replyContent, setReplyContent] = useState('');
+  const [isTranslateEnabled, setIsTranslateEnabled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const updateStatus = useUpdateTicketStatus();
   const sendMessage = useSendMessage();
   const generateAIReply = useGenerateAIReply();
+  const { 
+    isTranslating, 
+    translateMessages, 
+    getTranslation, 
+    isMessageTranslating,
+    clearTranslations 
+  } = useTranslation();
 
   // Scroll to bottom when ticket changes or messages load
   useEffect(() => {
@@ -62,14 +68,17 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     }
   };
 
-  const handleStatusChange = async (status: 'open' | 'closed') => {
-    if (!ticket) return;
+  // Handle translation toggle
+  const handleTranslateToggle = async () => {
+    const newState = !isTranslateEnabled;
+    setIsTranslateEnabled(newState);
 
-    try {
-      await updateStatus.mutateAsync({ ticketId: ticket.id, status });
-      toast.success(status === 'closed' ? 'Ticket fechado!' : 'Ticket reaberto!');
-    } catch (error) {
-      toast.error('Erro ao atualizar status');
+    if (newState && messages) {
+      // Trigger translation for all inbound messages
+      await translateMessages(messages);
+      toast.success('Tradução ativada!');
+    } else {
+      toast.info('Tradução desativada');
     }
   };
 
@@ -115,29 +124,30 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
         </div>
         
         <div className="flex items-center gap-2 ml-4">
-          {ticket.status === 'open' ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleStatusChange('closed')}
-              disabled={updateStatus.isPending}
-              className="text-status-open border-status-open/30 hover:bg-status-open/10"
-            >
-              <CheckCircle className="w-4 h-4 mr-1" />
-              Fechar Ticket
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleStatusChange('open')}
-              disabled={updateStatus.isPending}
-              className="text-muted-foreground"
-            >
-              <XCircle className="w-4 h-4 mr-1" />
-              Reabrir
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTranslateToggle}
+            disabled={isTranslating}
+            className={cn(
+              "transition-all",
+              isTranslateEnabled 
+                ? "bg-primary/10 border-primary text-primary hover:bg-primary/20" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {isTranslating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                Traduzindo...
+              </>
+            ) : (
+              <>
+                <Languages className="w-4 h-4 mr-1" />
+                {isTranslateEnabled ? 'Traduzido' : 'Traduzir'}
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -158,6 +168,9 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
               key={message.id} 
               message={message} 
               senderName={message.direction === 'inbound' ? (ticket?.customer_name || undefined) : undefined}
+              translatedContent={getTranslation(message.id)}
+              isTranslating={isMessageTranslating(message.id)}
+              showTranslated={isTranslateEnabled}
             />
           ))
         ) : (

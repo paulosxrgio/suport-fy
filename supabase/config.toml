@@ -9,5 +9,8 @@ verify_jwt = false
 [functions.send-email-reply]
 verify_jwt = false
 
+[functions.translate-text]
+verify_jwt = false
+
 [functions.verify-resend-key]
 verify_jwt = false

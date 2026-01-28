@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { User, Headphones } from 'lucide-react';
+import { User, Headphones, Languages, Loader2 } from 'lucide-react';
 import { useMemo } from 'react';
 import DOMPurify from 'dompurify';
 
@@ -78,17 +78,34 @@ interface Message {
 interface MessageBubbleProps {
   message: Message;
   senderName?: string;
+  translatedContent?: string;
+  isTranslating?: boolean;
+  showTranslated?: boolean;
 }
 
-export function MessageBubble({ message, senderName }: MessageBubbleProps) {
+export function MessageBubble({ message, senderName, translatedContent, isTranslating, showTranslated }: MessageBubbleProps) {
   const isOutbound = message.direction === 'outbound';
+  const isInbound = message.direction === 'inbound';
   
   // Clean quoted content from messages
   const cleanedContent = useMemo(() => {
     return stripQuotedText(message.content);
   }, [message.content]);
 
+  // Determine which content to show
+  const displayContent = useMemo(() => {
+    if (showTranslated && isInbound && translatedContent) {
+      return translatedContent;
+    }
+    return cleanedContent;
+  }, [showTranslated, isInbound, translatedContent, cleanedContent]);
+
+  const isShowingTranslation = showTranslated && isInbound && translatedContent;
+
   const sanitizedHtml = useMemo(() => {
+    // Don't use HTML when showing translation (translation is plain text)
+    if (isShowingTranslation) return null;
+    
     if (message.html_body) {
       const cleanedHtml = stripQuotedHtml(message.html_body);
       return DOMPurify.sanitize(cleanedHtml, {
@@ -97,7 +114,7 @@ export function MessageBubble({ message, senderName }: MessageBubbleProps) {
       });
     }
     return null;
-  }, [message.html_body]);
+  }, [message.html_body, isShowingTranslation]);
 
   // Extract display name for inbound messages
   const displayName = useMemo(() => {
@@ -143,6 +160,14 @@ export function MessageBubble({ message, senderName }: MessageBubbleProps) {
             isOutbound ? 'message-bubble-outbound' : 'message-bubble-inbound'
           )}
         >
+          {/* Translation loading indicator */}
+          {isTranslating && isInbound && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Traduzindo...</span>
+            </div>
+          )}
+          
           {sanitizedHtml ? (
             <div 
               className="text-sm prose prose-sm max-w-none dark:prose-invert 
@@ -153,8 +178,16 @@ export function MessageBubble({ message, senderName }: MessageBubbleProps) {
             />
           ) : (
             <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-              {cleanedContent}
+              {displayContent}
             </p>
+          )}
+          
+          {/* Translation indicator */}
+          {isShowingTranslation && (
+            <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
+              <Languages className="w-3 h-3 text-primary" />
+              <span className="text-xs text-primary font-medium">Traduzido</span>
+            </div>
           )}
         </div>
         
