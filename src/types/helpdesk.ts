@@ -7,6 +7,7 @@ export interface Ticket {
   last_message_at: string;
   created_at: string;
   is_read: boolean;
+  store_id: string | null;
 }
 
 export interface Message {
