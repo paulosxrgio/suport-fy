@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { useStore } from '@/contexts/StoreContext';
 
 export function NewTicketDialog() {
   const [open, setOpen] = useState(false);
@@ -26,6 +27,7 @@ export function NewTicketDialog() {
     message: '',
   });
   const queryClient = useQueryClient();
+  const { currentStore } = useStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,10 +44,15 @@ export function NewTicketDialog() {
       return;
     }
 
+    if (!currentStore) {
+      toast.error('Selecione uma loja antes de criar um ticket');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // 1. Create the ticket
+      // 1. Create the ticket with store_id
       const { data: ticket, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -53,6 +60,7 @@ export function NewTicketDialog() {
           customer_name: null,
           subject: formData.subject,
           status: 'open',
+          store_id: currentStore.id,
         })
         .select()
         .single();

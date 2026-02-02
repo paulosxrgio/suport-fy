@@ -10,8 +10,10 @@ import { AIAgentPage } from './AIAgentPage';
 import { NewTicketDialog } from './NewTicketDialog';
 import { useTickets, useTicket } from '@/hooks/useTickets';
 import { useMessages } from '@/hooks/useMessages';
+import { useStore } from '@/contexts/StoreContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { Store } from 'lucide-react';
 
 export function HelpDeskLayout() {
   const [activeNav, setActiveNav] = useState<'inbox' | 'ai-agent' | 'analytics' | 'settings'>('inbox');
@@ -21,6 +23,7 @@ export function HelpDeskLayout() {
   const [isCustomerInfoOpen, setIsCustomerInfoOpen] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
+  const { currentStore, stores, isLoading: isLoadingStores } = useStore();
 
   // Fetch tickets
   const { data: allTickets, isLoading: isLoadingTickets } = useTickets(
@@ -59,8 +62,38 @@ export function HelpDeskLayout() {
     );
   }, [allTickets, searchQuery]);
 
+  // Render empty state when no stores exist
+  const renderEmptyStoreState = () => (
+    <div className="flex-1 flex items-center justify-center bg-muted/30">
+      <div className="text-center max-w-md px-4">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+          <Store className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h2 className="text-xl font-semibold mb-2">Crie sua primeira loja</h2>
+        <p className="text-muted-foreground mb-4">
+          Para começar a receber tickets de suporte, você precisa criar uma loja.
+          Use o botão "Criar primeira loja" na barra lateral.
+        </p>
+      </div>
+    </div>
+  );
+
   // Render content based on active nav
   const renderContent = () => {
+    // Show empty state if no stores and still loading
+    if (isLoadingStores) {
+      return (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-pulse text-muted-foreground">Carregando...</div>
+        </div>
+      );
+    }
+
+    // Show empty state if no stores exist
+    if (stores.length === 0 && activeNav === 'inbox') {
+      return renderEmptyStoreState();
+    }
+
     switch (activeNav) {
       case 'settings':
         return <SettingsPage />;

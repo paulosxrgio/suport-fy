@@ -27,31 +27,10 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch settings
-    const { data: settings, error: settingsError } = await supabase
-      .from("settings")
-      .select("openai_api_key, ai_system_prompt, ai_model")
-      .single();
-
-    if (settingsError) {
-      console.error("Error fetching settings:", settingsError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch settings" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!settings?.openai_api_key) {
-      return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured. Please configure it in AI Agent settings." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Fetch ticket info
+    // Fetch ticket info including store_id
     const { data: ticket, error: ticketError } = await supabase
       .from("tickets")
-      .select("subject, customer_name, customer_email")
+      .select("subject, customer_name, customer_email, store_id")
       .eq("id", ticketId)
       .single();
 
@@ -60,6 +39,54 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Ticket not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fetch AI settings - first try store, then fallback to global settings
+    let openaiApiKey: string | null = null;
+    let aiSystemPrompt: string | null = null;
+    let aiModel: string | null = null;
+
+    if (ticket.store_id) {
+      const { data: store } = await supabase
+        .from("stores")
+        .select("openai_api_key, ai_system_prompt, ai_model")
+        .eq("id", ticket.store_id)
+        .single();
+
+      if (store) {
+        openaiApiKey = store.openai_api_key;
+        aiSystemPrompt = store.ai_system_prompt;
+        aiModel = store.ai_model;
+      }
+    }
+
+    // Fallback to global settings
+    if (!openaiApiKey) {
+      const { data: settings, error: settingsError } = await supabase
+        .from("settings")
+        .select("openai_api_key, ai_system_prompt, ai_model")
+        .single();
+
+      if (settingsError) {
+        console.error("Error fetching settings:", settingsError);
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch settings" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (settings) {
+        openaiApiKey = settings.openai_api_key;
+        aiSystemPrompt = aiSystemPrompt || settings.ai_system_prompt;
+        aiModel = aiModel || settings.ai_model;
+      }
+    }
+
+    if (!openaiApiKey) {
+      return new Response(
+        JSON.stringify({ error: "OpenAI API key not configured. Please configure it in AI Agent settings." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -92,7 +119,7 @@ serve(async (req) => {
     const defaultSystemPrompt = `Você é um assistente de suporte ao cliente profissional e amigável. 
 Responda de forma clara, educada e útil. Mantenha as respostas concisas mas completas.`;
 
-    const systemPrompt = settings.ai_system_prompt || defaultSystemPrompt;
+    const systemPrompt = aiSystemPrompt || defaultSystemPrompt;
 
     // Build the user message with context
     const userMessage = `Contexto do Ticket:
@@ -107,14 +134,14 @@ ${lastMessageContent ? `Última mensagem do cliente: ${lastMessageContent}` : ""
 Por favor, gere uma resposta profissional e útil para o cliente.`;
 
     // Call OpenAI API
-    const model = settings.ai_model || "gpt-4o";
+    const model = aiModel || "gpt-4o";
     
     console.log(`Calling OpenAI API with model: ${model}`);
 
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${settings.openai_api_key}`,
+        "Authorization": `Bearer ${openaiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
