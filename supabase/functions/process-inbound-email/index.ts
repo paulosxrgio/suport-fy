@@ -170,49 +170,99 @@ serve(async (req: Request) => {
     }
 
     // ========================================
-    // STEP 3: BUSCAR API KEY DO RESEND (inicial - pode ser atualizada no Step 5.5)
-    // ========================================
-    // Use env variable as initial fallback for fetching email content
-    let initialResendApiKey = Deno.env.get('RESEND_API_KEY') || '';
-    
-    // Try to get from first store if no env variable (for email fetching only)
-    if (!initialResendApiKey) {
-      const { data: anyStore } = await supabase
-        .from('stores')
-        .select('resend_api_key')
-        .not('resend_api_key', 'is', null)
-        .limit(1)
-        .maybeSingle();
-      
-      if (anyStore?.resend_api_key) {
-        initialResendApiKey = anyStore.resend_api_key;
-      }
-    }
-
-    // ========================================
-    // STEP 4: EXTRAIR email_id E BUSCAR CONTEÚDO COMPLETO
+    // STEP 3: IDENTIFICAR LOJA PELO DOMÍNIO DO DESTINATÁRIO (ANTES de buscar conteúdo!)
     // ========================================
     const webhookData = rawPayload.data || rawPayload;
     const emailId = webhookData.email_id;
-    const incomingMessageId = webhookData.message_id; // O Message-ID real do e-mail recebido
+    const incomingMessageId = webhookData.message_id;
+    const toAddresses = Array.isArray(webhookData.to) ? webhookData.to : [webhookData.to];
     
-    console.log('Step 4 - IDs extraídos:', { 
+    console.log('Step 3 - Dados iniciais do webhook:', { 
       emailId, 
       incomingMessageId,
       from: webhookData.from,
       subject: webhookData.subject,
-      to: webhookData.to,
+      to: toAddresses,
     });
 
     if (!emailId) {
-      console.error('Step 4 - ERRO: email_id não encontrado no payload');
+      console.error('Step 3 - ERRO: email_id não encontrado no payload');
       return new Response(
         JSON.stringify({ error: 'No email_id found in webhook' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // BUSCAR CONTEÚDO COMPLETO via Receiving API do Resend
+    // Helper para extrair email de string como "Nome <email@domain.com>"
+    const extractEmail = (emailString: string): string => {
+      if (!emailString) return '';
+      const match = emailString.match(/<(.+?)>/);
+      return match ? match[1].trim() : emailString.trim();
+    };
+
+    // Identificar loja pelo domínio do destinatário
+    let storeId: string | null = null;
+    let resendApiKey: string | null = null;
+    
+    for (const toAddr of toAddresses) {
+      if (!toAddr) continue;
+      const toEmail = extractEmail(toAddr);
+      const domain = toEmail.split('@')[1];
+      
+      if (domain) {
+        console.log('Step 3.1 - Buscando loja pelo domínio:', domain);
+        
+        const { data: store } = await supabase
+          .from('stores')
+          .select('id, resend_api_key')
+          .eq('domain', domain)
+          .maybeSingle();
+
+        if (store) {
+          storeId = store.id;
+          resendApiKey = store.resend_api_key;
+          console.log('Step 3.1 - Loja encontrada:', storeId, 'tem API key:', !!resendApiKey);
+          break;
+        }
+      }
+    }
+
+    // Se encontrou loja mas não tem API key, tentar na tabela settings
+    if (storeId && !resendApiKey) {
+      console.log('Step 3.2 - Buscando API key na tabela settings...');
+      const { data: settings } = await supabase
+        .from('settings')
+        .select('resend_api_key')
+        .eq('store_id', storeId)
+        .maybeSingle();
+      
+      if (settings?.resend_api_key) {
+        resendApiKey = settings.resend_api_key;
+        console.log('Step 3.2 - API key encontrada em settings');
+      }
+    }
+
+    // Fallback para variável de ambiente
+    if (!resendApiKey) {
+      resendApiKey = Deno.env.get('RESEND_API_KEY') || null;
+      if (resendApiKey) {
+        console.log('Step 3.3 - Usando API key do ambiente (fallback)');
+      }
+    }
+
+    if (!resendApiKey) {
+      console.error('Step 3 - ERRO: Nenhuma Resend API key encontrada para esta loja');
+      return new Response(
+        JSON.stringify({ error: 'RESEND_API_KEY not configured for this store', storeId }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========================================
+    // STEP 4: BUSCAR CONTEÚDO COMPLETO DO E-MAIL (com API key correta)
+    // ========================================
+    console.log('Step 4 - Buscando conteúdo completo via Receiving API...');
+    
     let emailFull: {
       from?: string;
       to?: string[];
@@ -221,23 +271,18 @@ serve(async (req: Request) => {
       html?: string;
     } | null = null;
 
-    if (initialResendApiKey) {
-      console.log('Step 4.1 - Buscando conteúdo completo via Receiving API...');
-      
-      const emailResponse = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${initialResendApiKey}` },
-      });
+    const emailResponse = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${resendApiKey}` },
+    });
 
-      if (emailResponse.ok) {
-        emailFull = await emailResponse.json();
-        console.log('Step 4.1 - SUCESSO! E-mail completo baixado');
-      } else {
-        const errorBody = await emailResponse.text();
-        console.error('Step 4.1 - ERRO ao buscar e-mail:', emailResponse.status, errorBody);
-      }
+    if (emailResponse.ok) {
+      emailFull = await emailResponse.json();
+      console.log('Step 4 - SUCESSO! E-mail completo baixado');
     } else {
-      console.log('Step 4.1 - Sem API key disponível, usando dados do webhook');
+      const errorBody = await emailResponse.text();
+      console.error('Step 4 - ERRO ao buscar e-mail:', emailResponse.status, errorBody);
+      // Continuar mesmo com erro - usar dados do webhook
     }
 
     // ========================================
@@ -251,13 +296,7 @@ serve(async (req: Request) => {
       html: emailFull?.html || '',
     };
 
-    // Helper functions
-    const extractEmail = (emailString: string): string => {
-      if (!emailString) return '';
-      const match = emailString.match(/<(.+?)>/);
-      return match ? match[1].trim() : emailString.trim();
-    };
-
+    // Helper functions (extractEmail já definido acima)
     const capitalizeWords = (str: string): string => {
       return str.toLowerCase().split(' ')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -302,6 +341,7 @@ serve(async (req: Request) => {
       emailMessageId,
       contentLength: cleanedContent.length,
       rawLength: rawText.length,
+      storeId,
     });
 
     if (!customerEmail) {
@@ -312,67 +352,9 @@ serve(async (req: Request) => {
       );
     }
 
-    // ========================================
-    // STEP 5.5: DETERMINAR STORE_ID PELO DOMÍNIO DO DESTINATÁRIO
-    // ========================================
-    let storeId: string | null = null;
-    let resendApiKey: string | null = null;
-    const toAddresses = Array.isArray(emailContent.to) ? emailContent.to : [emailContent.to];
-    
-    for (const toAddr of toAddresses) {
-      if (!toAddr) continue;
-      const toEmail = extractEmail(toAddr);
-      const domain = toEmail.split('@')[1];
-      
-      if (domain) {
-        console.log('Step 5.5 - Buscando loja pelo domínio:', domain);
-        
-        const { data: store } = await supabase
-          .from('stores')
-          .select('id, resend_api_key')
-          .eq('domain', domain)
-          .maybeSingle();
-
-        if (store) {
-          storeId = store.id;
-          resendApiKey = store.resend_api_key;
-          console.log('Step 5.5 - Loja encontrada:', storeId);
-          break;
-        }
-      }
-    }
-
-    // If store found but no API key in store, try settings table
-    if (storeId && !resendApiKey) {
-      const { data: settings } = await supabase
-        .from('settings')
-        .select('resend_api_key')
-        .eq('store_id', storeId)
-        .maybeSingle();
-      
-      if (settings?.resend_api_key) {
-        resendApiKey = settings.resend_api_key;
-      }
-    }
-
-    // Fallback to env variable
-    if (!resendApiKey) {
-      resendApiKey = Deno.env.get('RESEND_API_KEY') || null;
-    }
-
-    if (!resendApiKey) {
-      console.error('Step 5.5 - ERRO: Resend API key não configurada para esta loja');
-      return new Response(
-        JSON.stringify({ error: 'RESEND_API_KEY not configured for this store' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    console.log('Step 5.5 - Resend API key encontrada');
-
     if (!storeId) {
-      console.log('Step 5.5 - Nenhuma loja encontrada pelo domínio, ticket sem store_id');
+      console.log('Step 5 - AVISO: Nenhuma loja encontrada pelo domínio, ticket sem store_id');
     }
-
     // ========================================
     // STEP 6: ENCONTRAR OU CRIAR TICKET COM THREADING
     // ========================================
