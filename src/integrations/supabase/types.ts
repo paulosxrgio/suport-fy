@@ -24,6 +24,7 @@ export type Database = {
           id: string
           resend_email_id: string | null
           sender_email: string
+          store_id: string | null
           ticket_id: string
         }
         Insert: {
@@ -35,6 +36,7 @@ export type Database = {
           id?: string
           resend_email_id?: string | null
           sender_email: string
+          store_id?: string | null
           ticket_id: string
         }
         Update: {
@@ -46,9 +48,17 @@ export type Database = {
           id?: string
           resend_email_id?: string | null
           sender_email?: string
+          store_id?: string | null
           ticket_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "messages_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_ticket_id_fkey"
             columns: ["ticket_id"]
@@ -106,6 +116,63 @@ export type Database = {
         }
         Relationships: []
       }
+      stores: {
+        Row: {
+          ai_is_active: boolean | null
+          ai_model: string | null
+          ai_response_delay: number | null
+          ai_system_prompt: string | null
+          created_at: string
+          domain: string
+          email_signature: string | null
+          id: string
+          name: string
+          openai_api_key: string | null
+          resend_api_key: string | null
+          resend_api_key_configured: boolean | null
+          sender_email: string | null
+          sender_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_is_active?: boolean | null
+          ai_model?: string | null
+          ai_response_delay?: number | null
+          ai_system_prompt?: string | null
+          created_at?: string
+          domain: string
+          email_signature?: string | null
+          id?: string
+          name: string
+          openai_api_key?: string | null
+          resend_api_key?: string | null
+          resend_api_key_configured?: boolean | null
+          sender_email?: string | null
+          sender_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_is_active?: boolean | null
+          ai_model?: string | null
+          ai_response_delay?: number | null
+          ai_system_prompt?: string | null
+          created_at?: string
+          domain?: string
+          email_signature?: string | null
+          id?: string
+          name?: string
+          openai_api_key?: string | null
+          resend_api_key?: string | null
+          resend_api_key_configured?: boolean | null
+          sender_email?: string | null
+          sender_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tickets: {
         Row: {
           created_at: string
@@ -117,6 +184,7 @@ export type Database = {
           last_message_id: string | null
           references_chain: string[] | null
           status: string
+          store_id: string | null
           subject: string
           thread_subject: string | null
         }
@@ -130,6 +198,7 @@ export type Database = {
           last_message_id?: string | null
           references_chain?: string[] | null
           status?: string
+          store_id?: string | null
           subject: string
           thread_subject?: string | null
         }
@@ -143,10 +212,19 @@ export type Database = {
           last_message_id?: string | null
           references_chain?: string[] | null
           status?: string
+          store_id?: string | null
           subject?: string
           thread_subject?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tickets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       webhook_events: {
         Row: {
