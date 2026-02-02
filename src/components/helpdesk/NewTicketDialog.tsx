@@ -17,11 +17,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 
-interface NewTicketDialogProps {
-  storeId?: string | null;
-}
-
-export function NewTicketDialog({ storeId }: NewTicketDialogProps) {
+export function NewTicketDialog() {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -49,7 +45,7 @@ export function NewTicketDialog({ storeId }: NewTicketDialogProps) {
     setIsSubmitting(true);
 
     try {
-      // 1. Create the ticket with store_id
+      // 1. Create the ticket
       const { data: ticket, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -57,7 +53,6 @@ export function NewTicketDialog({ storeId }: NewTicketDialogProps) {
           customer_name: null,
           subject: formData.subject,
           status: 'open',
-          store_id: storeId || null,
         })
         .select()
         .single();

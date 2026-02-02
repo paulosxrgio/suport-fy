@@ -7,28 +7,24 @@ import { CustomerInfoSidebar } from './CustomerInfoSidebar';
 import { SettingsPage } from './SettingsPage';
 import { AnalyticsPage } from './AnalyticsPage';
 import { AIAgentPage } from './AIAgentPage';
-import { StoresPage } from './StoresPage';
 import { NewTicketDialog } from './NewTicketDialog';
 import { useTickets, useTicket } from '@/hooks/useTickets';
 import { useMessages } from '@/hooks/useMessages';
-import { useStoreContext } from '@/contexts/StoreContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export function HelpDeskLayout() {
-  const [activeNav, setActiveNav] = useState<'inbox' | 'ai-agent' | 'analytics' | 'settings' | 'stores'>('inbox');
+  const [activeNav, setActiveNav] = useState<'inbox' | 'ai-agent' | 'analytics' | 'settings'>('inbox');
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCustomerInfoOpen, setIsCustomerInfoOpen] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
-  const { activeStoreId, stores } = useStoreContext();
 
-  // Fetch tickets for active store
+  // Fetch tickets
   const { data: allTickets, isLoading: isLoadingTickets } = useTickets(
-    statusFilter === 'all' ? undefined : statusFilter,
-    activeStoreId
+    statusFilter === 'all' ? undefined : statusFilter
   );
   
   // Fetch selected ticket details
@@ -63,11 +59,6 @@ export function HelpDeskLayout() {
     );
   }, [allTickets, searchQuery]);
 
-  // Reset selected ticket when switching stores
-  useMemo(() => {
-    setSelectedTicketId(null);
-  }, [activeStoreId]);
-
   // Render content based on active nav
   const renderContent = () => {
     switch (activeNav) {
@@ -77,20 +68,15 @@ export function HelpDeskLayout() {
         return <AnalyticsPage tickets={allTickets || []} />;
       case 'ai-agent':
         return <AIAgentPage />;
-      case 'stores':
-        return <StoresPage />;
       case 'inbox':
       default:
-        // Note: We no longer block the inbox if no stores exist
-        // This allows users to see legacy tickets without store_id
-
         return (
           <div className="flex-1 flex">
             {/* Ticket List */}
             <div className="w-80 border-r border-border flex flex-col bg-card">
               {/* New Ticket Button */}
               <div className="p-3 border-b border-border">
-                <NewTicketDialog storeId={activeStoreId} />
+                <NewTicketDialog />
               </div>
               
               <TicketListHeader
