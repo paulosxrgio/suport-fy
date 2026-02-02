@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, targetLanguage = "pt-br" } = await req.json();
+    const { text, targetLanguage = "pt-br", ticketId, storeId } = await req.json();
 
     if (!text || text.trim() === "") {
       return new Response(
@@ -27,11 +27,36 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch OpenAI API key from settings
+    // Determine the store_id
+    let targetStoreId = storeId;
+    
+    if (!targetStoreId && ticketId) {
+      const { data: ticket, error: ticketError } = await supabase
+        .from("tickets")
+        .select("store_id")
+        .eq("id", ticketId)
+        .single();
+      
+      if (ticketError) {
+        console.error("Error fetching ticket:", ticketError);
+      } else {
+        targetStoreId = ticket?.store_id;
+      }
+    }
+
+    if (!targetStoreId) {
+      return new Response(
+        JSON.stringify({ error: "storeId or ticketId is required to determine which store's API key to use" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fetch OpenAI API key from settings filtered by store_id
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
       .select("openai_api_key")
-      .single();
+      .eq("store_id", targetStoreId)
+      .maybeSingle();
 
     if (settingsError) {
       console.error("Error fetching settings:", settingsError);
@@ -43,7 +68,7 @@ serve(async (req) => {
 
     if (!settings?.openai_api_key) {
       return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured. Please configure it in AI Agent settings." }),
+        JSON.stringify({ error: "OpenAI API key not configured. Please configure it in AI Agent settings for this store." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -61,7 +86,7 @@ serve(async (req) => {
     // System prompt for translation
     const systemPrompt = `Você é um tradutor profissional. Traduza o texto a seguir para ${targetLangName} mantendo o tom original. Retorne APENAS o texto traduzido, sem explicações ou comentários adicionais.`;
 
-    console.log(`Translating text to ${targetLangName}`);
+    console.log(`Translating text to ${targetLangName} for store ${targetStoreId}`);
 
     // Call OpenAI API
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {

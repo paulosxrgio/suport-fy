@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useStore } from '@/contexts/StoreContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
-import { Bot, Key, Brain, Zap, Loader2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
+import { Bot, Key, Brain, Zap, Loader2, CheckCircle2, XCircle, Eye, EyeOff, Store } from 'lucide-react';
 
 interface AISettings {
   openai_api_key: string | null;
@@ -22,6 +23,7 @@ interface AISettings {
 
 export function AIAgentPage() {
   const queryClient = useQueryClient();
+  const { currentStore } = useStore();
   const [showApiKey, setShowApiKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
@@ -33,19 +35,20 @@ export function AIAgentPage() {
   const [responseDelay, setResponseDelay] = useState(2);
   const [isActive, setIsActive] = useState(false);
 
-  // Fetch current settings
+  // Fetch current settings filtered by store
   const { data: settings, isLoading } = useQuery({
-    queryKey: ['ai-settings'],
+    queryKey: ['ai-settings', currentStore?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('settings')
         .select('openai_api_key, ai_model, ai_system_prompt, ai_response_delay, ai_is_active')
-        .limit(1)
+        .eq('store_id', currentStore!.id)
         .maybeSingle();
       
       if (error) throw error;
       return data as AISettings | null;
     },
+    enabled: !!currentStore,
   });
 
   // Populate form when settings load
@@ -56,19 +59,29 @@ export function AIAgentPage() {
       setSystemPrompt(settings.ai_system_prompt || '');
       setResponseDelay(settings.ai_response_delay || 2);
       setIsActive(settings.ai_is_active || false);
+    } else {
+      // Reset form when no settings (new store)
+      setApiKey('');
+      setModel('gpt-4o');
+      setSystemPrompt('');
+      setResponseDelay(2);
+      setIsActive(false);
     }
-  }, [settings]);
+  }, [settings, currentStore?.id]);
 
-  // Save mutation
+  // Save mutation with store isolation
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (!currentStore) throw new Error('Nenhuma loja selecionada');
+
       const { data: existing } = await supabase
         .from('settings')
         .select('id')
-        .limit(1)
+        .eq('store_id', currentStore.id)
         .maybeSingle();
 
       const settingsData = {
+        store_id: currentStore.id,
         openai_api_key: apiKey || null,
         ai_model: model,
         ai_system_prompt: systemPrompt || null,
@@ -91,7 +104,7 @@ export function AIAgentPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ai-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-settings', currentStore?.id] });
       toast.success('Configurações salvas com sucesso!');
     },
     onError: (error) => {
@@ -132,6 +145,18 @@ export function AIAgentPage() {
     }
   };
 
+  // Show message when no store is selected
+  if (!currentStore) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-background">
+        <div className="text-center text-muted-foreground">
+          <Store className="w-12 h-12 mx-auto mb-4 opacity-30" />
+          <p>Selecione uma loja para configurar o Agente de IA</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -150,7 +175,9 @@ export function AIAgentPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">Agente de IA</h1>
-            <p className="text-muted-foreground">Configure a automação inteligente do suporte</p>
+            <p className="text-muted-foreground">
+              Configurando para: <span className="font-medium text-foreground">{currentStore.name}</span>
+            </p>
           </div>
         </div>
 
@@ -270,7 +297,7 @@ export function AIAgentPage() {
         </Card>
 
         {/* Card 3: Status */}
-        <Card className={isActive ? 'border-green-500/50 bg-green-500/5' : ''}>
+        <Card className={isActive ? 'border-primary/50 bg-primary/5' : ''}>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -292,9 +319,9 @@ export function AIAgentPage() {
           </CardHeader>
           <CardContent>
             <div className={`flex items-center gap-3 p-4 rounded-lg ${
-              isActive ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-muted'
+              isActive ? 'bg-primary/10 text-primary' : 'bg-muted'
             }`}>
-              <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}`} />
+              <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-primary animate-pulse' : 'bg-muted-foreground'}`} />
               <span className="font-medium">
                 {isActive ? 'Agente Autônomo Ativo' : 'Agente Desativado'}
               </span>

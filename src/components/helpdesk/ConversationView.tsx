@@ -74,14 +74,14 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     }
   };
 
-  // Handle translation toggle
+  // Handle translation toggle - pass ticketId and storeId
   const handleTranslateToggle = async () => {
     const newState = !isTranslateEnabled;
     setIsTranslateEnabled(newState);
 
-    if (newState && messages) {
-      // Trigger translation for all inbound messages
-      await translateMessages(messages);
+    if (newState && messages && ticket) {
+      // Pass ticketId and storeId for proper store isolation
+      await translateMessages(messages, ticket.id, ticket.store_id || undefined);
       toast.success('Tradução ativada!');
     } else {
       toast.info('Tradução desativada');

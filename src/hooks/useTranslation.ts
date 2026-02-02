@@ -5,12 +5,19 @@ interface TranslationCache {
   [messageId: string]: string;
 }
 
+interface TranslateMessageParams {
+  messageId: string;
+  text: string;
+  ticketId?: string;
+  storeId?: string;
+}
+
 export function useTranslation() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [translations, setTranslations] = useState<TranslationCache>({});
   const [translatingIds, setTranslatingIds] = useState<Set<string>>(new Set());
 
-  const translateMessage = useCallback(async (messageId: string, text: string): Promise<string | null> => {
+  const translateMessage = useCallback(async ({ messageId, text, ticketId, storeId }: TranslateMessageParams): Promise<string | null> => {
     // Check cache first
     if (translations[messageId]) {
       return translations[messageId];
@@ -21,7 +28,7 @@ export function useTranslation() {
 
     try {
       const { data, error } = await supabase.functions.invoke('translate-text', {
-        body: { text, targetLanguage: 'pt-br' },
+        body: { text, targetLanguage: 'pt-br', ticketId, storeId },
       });
 
       if (error) {
@@ -52,7 +59,11 @@ export function useTranslation() {
     }
   }, [translations]);
 
-  const translateMessages = useCallback(async (messages: Array<{ id: string; content: string; direction: string }>) => {
+  const translateMessages = useCallback(async (
+    messages: Array<{ id: string; content: string; direction: string }>,
+    ticketId?: string,
+    storeId?: string
+  ) => {
     setIsTranslating(true);
     
     // Filter inbound messages that aren't cached yet
@@ -65,7 +76,12 @@ export function useTranslation() {
     for (let i = 0; i < toTranslate.length; i += batchSize) {
       const batch = toTranslate.slice(i, i + batchSize);
       await Promise.all(
-        batch.map(msg => translateMessage(msg.id, msg.content))
+        batch.map(msg => translateMessage({ 
+          messageId: msg.id, 
+          text: msg.content,
+          ticketId,
+          storeId 
+        }))
       );
     }
 
