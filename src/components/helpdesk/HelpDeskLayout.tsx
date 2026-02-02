@@ -81,27 +81,8 @@ export function HelpDeskLayout() {
         return <StoresPage />;
       case 'inbox':
       default:
-        // Show empty state if no stores
-        if (stores.length === 0) {
-          return (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <h2 className="text-xl font-semibold text-foreground mb-2">
-                  Nenhuma loja cadastrada
-                </h2>
-                <p className="text-muted-foreground mb-4">
-                  Crie sua primeira loja para começar a gerenciar tickets.
-                </p>
-                <button
-                  onClick={() => setActiveNav('stores')}
-                  className="text-primary hover:underline"
-                >
-                  Ir para Lojas →
-                </button>
-              </div>
-            </div>
-          );
-        }
+        // Note: We no longer block the inbox if no stores exist
+        // This allows users to see legacy tickets without store_id
 
         return (
           <div className="flex-1 flex">
