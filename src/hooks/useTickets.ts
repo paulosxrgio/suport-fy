@@ -18,9 +18,9 @@ export function useTickets(status?: 'open' | 'closed', storeId?: string | null) 
         q = q.eq('status', status);
       }
 
-      // Filter by store if provided
+      // Filter by store if provided, or show tickets without store (legacy)
       if (storeId) {
-        q = q.eq('store_id', storeId);
+        q = q.or(`store_id.eq.${storeId},store_id.is.null`);
       }
       
       const { data, error } = await q;
