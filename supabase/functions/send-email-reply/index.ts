@@ -59,43 +59,39 @@ serve(async (req: Request) => {
       thread_subject: ticket.thread_subject,
     });
 
-    // Fetch store settings if store_id exists, otherwise fallback to global settings
+    // Fetch store settings from the settings table (where configs are actually saved)
     let senderName = 'Suporte';
     let senderEmail = 'suporte@exemplo.com';
     let emailSignature: string | null = null;
     let resendApiKey: string | null = null;
 
     if (ticket.store_id) {
-      const { data: store, error: storeError } = await supabase
-        .from('stores')
+      // Settings are saved in the 'settings' table, keyed by store_id
+      const { data: storeSettings, error: settingsError } = await supabase
+        .from('settings')
         .select('sender_name, sender_email, email_signature, resend_api_key')
-        .eq('id', ticket.store_id)
-        .single();
+        .eq('store_id', ticket.store_id)
+        .maybeSingle();
 
-      if (!storeError && store) {
-        senderName = store.sender_name || senderName;
-        senderEmail = store.sender_email || senderEmail;
-        emailSignature = store.email_signature;
-        resendApiKey = store.resend_api_key;
-        console.log('Step 3 - Store settings loaded:', { senderName, senderEmail });
+      if (!settingsError && storeSettings) {
+        senderName = storeSettings.sender_name || senderName;
+        senderEmail = storeSettings.sender_email || senderEmail;
+        emailSignature = storeSettings.email_signature;
+        resendApiKey = storeSettings.resend_api_key;
+        console.log('Step 3 - Store settings loaded from settings table:', { 
+          store_id: ticket.store_id,
+          senderName, 
+          senderEmail,
+          hasResendKey: !!resendApiKey 
+        });
+      } else {
+        console.log('Step 3 - No settings found for store:', ticket.store_id);
       }
     }
 
-    // Fallback to global settings if no store or no API key
+    // No fallback to other stores - if no settings, use defaults or env
     if (!resendApiKey) {
-      const { data: settings } = await supabase
-        .from('settings')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (settings) {
-        senderName = settings.sender_name || senderName;
-        senderEmail = settings.sender_email || senderEmail;
-        emailSignature = settings.email_signature || emailSignature;
-        resendApiKey = settings.resend_api_key;
-        console.log('Step 3 - Fallback to global settings');
-      }
+      console.log('Step 3 - No store-specific Resend key, checking env...');
     }
 
     // Final fallback to env variable
