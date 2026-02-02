@@ -82,6 +82,7 @@ export type Database = {
           resend_api_key_configured: boolean | null
           sender_email: string | null
           sender_name: string | null
+          store_id: string | null
           updated_at: string
         }
         Insert: {
@@ -97,6 +98,7 @@ export type Database = {
           resend_api_key_configured?: boolean | null
           sender_email?: string | null
           sender_name?: string | null
+          store_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -112,9 +114,18 @@ export type Database = {
           resend_api_key_configured?: boolean | null
           sender_email?: string | null
           sender_name?: string | null
+          store_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "settings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stores: {
         Row: {
