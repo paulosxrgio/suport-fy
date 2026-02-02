@@ -42,38 +42,22 @@ serve(async (req) => {
       );
     }
 
-    // Fetch AI settings - first try store, then settings table by store_id
+    // Fetch AI settings from settings table filtered by store_id
     let openaiApiKey: string | null = null;
     let aiSystemPrompt: string | null = null;
     let aiModel: string | null = null;
 
     if (ticket.store_id) {
-      // Try store table first
-      const { data: store } = await supabase
-        .from("stores")
+      const { data: settings } = await supabase
+        .from("settings")
         .select("openai_api_key, ai_system_prompt, ai_model")
-        .eq("id", ticket.store_id)
-        .single();
+        .eq("store_id", ticket.store_id)
+        .maybeSingle();
 
-      if (store) {
-        openaiApiKey = store.openai_api_key;
-        aiSystemPrompt = store.ai_system_prompt;
-        aiModel = store.ai_model;
-      }
-
-      // If not found in store, try settings table by store_id
-      if (!openaiApiKey) {
-        const { data: settings } = await supabase
-          .from("settings")
-          .select("openai_api_key, ai_system_prompt, ai_model")
-          .eq("store_id", ticket.store_id)
-          .maybeSingle();
-
-        if (settings) {
-          openaiApiKey = settings.openai_api_key;
-          aiSystemPrompt = aiSystemPrompt || settings.ai_system_prompt;
-          aiModel = aiModel || settings.ai_model;
-        }
+      if (settings) {
+        openaiApiKey = settings.openai_api_key;
+        aiSystemPrompt = settings.ai_system_prompt;
+        aiModel = settings.ai_model;
       }
     }
 
@@ -130,7 +114,7 @@ Por favor, gere uma resposta profissional e útil para o cliente.`;
     // Call OpenAI API
     const model = aiModel || "gpt-4o";
     
-    console.log(`Calling OpenAI API with model: ${model}`);
+    console.log(`Calling OpenAI API with model: ${model} for store: ${ticket.store_id}`);
 
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
