@@ -3,11 +3,11 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Ticket } from '@/types/helpdesk';
 
-export function useTickets(status?: 'open' | 'closed') {
+export function useTickets(status?: 'open' | 'closed', storeId?: string | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['tickets', status],
+    queryKey: ['tickets', status, storeId],
     queryFn: async () => {
       let q = supabase
         .from('tickets')
@@ -16,6 +16,11 @@ export function useTickets(status?: 'open' | 'closed') {
       
       if (status) {
         q = q.eq('status', status);
+      }
+
+      // Filter by store if provided
+      if (storeId) {
+        q = q.eq('store_id', storeId);
       }
       
       const { data, error } = await q;
