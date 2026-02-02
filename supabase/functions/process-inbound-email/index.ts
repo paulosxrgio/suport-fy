@@ -170,24 +170,24 @@ serve(async (req: Request) => {
     }
 
     // ========================================
-    // STEP 3: BUSCAR API KEY DO RESEND
+    // STEP 3: BUSCAR API KEY DO RESEND (inicial - pode ser atualizada no Step 5.5)
     // ========================================
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('resend_api_key')
-      .limit(1)
-      .maybeSingle();
-
-    const resendApiKey = settings?.resend_api_key || Deno.env.get('RESEND_API_KEY');
+    // Use env variable as initial fallback for fetching email content
+    let initialResendApiKey = Deno.env.get('RESEND_API_KEY') || '';
     
-    if (!resendApiKey) {
-      console.error('Step 3 - ERRO: Resend API key não configurada');
-      return new Response(
-        JSON.stringify({ error: 'RESEND_API_KEY not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Try to get from first store if no env variable (for email fetching only)
+    if (!initialResendApiKey) {
+      const { data: anyStore } = await supabase
+        .from('stores')
+        .select('resend_api_key')
+        .not('resend_api_key', 'is', null)
+        .limit(1)
+        .maybeSingle();
+      
+      if (anyStore?.resend_api_key) {
+        initialResendApiKey = anyStore.resend_api_key;
+      }
     }
-    console.log('Step 3 - Resend API key encontrada');
 
     // ========================================
     // STEP 4: EXTRAIR email_id E BUSCAR CONTEÚDO COMPLETO
@@ -213,13 +213,6 @@ serve(async (req: Request) => {
     }
 
     // BUSCAR CONTEÚDO COMPLETO via Receiving API do Resend
-    console.log('Step 4.1 - Buscando conteúdo completo via Receiving API...');
-    
-    const emailResponse = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${resendApiKey}` },
-    });
-
     let emailFull: {
       from?: string;
       to?: string[];
@@ -228,12 +221,23 @@ serve(async (req: Request) => {
       html?: string;
     } | null = null;
 
-    if (emailResponse.ok) {
-      emailFull = await emailResponse.json();
-      console.log('Step 4.1 - SUCESSO! E-mail completo baixado');
+    if (initialResendApiKey) {
+      console.log('Step 4.1 - Buscando conteúdo completo via Receiving API...');
+      
+      const emailResponse = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${initialResendApiKey}` },
+      });
+
+      if (emailResponse.ok) {
+        emailFull = await emailResponse.json();
+        console.log('Step 4.1 - SUCESSO! E-mail completo baixado');
+      } else {
+        const errorBody = await emailResponse.text();
+        console.error('Step 4.1 - ERRO ao buscar e-mail:', emailResponse.status, errorBody);
+      }
     } else {
-      const errorBody = await emailResponse.text();
-      console.error('Step 4.1 - ERRO ao buscar e-mail:', emailResponse.status, errorBody);
+      console.log('Step 4.1 - Sem API key disponível, usando dados do webhook');
     }
 
     // ========================================
@@ -312,6 +316,7 @@ serve(async (req: Request) => {
     // STEP 5.5: DETERMINAR STORE_ID PELO DOMÍNIO DO DESTINATÁRIO
     // ========================================
     let storeId: string | null = null;
+    let resendApiKey: string | null = null;
     const toAddresses = Array.isArray(emailContent.to) ? emailContent.to : [emailContent.to];
     
     for (const toAddr of toAddresses) {
@@ -324,17 +329,45 @@ serve(async (req: Request) => {
         
         const { data: store } = await supabase
           .from('stores')
-          .select('id')
+          .select('id, resend_api_key')
           .eq('domain', domain)
           .maybeSingle();
 
         if (store) {
           storeId = store.id;
+          resendApiKey = store.resend_api_key;
           console.log('Step 5.5 - Loja encontrada:', storeId);
           break;
         }
       }
     }
+
+    // If store found but no API key in store, try settings table
+    if (storeId && !resendApiKey) {
+      const { data: settings } = await supabase
+        .from('settings')
+        .select('resend_api_key')
+        .eq('store_id', storeId)
+        .maybeSingle();
+      
+      if (settings?.resend_api_key) {
+        resendApiKey = settings.resend_api_key;
+      }
+    }
+
+    // Fallback to env variable
+    if (!resendApiKey) {
+      resendApiKey = Deno.env.get('RESEND_API_KEY') || null;
+    }
+
+    if (!resendApiKey) {
+      console.error('Step 5.5 - ERRO: Resend API key não configurada para esta loja');
+      return new Response(
+        JSON.stringify({ error: 'RESEND_API_KEY not configured for this store' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    console.log('Step 5.5 - Resend API key encontrada');
 
     if (!storeId) {
       console.log('Step 5.5 - Nenhuma loja encontrada pelo domínio, ticket sem store_id');

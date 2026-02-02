@@ -72,7 +72,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!user) return null;
 
     try {
-      const { data, error } = await supabase
+      // 1. Create the store
+      const { data: newStore, error: storeError } = await supabase
         .from('stores')
         .insert({
           user_id: user.id,
@@ -82,11 +83,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (storeError) throw storeError;
+
+      // 2. Create default settings for the new store
+      const { error: settingsError } = await supabase
+        .from('settings')
+        .insert({
+          store_id: newStore.id,
+          ai_response_delay: 5,
+          ai_is_active: false,
+          ai_model: 'gpt-4o',
+        });
+
+      if (settingsError) {
+        console.error('Error creating settings for store:', settingsError);
+        // Don't fail store creation if settings fail
+      }
 
       toast.success(`Loja "${name}" criada com sucesso!`);
       await fetchStores();
-      return data;
+      return newStore;
     } catch (error) {
       console.error('Error creating store:', error);
       toast.error('Erro ao criar loja');
