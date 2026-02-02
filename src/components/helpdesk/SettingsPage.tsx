@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, Check, ExternalLink, Key, Mail, Eye, EyeOff, Loader2, User } from 'lucide-react';
+import { Copy, Check, ExternalLink, Key, Mail, Eye, EyeOff, Loader2, User, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,8 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useStore } from '@/contexts/StoreContext';
 
 export function SettingsPage() {
+  const { currentStore } = useStore();
+  const [settingsId, setSettingsId] = useState<string | null>(null);
   const [emailSignature, setEmailSignature] = useState('');
   const [resendApiKey, setResendApiKey] = useState('');
   const [senderName, setSenderName] = useState('');
@@ -17,30 +20,46 @@ export function SettingsPage() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
   // Webhook URL - this is the URL users need to copy to Resend
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-inbound-email`;
 
   useEffect(() => {
-    // Load settings
+    // Load settings for the current store
     const loadSettings = async () => {
+      if (!currentStore) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
       const { data } = await supabase
         .from('settings')
         .select('*')
-        .limit(1)
+        .eq('store_id', currentStore.id)
         .maybeSingle();
       
       if (data) {
+        setSettingsId(data.id);
         setEmailSignature(data.email_signature || '');
         setResendApiKey((data as any).resend_api_key || '');
         setSenderName((data as any).sender_name || '');
         setSenderEmail((data as any).sender_email || '');
+      } else {
+        // Clear form if no settings exist for this store
+        setSettingsId(null);
+        setEmailSignature('');
+        setResendApiKey('');
+        setSenderName('');
+        setSenderEmail('');
       }
+      setIsLoading(false);
     };
     
     loadSettings();
-  }, []);
+  }, [currentStore?.id]);
 
   const handleCopyWebhook = () => {
     navigator.clipboard.writeText(webhookUrl);
@@ -77,16 +96,15 @@ export function SettingsPage() {
   };
 
   const handleSaveSettings = async () => {
+    if (!currentStore) {
+      toast.error('Selecione uma loja primeiro');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      // Check if settings row exists
-      const { data: existingSettings } = await supabase
-        .from('settings')
-        .select('id')
-        .limit(1)
-        .maybeSingle();
-
       const settingsData = {
+        store_id: currentStore.id,
         email_signature: emailSignature,
         resend_api_key: resendApiKey,
         resend_api_key_configured: !!resendApiKey,
@@ -95,21 +113,24 @@ export function SettingsPage() {
         updated_at: new Date().toISOString()
       };
 
-      if (existingSettings) {
-        // Update existing settings
+      if (settingsId) {
+        // Update existing settings for this store
         const { error } = await supabase
           .from('settings')
           .update(settingsData as any)
-          .eq('id', existingSettings.id);
+          .eq('id', settingsId);
         
         if (error) throw error;
       } else {
-        // Insert new settings
-        const { error } = await supabase
+        // Insert new settings for this store
+        const { data, error } = await supabase
           .from('settings')
-          .insert(settingsData as any);
+          .insert(settingsData as any)
+          .select('id')
+          .single();
         
         if (error) throw error;
+        setSettingsId(data.id);
       }
 
       toast.success('Configurações salvas!');
@@ -122,13 +143,32 @@ export function SettingsPage() {
   };
 
 
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!currentStore) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Store className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">Selecione uma loja para configurar</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 overflow-y-auto bg-background p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
           <p className="text-muted-foreground mt-1">
-            Configure a integração com o Resend para envio e recebimento de e-mails.
+            Configure a integração com o Resend para a loja <strong>{currentStore.name}</strong>.
           </p>
         </div>
 

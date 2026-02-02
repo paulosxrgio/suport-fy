@@ -42,12 +42,13 @@ serve(async (req) => {
       );
     }
 
-    // Fetch AI settings - first try store, then fallback to global settings
+    // Fetch AI settings - first try store, then settings table by store_id
     let openaiApiKey: string | null = null;
     let aiSystemPrompt: string | null = null;
     let aiModel: string | null = null;
 
     if (ticket.store_id) {
+      // Try store table first
       const { data: store } = await supabase
         .from("stores")
         .select("openai_api_key, ai_system_prompt, ai_model")
@@ -59,33 +60,26 @@ serve(async (req) => {
         aiSystemPrompt = store.ai_system_prompt;
         aiModel = store.ai_model;
       }
-    }
 
-    // Fallback to global settings
-    if (!openaiApiKey) {
-      const { data: settings, error: settingsError } = await supabase
-        .from("settings")
-        .select("openai_api_key, ai_system_prompt, ai_model")
-        .single();
+      // If not found in store, try settings table by store_id
+      if (!openaiApiKey) {
+        const { data: settings } = await supabase
+          .from("settings")
+          .select("openai_api_key, ai_system_prompt, ai_model")
+          .eq("store_id", ticket.store_id)
+          .maybeSingle();
 
-      if (settingsError) {
-        console.error("Error fetching settings:", settingsError);
-        return new Response(
-          JSON.stringify({ error: "Failed to fetch settings" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      if (settings) {
-        openaiApiKey = settings.openai_api_key;
-        aiSystemPrompt = aiSystemPrompt || settings.ai_system_prompt;
-        aiModel = aiModel || settings.ai_model;
+        if (settings) {
+          openaiApiKey = settings.openai_api_key;
+          aiSystemPrompt = aiSystemPrompt || settings.ai_system_prompt;
+          aiModel = aiModel || settings.ai_model;
+        }
       }
     }
 
     if (!openaiApiKey) {
       return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured. Please configure it in AI Agent settings." }),
+        JSON.stringify({ error: "OpenAI API key not configured. Please configure it in AI Agent settings for this store." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
