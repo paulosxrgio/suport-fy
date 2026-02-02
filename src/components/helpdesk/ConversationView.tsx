@@ -31,6 +31,12 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     clearTranslations 
   } = useTranslation();
 
+  // Reset translation state when ticket changes
+  useEffect(() => {
+    setIsTranslateEnabled(false);
+    clearTranslations();
+  }, [ticket?.id, clearTranslations]);
+
   // Scroll to bottom when ticket changes or messages load
   useEffect(() => {
     if (messages && messages.length > 0) {
