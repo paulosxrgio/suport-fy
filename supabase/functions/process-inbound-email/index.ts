@@ -200,7 +200,8 @@ serve(async (req: Request) => {
       emailId, 
       incomingMessageId,
       from: webhookData.from,
-      subject: webhookData.subject
+      subject: webhookData.subject,
+      to: webhookData.to,
     });
 
     if (!emailId) {
@@ -308,6 +309,38 @@ serve(async (req: Request) => {
     }
 
     // ========================================
+    // STEP 5.5: DETERMINAR STORE_ID PELO DOMÍNIO DO DESTINATÁRIO
+    // ========================================
+    let storeId: string | null = null;
+    const toAddresses = Array.isArray(emailContent.to) ? emailContent.to : [emailContent.to];
+    
+    for (const toAddr of toAddresses) {
+      if (!toAddr) continue;
+      const toEmail = extractEmail(toAddr);
+      const domain = toEmail.split('@')[1];
+      
+      if (domain) {
+        console.log('Step 5.5 - Buscando loja pelo domínio:', domain);
+        
+        const { data: store } = await supabase
+          .from('stores')
+          .select('id')
+          .eq('domain', domain)
+          .maybeSingle();
+
+        if (store) {
+          storeId = store.id;
+          console.log('Step 5.5 - Loja encontrada:', storeId);
+          break;
+        }
+      }
+    }
+
+    if (!storeId) {
+      console.log('Step 5.5 - Nenhuma loja encontrada pelo domínio, ticket sem store_id');
+    }
+
+    // ========================================
     // STEP 6: ENCONTRAR OU CRIAR TICKET COM THREADING
     // ========================================
     let ticketId: string | null = null;
@@ -338,29 +371,41 @@ serve(async (req: Request) => {
           // Buscar references existentes do ticket
           const { data: ticketData } = await supabase
             .from('tickets')
-            .select('references_chain')
+            .select('references_chain, store_id')
             .eq('id', ticketId)
             .single();
           
           existingReferences = ticketData?.references_chain || [];
+          // Use ticket's store_id if found via threading
+          if (ticketData?.store_id) {
+            storeId = ticketData.store_id;
+          }
         }
       }
     }
 
-    // Fallback: buscar por e-mail do cliente
+    // Fallback: buscar por e-mail do cliente (dentro da mesma loja se possível)
     if (!ticketId) {
-      const { data: existingTicket } = await supabase
+      let ticketQuery = supabase
         .from('tickets')
-        .select('id, references_chain')
+        .select('id, references_chain, store_id')
         .eq('customer_email', customerEmail)
         .eq('status', 'open')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+
+      if (storeId) {
+        ticketQuery = ticketQuery.eq('store_id', storeId);
+      }
+
+      const { data: existingTicket } = await ticketQuery.maybeSingle();
 
       if (existingTicket) {
         ticketId = existingTicket.id;
         existingReferences = existingTicket.references_chain || [];
+        if (existingTicket.store_id) {
+          storeId = existingTicket.store_id;
+        }
         console.log('Step 6b - Ticket encontrado por e-mail:', ticketId);
       }
     }
@@ -379,6 +424,7 @@ serve(async (req: Request) => {
           references_chain: [emailMessageId], // Inicia a cadeia de references
           status: 'open',
           is_read: false, // New tickets from inbound emails start as unread
+          store_id: storeId,
         })
         .select('id')
         .single();
@@ -389,7 +435,7 @@ serve(async (req: Request) => {
       }
 
       ticketId = newTicket.id;
-      console.log('Step 6c - Novo ticket criado com threading:', ticketId);
+      console.log('Step 6c - Novo ticket criado com threading:', ticketId, 'store_id:', storeId);
     }
 
     // ========================================
@@ -431,6 +477,7 @@ serve(async (req: Request) => {
       emailId,
       emailMessageId,
       contentLength: cleanedContent.length,
+      storeId,
     });
     
     const { error: messageError } = await supabase
@@ -443,6 +490,7 @@ serve(async (req: Request) => {
         sender_email: customerEmail,
         resend_email_id: emailId,
         email_message_id: emailMessageId,
+        store_id: storeId,
       });
 
     if (messageError) {
@@ -459,6 +507,7 @@ serve(async (req: Request) => {
         ticketId, 
         emailMessageId, 
         isNewTicket,
+        storeId,
         hasContent: !!cleanedContent,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

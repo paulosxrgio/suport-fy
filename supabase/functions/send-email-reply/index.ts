@@ -40,58 +40,86 @@ serve(async (req: Request) => {
       );
     }
 
-    // Fetch settings including sender identity and API key
-    const { data: settings, error: settingsError } = await supabase
-      .from('settings')
-      .select('*')
-      .limit(1)
-      .maybeSingle();
-
-    if (settingsError) {
-      console.error('Step 2 - Error fetching settings:', settingsError);
-    }
-
-    // Get API key from settings or fallback to env
-    const resendApiKey = settings?.resend_api_key || Deno.env.get('RESEND_API_KEY');
-    if (!resendApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'RESEND_API_KEY não configurada. Configure nas Configurações ou como variável de ambiente.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Step 2 - Settings carregadas');
-
-    const resend = new Resend(resendApiKey);
-
-    // Fetch ticket details including threading info
+    // Fetch ticket details including store_id and threading info
     const { data: ticket, error: ticketError } = await supabase
       .from('tickets')
-      .select('id, customer_email, subject, thread_subject, last_message_id, references_chain')
+      .select('id, customer_email, subject, thread_subject, last_message_id, references_chain, store_id')
       .eq('id', ticketId)
       .single();
 
     if (ticketError || !ticket) {
-      console.error('Step 3 - Ticket error:', ticketError);
+      console.error('Step 2 - Ticket error:', ticketError);
       throw new Error('Ticket não encontrado');
     }
 
-    console.log('Step 3 - Ticket encontrado:', { 
+    console.log('Step 2 - Ticket encontrado:', { 
       id: ticket.id, 
       customer_email: ticket.customer_email,
+      store_id: ticket.store_id,
       thread_subject: ticket.thread_subject,
-      last_message_id: ticket.last_message_id,
-      references_count: ticket.references_chain?.length || 0,
     });
 
-    // Build sender identity from settings or use fallback
-    const senderName = settings?.sender_name || 'Suporte';
-    const senderEmail = settings?.sender_email || 'suporte@exemplo.com';
+    // Fetch store settings if store_id exists, otherwise fallback to global settings
+    let senderName = 'Suporte';
+    let senderEmail = 'suporte@exemplo.com';
+    let emailSignature: string | null = null;
+    let resendApiKey: string | null = null;
+
+    if (ticket.store_id) {
+      const { data: store, error: storeError } = await supabase
+        .from('stores')
+        .select('sender_name, sender_email, email_signature, resend_api_key')
+        .eq('id', ticket.store_id)
+        .single();
+
+      if (!storeError && store) {
+        senderName = store.sender_name || senderName;
+        senderEmail = store.sender_email || senderEmail;
+        emailSignature = store.email_signature;
+        resendApiKey = store.resend_api_key;
+        console.log('Step 3 - Store settings loaded:', { senderName, senderEmail });
+      }
+    }
+
+    // Fallback to global settings if no store or no API key
+    if (!resendApiKey) {
+      const { data: settings } = await supabase
+        .from('settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (settings) {
+        senderName = settings.sender_name || senderName;
+        senderEmail = settings.sender_email || senderEmail;
+        emailSignature = settings.email_signature || emailSignature;
+        resendApiKey = settings.resend_api_key;
+        console.log('Step 3 - Fallback to global settings');
+      }
+    }
+
+    // Final fallback to env variable
+    if (!resendApiKey) {
+      resendApiKey = Deno.env.get('RESEND_API_KEY') || null;
+    }
+    
+    if (!resendApiKey) {
+      return new Response(
+        JSON.stringify({ error: 'RESEND_API_KEY não configurada. Configure nas Configurações da Loja ou como variável de ambiente.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Step 3 - Settings carregadas');
+
+    const resend = new Resend(resendApiKey);
+
+    // Build sender identity
     const fromAddress = `${senderName} <${senderEmail}>`;
 
     // Append signature if configured
-    const fullContent = settings?.email_signature 
-      ? `${content}\n\n${settings.email_signature}` 
+    const fullContent = emailSignature 
+      ? `${content}\n\n${emailSignature}` 
       : content;
 
     // ========================================
@@ -175,6 +203,7 @@ serve(async (req: Request) => {
         direction: 'outbound',
         sender_email: senderEmail,
         email_message_id: sentMessageId,
+        store_id: ticket.store_id,
       })
       .select()
       .single();

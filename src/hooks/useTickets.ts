@@ -2,12 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Ticket } from '@/types/helpdesk';
+import { useStore } from '@/contexts/StoreContext';
 
 export function useTickets(status?: 'open' | 'closed') {
   const queryClient = useQueryClient();
+  const { currentStore } = useStore();
 
   const query = useQuery({
-    queryKey: ['tickets', status],
+    queryKey: ['tickets', status, currentStore?.id],
     queryFn: async () => {
       let q = supabase
         .from('tickets')
@@ -17,12 +19,18 @@ export function useTickets(status?: 'open' | 'closed') {
       if (status) {
         q = q.eq('status', status);
       }
+
+      // Filter by current store if selected
+      if (currentStore?.id) {
+        q = q.eq('store_id', currentStore.id);
+      }
       
       const { data, error } = await q;
       
       if (error) throw error;
       return data as Ticket[];
     },
+    enabled: !!currentStore,
   });
 
   // Subscribe to realtime updates for tickets
@@ -133,6 +141,58 @@ export function useMarkTicketAsRead() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
       queryClient.invalidateQueries({ queryKey: ['ticket'] });
+    },
+  });
+}
+
+export function useCreateTicket() {
+  const queryClient = useQueryClient();
+  const { currentStore } = useStore();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      customerEmail, 
+      customerName, 
+      subject, 
+      initialMessage 
+    }: { 
+      customerEmail: string; 
+      customerName: string; 
+      subject: string; 
+      initialMessage: string;
+    }) => {
+      // Create ticket
+      const { data: ticket, error: ticketError } = await supabase
+        .from('tickets')
+        .insert({
+          customer_email: customerEmail,
+          customer_name: customerName,
+          subject: subject,
+          status: 'open',
+          store_id: currentStore?.id,
+        })
+        .select()
+        .single();
+      
+      if (ticketError) throw ticketError;
+
+      // Create initial message
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert({
+          ticket_id: ticket.id,
+          content: initialMessage,
+          direction: 'inbound',
+          sender_email: customerEmail,
+          store_id: currentStore?.id,
+        });
+
+      if (messageError) throw messageError;
+
+      return ticket;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
     },
   });
 }
