@@ -134,9 +134,11 @@ export type Database = {
           ai_response_delay: number | null
           ai_system_prompt: string | null
           created_at: string
+          display_order: number
           domain: string
           email_signature: string | null
           id: string
+          is_visible_in_dashboard: boolean
           name: string
           openai_api_key: string | null
           resend_api_key: string | null
@@ -152,9 +154,11 @@ export type Database = {
           ai_response_delay?: number | null
           ai_system_prompt?: string | null
           created_at?: string
+          display_order?: number
           domain: string
           email_signature?: string | null
           id?: string
+          is_visible_in_dashboard?: boolean
           name: string
           openai_api_key?: string | null
           resend_api_key?: string | null
@@ -170,9 +174,11 @@ export type Database = {
           ai_response_delay?: number | null
           ai_system_prompt?: string | null
           created_at?: string
+          display_order?: number
           domain?: string
           email_signature?: string | null
           id?: string
+          is_visible_in_dashboard?: boolean
           name?: string
           openai_api_key?: string | null
           resend_api_key?: string | null

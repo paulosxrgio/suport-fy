@@ -18,6 +18,8 @@ export interface Store {
   ai_model: string | null;
   ai_is_active: boolean | null;
   ai_response_delay: number | null;
+  is_visible_in_dashboard: boolean;
+  display_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -51,7 +53,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .order('created_at', { ascending: true });
+        .eq('is_visible_in_dashboard', true)
+        .order('display_order', { ascending: true });
 
       if (error) throw error;
 
