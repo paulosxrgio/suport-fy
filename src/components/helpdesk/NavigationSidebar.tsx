@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
 import { StoreSwitcher } from './StoreSwitcher';
-
+import { AccountSettingsDialog } from './AccountSettingsDialog';
 type NavItem = 'inbox' | 'ai-agent' | 'analytics' | 'settings';
 
 interface NavigationSidebarProps {
@@ -64,8 +64,10 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
         })}
       </nav>
       
-      {/* Logout Button */}
-      <div className="px-2 pb-4">
+      {/* Account Settings & Logout */}
+      <div className="px-2 pb-4 space-y-1 border-t border-border pt-2">
+        <AccountSettingsDialog />
+        
         <Tooltip>
           <TooltipTrigger asChild>
             <button
