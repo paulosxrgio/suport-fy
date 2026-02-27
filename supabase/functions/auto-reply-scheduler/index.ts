@@ -432,6 +432,63 @@ CUSTOMER MEMORY (from previous interactions — use this to personalize your res
           console.log(`Item ${item.id} - Memory fetch skipped:`, memError);
         }
 
+        // ========================================
+        // STEP 2a.4: Detectar sentimento do cliente
+        // ========================================
+        let sentiment = 'neutral';
+        let detectedLanguage = 'English';
+        try {
+          const sentimentResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${settings.openai_api_key}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                {
+                  role: 'system',
+                  content: `Analyze the customer message and return ONLY a valid JSON object, no markdown:
+{
+  "sentiment": "positive" | "neutral" | "frustrated" | "furious",
+  "language": "the exact language of the message, e.g: English, Portuguese, Spanish, French",
+  "reason": "one short sentence explaining why you classified this sentiment"
+}
+
+Classification rules:
+- positive: customer is happy, thankful, or satisfied
+- neutral: simple question, no emotional charge
+- frustrated: impatient, complaining about delay, asking where is order, mild pressure
+- furious: threats of dispute, chargeback, PayPal claim, trading standards, lawyer, strong language, aggressive tone`
+                },
+                { role: 'user', content: lastInboundMessage }
+              ],
+              max_tokens: 100,
+              temperature: 0,
+            }),
+          });
+
+          if (sentimentResponse.ok) {
+            const sentimentData = await sentimentResponse.json();
+            const parsed = JSON.parse(sentimentData.choices?.[0]?.message?.content?.trim());
+            sentiment = parsed.sentiment || 'neutral';
+            detectedLanguage = parsed.language || 'English';
+            console.log(`Item ${item.id} - SENTIMENT: ${sentiment} | LANGUAGE: ${detectedLanguage} | REASON: ${parsed.reason}`);
+          }
+        } catch (sentimentError) {
+          console.log(`Item ${item.id} - Sentiment detection skipped:`, sentimentError);
+        }
+
+        const sentimentInstruction = {
+          positive: `TONE INSTRUCTION: The customer is happy and satisfied. Be warm, friendly and concise. Match their positive energy.`,
+          neutral: `TONE INSTRUCTION: The customer has a simple question. Be clear, helpful and efficient. No need for extra reassurance.`,
+          frustrated: `TONE INSTRUCTION: The customer is frustrated or impatient. Start with a genuine, heartfelt apology. Validate their feeling before giving any information. Be extra warm and personal. Use phrases like "I completely understand how frustrating this must feel" and "I'm personally looking into this for you right now."`,
+          furious: `TONE INSTRUCTION: The customer is furious and may be threatening a dispute or chargeback. Stay completely calm and do NOT match their energy. Start with a sincere, humble apology. Acknowledge their frustration fully before any explanation. Be extremely empathetic and solution-focused. Never be defensive. Use phrases like "I'm truly sorry this has been your experience" and "I want to make this right for you personally."`,
+        }[sentiment] || `TONE INSTRUCTION: Be warm, friendly and professional.`;
+
+        const languageInstruction = `LANGUAGE INSTRUCTION: The customer wrote in ${detectedLanguage}. You MUST respond in ${detectedLanguage} only. Do not mix languages.`;
+
         const userMessage = (() => {
           const orderContext = shopifyContext && !shopifyContext.includes('Nenhum pedido encontrado') 
             ? shopifyContext + `\n- Primeiro nome do cliente: ${customerFirstName}`
@@ -441,6 +498,10 @@ CUSTOMER MEMORY (from previous interactions — use this to personalize your res
 ${orderContext}
 
 ${memoryContext}
+
+${sentimentInstruction}
+
+${languageInstruction}
 
 CONVERSATION HISTORY (read carefully before replying — continue naturally from where it left off):
 ${conversationHistory || 'This is the first message from this customer.'}
@@ -691,7 +752,7 @@ If no actionable request is detected, return { "detected": false, "type": null, 
               customer_email: ticket.customer_email,
               preferred_edition: memory.preferred_edition || customerMemory?.preferred_edition,
               preferred_language: memory.preferred_language || customerMemory?.preferred_language,
-              last_sentiment: memory.last_sentiment,
+              last_sentiment: sentiment,
               notes: memory.notes,
               total_interactions: (customerMemory?.total_interactions || 0) + 1,
               updated_at: new Date().toISOString(),
