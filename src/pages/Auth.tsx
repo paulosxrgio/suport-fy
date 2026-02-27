@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { EnvelopeSimple, Lock, SignIn, UserPlus } from '@phosphor-icons/react';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -42,65 +42,32 @@ const Auth = () => {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: {
-            emailRedirectTo: redirectUrl
-          }
+          options: { emailRedirectTo: redirectUrl }
         });
 
         if (error) {
           if (error.message.includes('User already registered')) {
-            toast({
-              variant: 'destructive',
-              title: 'Erro',
-              description: 'Este email já está cadastrado. Tente fazer login.',
-            });
+            toast({ variant: 'destructive', title: 'Erro', description: 'Este email já está cadastrado. Tente fazer login.' });
           } else if (error.message.includes('Signups not allowed')) {
-            toast({
-              variant: 'destructive',
-              title: 'Cadastro desabilitado',
-              description: 'O cadastro de novos usuários está desabilitado.',
-            });
+            toast({ variant: 'destructive', title: 'Cadastro desabilitado', description: 'O cadastro de novos usuários está desabilitado.' });
           } else {
-            toast({
-              variant: 'destructive',
-              title: 'Erro ao criar conta',
-              description: error.message,
-            });
+            toast({ variant: 'destructive', title: 'Erro ao criar conta', description: error.message });
           }
         } else {
-          toast({
-            title: 'Conta criada!',
-            description: 'Você foi logado automaticamente.',
-          });
+          toast({ title: 'Conta criada!', description: 'Você foi logado automaticamente.' });
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
           if (error.message.includes('Invalid login credentials')) {
-            toast({
-              variant: 'destructive',
-              title: 'Credenciais inválidas',
-              description: 'Email ou senha incorretos.',
-            });
+            toast({ variant: 'destructive', title: 'Credenciais inválidas', description: 'Email ou senha incorretos.' });
           } else {
-            toast({
-              variant: 'destructive',
-              title: 'Erro ao fazer login',
-              description: error.message,
-            });
+            toast({ variant: 'destructive', title: 'Erro ao fazer login', description: error.message });
           }
         }
       }
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Ocorreu um erro inesperado. Tente novamente.',
-      });
+      toast({ variant: 'destructive', title: 'Erro', description: 'Ocorreu um erro inesperado. Tente novamente.' });
     } finally {
       setIsLoading(false);
     }
@@ -108,10 +75,10 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md rounded-[14px] shadow-elevated">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-4">
-            <Mail className="w-6 h-6 text-primary-foreground" />
+            <EnvelopeSimple className="w-6 h-6 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold">
             {isSignUp ? 'Criar conta' : 'Entrar'}
@@ -127,35 +94,18 @@ const Auth = () => {
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
+                <EnvelopeSimple className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 rounded-lg h-[38px]" required />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                  minLength={6}
-                />
+                <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 rounded-lg h-[38px]" required minLength={6} />
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full rounded-lg" disabled={isLoading}>
               {isLoading ? (
                 'Carregando...'
               ) : isSignUp ? (
@@ -165,7 +115,7 @@ const Auth = () => {
                 </>
               ) : (
                 <>
-                  <LogIn className="w-4 h-4 mr-2" />
+                  <SignIn className="w-4 h-4 mr-2" />
                   Entrar
                 </>
               )}
@@ -175,24 +125,12 @@ const Auth = () => {
             {isSignUp ? (
               <p className="text-muted-foreground">
                 Já tem uma conta?{' '}
-                <button
-                  type="button"
-                  onClick={() => setIsSignUp(false)}
-                  className="text-primary hover:underline font-medium"
-                >
-                  Fazer login
-                </button>
+                <button type="button" onClick={() => setIsSignUp(false)} className="text-primary hover:underline font-medium">Fazer login</button>
               </p>
             ) : (
               <p className="text-muted-foreground">
                 Não tem uma conta?{' '}
-                <button
-                  type="button"
-                  onClick={() => setIsSignUp(true)}
-                  className="text-primary hover:underline font-medium"
-                >
-                  Criar conta
-                </button>
+                <button type="button" onClick={() => setIsSignUp(true)} className="text-primary hover:underline font-medium">Criar conta</button>
               </p>
             )}
           </div>

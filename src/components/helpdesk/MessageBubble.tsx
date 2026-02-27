@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Languages, Loader2 } from 'lucide-react';
+import { Translate, SpinnerGap } from '@phosphor-icons/react';
 import { useMemo } from 'react';
 import DOMPurify from 'dompurify';
 
@@ -191,7 +191,7 @@ export function MessageBubble({ message, senderName, translatedContent, isTransl
           {/* Translation loading indicator */}
           {isTranslating && isInbound && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-              <Loader2 className="w-3 h-3 animate-spin" />
+              <SpinnerGap className="w-3 h-3 animate-spin" />
               <span>Traduzindo...</span>
             </div>
           )}
@@ -213,7 +213,7 @@ export function MessageBubble({ message, senderName, translatedContent, isTransl
           {/* Translation indicator */}
           {isShowingTranslation && (
             <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
-              <Languages className="w-3 h-3 text-primary" />
+              <Translate className="w-3 h-3 text-primary" />
               <span className="text-xs text-primary font-medium">Traduzido</span>
             </div>
           )}
