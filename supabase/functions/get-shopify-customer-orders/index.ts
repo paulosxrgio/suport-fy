@@ -95,6 +95,7 @@ serve(async (req) => {
     const accessToken = await getShopifyToken(cleanUrl, clientId, clientSecret);
     console.log('SHOPIFY DEBUG - Token gerado:', accessToken ? 'OK' : 'VAZIO');
 
+    // Query 1 — buscar cliente pelo email
     const customerQuery = `
       query($q: String!) {
         customers(first: 1, query: $q) {
@@ -104,26 +105,6 @@ serve(async (req) => {
             lastName
             numberOfOrders
             amountSpent { amount currencyCode }
-            orders(first: 5, sortKey: CREATED_AT, reverse: true) {
-              nodes {
-                name
-                displayFinancialStatus
-                displayFulfillmentStatus
-                createdAt
-                totalPriceSet { shopMoney { amount currencyCode } }
-                lineItems(first: 10) {
-                  nodes {
-                    name
-                    variantTitle
-                    quantity
-                    originalUnitPriceSet { shopMoney { amount } }
-                  }
-                }
-                fulfillments {
-                  trackingInfo { number url company }
-                }
-              }
-            }
           }
         }
       }
@@ -132,7 +113,7 @@ serve(async (req) => {
     const graphqlUrl = `https://${cleanUrl}/admin/api/2025-01/graphql.json`;
     console.log('SHOPIFY DEBUG - GraphQL URL:', graphqlUrl);
 
-    const shopifyResponse = await fetch(graphqlUrl, {
+    const customerResponse = await fetch(graphqlUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -144,28 +125,28 @@ serve(async (req) => {
       }),
     });
 
-    console.log('SHOPIFY DEBUG - Status da resposta:', shopifyResponse.status);
+    console.log('SHOPIFY DEBUG - Customer query status:', customerResponse.status);
 
-    if (!shopifyResponse.ok) {
-      const errorText = await shopifyResponse.text();
-      console.error('SHOPIFY DEBUG - Erro body:', errorText);
-      return new Response(JSON.stringify({ orders: [], error: `Shopify API error: ${shopifyResponse.status}` }), {
+    if (!customerResponse.ok) {
+      const errorText = await customerResponse.text();
+      console.error('SHOPIFY DEBUG - Customer query erro:', errorText);
+      return new Response(JSON.stringify({ orders: [], error: `Shopify API error: ${customerResponse.status}` }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const responseData = await shopifyResponse.json();
-    console.log('SHOPIFY DEBUG - Resposta completa:', JSON.stringify(responseData));
+    const customerData = await customerResponse.json();
+    console.log('SHOPIFY DEBUG - Customer response:', JSON.stringify(customerData));
 
-    if (responseData.errors) {
-      console.error('SHOPIFY DEBUG - GraphQL errors:', JSON.stringify(responseData.errors));
-      return new Response(JSON.stringify({ orders: [], error: `GraphQL errors: ${JSON.stringify(responseData.errors)}` }), {
+    if (customerData.errors) {
+      console.error('SHOPIFY DEBUG - Customer GraphQL errors:', JSON.stringify(customerData.errors));
+      return new Response(JSON.stringify({ orders: [], error: `GraphQL errors: ${JSON.stringify(customerData.errors)}` }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const customer = responseData.data?.customers?.nodes?.[0];
-    console.log('SHOPIFY DEBUG - Cliente encontrado:', customer ? `${customer.firstName} ${customer.lastName}` : 'NÃO');
+    const customer = customerData.data?.customers?.nodes?.[0];
+    console.log('SHOPIFY DEBUG - Cliente encontrado:', customer ? `${customer.firstName} ${customer.lastName} (${customer.id})` : 'NÃO');
 
     if (!customer) {
       return new Response(JSON.stringify({ orders: [], customer: null }), {
@@ -173,7 +154,51 @@ serve(async (req) => {
       });
     }
 
-    const orders = customer.orders?.nodes?.map((order: any) => ({
+    // Query 2 — buscar pedidos pelo ID do cliente
+    const customerId = customer.id.split('/').pop();
+    console.log('SHOPIFY DEBUG - Buscando pedidos para customer_id:', customerId);
+
+    const ordersQuery = `
+      query($q: String!) {
+        orders(first: 5, query: $q, sortKey: CREATED_AT, reverse: true) {
+          nodes {
+            name
+            displayFinancialStatus
+            displayFulfillmentStatus
+            createdAt
+            totalPriceSet { shopMoney { amount currencyCode } }
+            lineItems(first: 10) {
+              nodes {
+                name
+                variantTitle
+                quantity
+                originalUnitPriceSet { shopMoney { amount } }
+              }
+            }
+            fulfillments {
+              trackingInfo { number url company }
+            }
+          }
+        }
+      }
+    `;
+
+    const ordersResponse = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken,
+      },
+      body: JSON.stringify({
+        query: ordersQuery,
+        variables: { q: `customer_id:${customerId}` },
+      }),
+    });
+
+    const ordersData = await ordersResponse.json();
+    console.log('SHOPIFY DEBUG - Orders response:', JSON.stringify(ordersData));
+
+    const orders = ordersData?.data?.orders?.nodes?.map((order: any) => ({
       order_number: order.name,
       status: order.displayFulfillmentStatus,
       financial_status: order.displayFinancialStatus,
