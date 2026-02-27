@@ -112,6 +112,17 @@ serve(async (req: Request) => {
           })
           .join('\n\n') || '';
 
+        // Detect order number mentioned in customer messages
+        const allCustomerMessages = messages
+          ?.filter((m: any) => m.direction === 'inbound')
+          .map((m: any) => m.content)
+          .join(' ') || '';
+        const orderNumberMatch = allCustomerMessages.match(/#?(\d{4,})/);
+        const mentionedOrderNumber = orderNumberMatch ? orderNumberMatch[1] : null;
+        if (mentionedOrderNumber) {
+          console.log(`Item ${item.id} - Detected order number in messages: #${mentionedOrderNumber}`);
+        }
+
         const defaultSystemPrompt = `You are Sophia, a customer support agent for an online store. Your mission is to respond to customer emails in English (UK) with an extremely friendly, calm, human, persuasive and professional tone.
 
 RESPONSE FORMAT — MANDATORY:
@@ -219,6 +230,8 @@ Sophia`;
 
             const graphqlUrl = `https://${cleanUrl}/admin/api/2025-01/graphql.json`;
 
+            let orders: any[] = [];
+
             // Query 1 — buscar cliente pelo email (com legacyResourceId)
             const customerQuery = `#graphql
               query($q: String!) {
@@ -292,7 +305,7 @@ Sophia`;
                 });
 
                 const ordersData = await ordersResponse.json();
-                const orders = ordersData?.data?.orders?.edges?.map((edge: any) => {
+                orders = ordersData?.data?.orders?.edges?.map((edge: any) => {
                   const order = edge.node;
                   return {
                     order_number: order.name,
@@ -309,13 +322,78 @@ Sophia`;
                     tracking_company: order.fulfillments?.[0]?.trackingInfo?.[0]?.company || null,
                   };
                 }) || [];
+              }
+            }
 
-                if (orders.length > 0) {
-                  shopifyContext = `\n\nDADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY:\n${orders.map((o: any) => `\n- Pedido ${o.order_number} | Status: ${o.status} | Pagamento: ${o.financial_status} | Total: ${o.currency} ${o.total_price}\n  Produtos: ${o.items.map((i: any) => `${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity}`).join(', ')}\n  Rastreamento: ${o.tracking_number || 'Não disponível'} ${o.tracking_company ? `via ${o.tracking_company}` : ''}`).join('')}`;
-                } else {
-                  shopifyContext = '\n\nDADOS SHOPIFY: Nenhum pedido encontrado para este cliente.';
+            // Fallback: if no orders found by email but customer mentioned an order number, search by order number
+            if (orders.length === 0 && mentionedOrderNumber) {
+              console.log(`Item ${item.id} - No orders by email, searching by order number #${mentionedOrderNumber}...`);
+
+              const searchByNumberQuery = `#graphql
+                query($q: String!) {
+                  orders(first: 1, query: $q) {
+                    nodes {
+                      name
+                      displayFinancialStatus
+                      displayFulfillmentStatus
+                      createdAt
+                      totalPriceSet { shopMoney { amount currencyCode } }
+                      lineItems(first: 10) {
+                        nodes {
+                          name
+                          variantTitle
+                          quantity
+                          originalUnitPriceSet { shopMoney { amount } }
+                        }
+                      }
+                      fulfillments {
+                        trackingInfo { number url company }
+                      }
+                    }
+                  }
+                }
+              `;
+
+              const searchRes = await fetch(graphqlUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Shopify-Access-Token': accessToken,
+                },
+                body: JSON.stringify({
+                  query: searchByNumberQuery,
+                  variables: { q: `name:#${mentionedOrderNumber}` },
+                }),
+              });
+
+              if (searchRes.ok) {
+                const searchData = await searchRes.json();
+                const foundOrder = searchData?.data?.orders?.nodes?.[0];
+
+                if (foundOrder) {
+                  orders = [{
+                    order_number: foundOrder.name,
+                    status: foundOrder.displayFulfillmentStatus || 'unfulfilled',
+                    financial_status: foundOrder.displayFinancialStatus,
+                    total_price: foundOrder.totalPriceSet?.shopMoney?.amount,
+                    currency: foundOrder.totalPriceSet?.shopMoney?.currencyCode,
+                    items: foundOrder.lineItems?.nodes?.map((item: any) => ({
+                      name: item.name,
+                      variant: item.variantTitle,
+                      quantity: item.quantity,
+                    })) || [],
+                    tracking_number: foundOrder.fulfillments?.[0]?.trackingInfo?.[0]?.number || null,
+                    tracking_company: foundOrder.fulfillments?.[0]?.trackingInfo?.[0]?.company || null,
+                  }];
+                  console.log(`Item ${item.id} - ORDER FOUND BY NUMBER: #${mentionedOrderNumber}`);
                 }
               }
+            }
+
+            if (orders.length > 0) {
+              shopifyContext = `\n\nDADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY:\n${orders.map((o: any) => `\n- Pedido ${o.order_number} | Status: ${o.status} | Pagamento: ${o.financial_status} | Total: ${o.currency} ${o.total_price}\n  Produtos: ${o.items.map((i: any) => `${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity}`).join(', ')}\n  Rastreamento: ${o.tracking_number || 'Não disponível'} ${o.tracking_company ? `via ${o.tracking_company}` : ''}`).join('')}`;
+            } else {
+              shopifyContext = '\n\nDADOS SHOPIFY: Nenhum pedido encontrado para este cliente.';
             }
           }
         } catch (shopifyError) {
@@ -327,10 +405,9 @@ Sophia`;
           || ticket.customer_email.split('@')[0];
 
         const userMessage = (() => {
-          // Parse orders from shopifyContext if available
           const orderContext = shopifyContext && !shopifyContext.includes('Nenhum pedido encontrado') 
             ? shopifyContext + `\n- Primeiro nome do cliente: ${customerFirstName}`
-            : `\nDADOS DO PEDIDO: Nenhum pedido encontrado. Responda normalmente e peça o número do pedido educadamente no final.\n- Primeiro nome do cliente: ${customerFirstName}`;
+            : `\nSHOPIFY DATA: No order found for this customer's email or order number yet.\nINSTRUCTION: Respond naturally to the customer's question. At the end, politely ask them to confirm their order number so you can look into it right away. Say something like: "Could you please share your order number with me? It usually starts with # and can be found in your confirmation email."\n- Primeiro nome do cliente: ${customerFirstName}`;
 
           return `
 ${orderContext}
