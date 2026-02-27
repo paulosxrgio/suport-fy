@@ -1,22 +1,23 @@
 
 
-## Plan: Split Shopify GraphQL into two separate queries
+## Analysis: Orders query returns empty despite correct customer
 
-### Problem
-The nested `orders` inside `customers` query returns empty despite correct scopes. Splitting into two separate queries works around this.
+### Current State (from logs)
+- **Customer query**: Works. Finds `GOMES` (ID: `11131624947978`), `numberOfOrders: "1"`, `amountSpent: 3.1 GBP`
+- **Orders query**: `orders(first: 5, query: "customer_id:11131624947978")` returns `nodes: []`
+- Query cost is only 5 (vs requested 29), confirming zero results — not a parsing error
 
-### Changes
+### Root Cause
+The `client_credentials` grant type used in `getShopifyToken` generates a token whose scopes are defined by the **Shopify app configuration**. The token can read customers (proven by the working query) but cannot read orders.
 
-#### 1. `supabase/functions/get-shopify-customer-orders/index.ts`
-Replace the single GraphQL query block (after `getShopifyToken` call) with:
-- **Query 1**: `customers(first: 1, query: $q)` — fetch customer by email (id, firstName, lastName, numberOfOrders, amountSpent only, no nested orders)
-- **Query 2**: `orders(first: 5, query: $customerId, sortKey: CREATED_AT, reverse: true)` — fetch orders using `customer_id:<numeric_id>` extracted from the customer's GID
-- Keep all existing debug logs, update them to log both responses separately
-- Keep existing response format (`{ orders, customer }`)
+This is **not a code issue** — the code and queries are correct. The problem is in the Shopify Dev Dashboard app configuration.
 
-#### 2. `supabase/functions/auto-reply-scheduler/index.ts`
-Apply the same two-query split in the Shopify context section (~line 110+):
-- Query 1: fetch customer by email
-- Query 2: fetch orders by customer_id
-- Update `shopifyContext` string building to use the new `ordersData` response
+### Required Action (Manual — outside codebase)
+1. Go to **Shopify Partners Dashboard** → Your App → **Configuration**
+2. Under **Admin API access scopes**, ensure **`read_orders`** is checked
+3. **Important**: After adding the scope, you may need to **reinstall the app** on the store or **re-authorize** for the new scope to take effect with client credentials
+4. Some Shopify development stores also have a setting under **Settings → Checkout → Order processing** that restricts API access to orders — ensure that is not blocking
+
+### No Code Changes Required
+The two-query split is correctly implemented. Once the `read_orders` scope is properly granted and active, the orders will appear.
 
