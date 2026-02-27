@@ -144,27 +144,30 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
             if (!tokenResponse.ok) throw new Error(`Shopify auth failed: ${JSON.stringify(tokenData)}`);
             const accessToken = tokenData.access_token;
 
-            const graphqlQuery = `
-              {
-                orders(first: 5, query: "email:${ticket.customer_email}") {
-                  edges {
-                    node {
-                      name
-                      displayFinancialStatus
-                      displayFulfillmentStatus
-                      totalPriceSet { shopMoney { amount currencyCode } }
-                      createdAt
-                      lineItems(first: 10) {
-                        edges {
-                          node {
+            const customerQuery = `
+              query($q: String!) {
+                customers(first: 1, query: $q) {
+                  nodes {
+                    firstName
+                    lastName
+                    numberOfOrders
+                    amountSpent { amount currencyCode }
+                    orders(first: 5, sortKey: CREATED_AT, reverse: true) {
+                      nodes {
+                        name
+                        displayFinancialStatus
+                        displayFulfillmentStatus
+                        totalPriceSet { shopMoney { amount currencyCode } }
+                        lineItems(first: 10) {
+                          nodes {
                             name
                             variantTitle
                             quantity
                           }
                         }
-                      }
-                      fulfillments {
-                        trackingInfo { number company }
+                        fulfillments {
+                          trackingInfo { number company }
+                        }
                       }
                     }
                   }
@@ -178,19 +181,23 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
                 'Content-Type': 'application/json',
                 'X-Shopify-Access-Token': accessToken,
               },
-              body: JSON.stringify({ query: graphqlQuery }),
+              body: JSON.stringify({
+                query: customerQuery,
+                variables: { q: `email:"${ticket.customer_email}"` },
+              }),
             });
 
             if (shopifyResponse.ok) {
               const responseData = await shopifyResponse.json();
               if (!responseData.errors) {
-                const orders = responseData.data?.orders?.edges?.map(({ node: order }: any) => ({
+                const customer = responseData.data?.customers?.nodes?.[0];
+                const orders = customer?.orders?.nodes?.map((order: any) => ({
                   order_number: order.name,
                   status: order.displayFulfillmentStatus || 'unfulfilled',
                   financial_status: order.displayFinancialStatus,
                   total_price: order.totalPriceSet?.shopMoney?.amount,
                   currency: order.totalPriceSet?.shopMoney?.currencyCode,
-                  items: order.lineItems?.edges?.map(({ node: item }: any) => ({
+                  items: order.lineItems?.nodes?.map((item: any) => ({
                     name: item.name,
                     variant: item.variantTitle,
                     quantity: item.quantity,
