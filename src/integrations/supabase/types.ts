@@ -110,6 +110,63 @@ export type Database = {
           },
         ]
       }
+      requests: {
+        Row: {
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          description: string
+          details: Json | null
+          id: string
+          resolved_at: string | null
+          status: string
+          store_id: string | null
+          ticket_id: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          description: string
+          details?: Json | null
+          id?: string
+          resolved_at?: string | null
+          status?: string
+          store_id?: string | null
+          ticket_id?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          description?: string
+          details?: Json | null
+          id?: string
+          resolved_at?: string | null
+          status?: string
+          store_id?: string | null
+          ticket_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requests_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           ai_is_active: boolean | null
