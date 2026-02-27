@@ -1,123 +1,132 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Help Desk Design System - Clean, Modern, Productive */
+/* Big Mail / Superhuman Inspired Design System */
 
 @layer base {
   :root {
-    /* Slate-based neutral palette for clean look */
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    --background: 0 0% 100%;
+    --foreground: 235 33% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 235 33% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 235 33% 14%;
 
-    /* Indigo as primary accent - professional and trustworthy */
-    --primary: 234 89% 54%;
+    --primary: 245 58% 60%;
     --primary-foreground: 0 0% 100%;
 
-    /* Soft gray for secondary elements */
-    --secondary: 215 20% 95%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 240 5% 97%;
+    --secondary-foreground: 235 33% 14%;
 
-    --muted: 215 20% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 240 5% 97%;
+    --muted-foreground: 240 5% 50%;
 
-    --accent: 215 20% 95%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 245 58% 60%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 4 76% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 20% 91%;
-    --input: 215 20% 91%;
-    --ring: 234 89% 54%;
+    --border: 240 6% 93%;
+    --input: 240 6% 93%;
+    --ring: 245 58% 60%;
 
     --radius: 0.5rem;
 
     /* Status colors */
-    --status-open: 142 76% 36%;
-    --status-closed: 215 16% 47%;
-    
-    /* Message bubbles */
-    --bubble-inbound: 215 20% 96%;
-    --bubble-outbound: 234 89% 54%;
+    --status-open: 152 69% 39%;
+    --status-closed: 240 5% 50%;
 
-    /* Sidebar */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 215 20% 90%;
-    --sidebar-primary: 234 89% 64%;
+    /* Message bubbles */
+    --bubble-inbound: 240 5% 97%;
+    --bubble-outbound: 245 80% 96%;
+
+    /* Sidebar — white bg */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 235 33% 14%;
+    --sidebar-primary: 245 58% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 30% 18%;
-    --sidebar-accent-foreground: 215 20% 90%;
-    --sidebar-border: 222 30% 18%;
-    --sidebar-ring: 234 89% 54%;
+    --sidebar-accent: 245 80% 96%;
+    --sidebar-accent-foreground: 245 58% 60%;
+    --sidebar-border: 240 6% 93%;
+    --sidebar-ring: 245 58% 60%;
 
     /* Ticket list */
-    --ticket-hover: 215 20% 97%;
-    --ticket-selected: 234 89% 97%;
-    --ticket-selected-border: 234 89% 54%;
+    --ticket-hover: 240 5% 96%;
+    --ticket-selected: 245 80% 96%;
+    --ticket-selected-border: 245 58% 60%;
 
-    /* AI/Magic feature - Purple accent */
-    --ai-accent: 271 81% 56%;
+    /* AI/Magic feature */
+    --ai-accent: 245 58% 60%;
     --ai-accent-foreground: 0 0% 100%;
-    --ai-accent-muted: 271 81% 96%;
+    --ai-accent-muted: 245 80% 96%;
+
+    /* Semantic extras */
+    --success: 152 69% 39%;
+    --warning: 38 92% 50%;
+    --danger: 4 76% 58%;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 215 20% 98%;
+    --background: 235 33% 6%;
+    --foreground: 240 5% 96%;
 
-    --card: 222 47% 8%;
-    --card-foreground: 215 20% 98%;
+    --card: 235 33% 9%;
+    --card-foreground: 240 5% 96%;
 
-    --popover: 222 47% 8%;
-    --popover-foreground: 215 20% 98%;
+    --popover: 235 33% 9%;
+    --popover-foreground: 240 5% 96%;
 
-    --primary: 234 89% 64%;
+    --primary: 245 58% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 30% 15%;
-    --secondary-foreground: 215 20% 98%;
+    --secondary: 235 20% 15%;
+    --secondary-foreground: 240 5% 96%;
 
-    --muted: 222 30% 15%;
-    --muted-foreground: 215 16% 65%;
+    --muted: 235 20% 15%;
+    --muted-foreground: 240 5% 60%;
 
-    --accent: 222 30% 15%;
-    --accent-foreground: 215 20% 98%;
+    --accent: 245 58% 65%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 50%;
+    --destructive: 4 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 30% 18%;
-    --input: 222 30% 18%;
-    --ring: 234 89% 64%;
+    --border: 235 20% 18%;
+    --input: 235 20% 18%;
+    --ring: 245 58% 65%;
 
-    --sidebar-background: 222 47% 4%;
-    --sidebar-foreground: 215 20% 90%;
-    --sidebar-primary: 234 89% 64%;
+    --sidebar-background: 235 33% 5%;
+    --sidebar-foreground: 240 5% 90%;
+    --sidebar-primary: 245 58% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 30% 12%;
-    --sidebar-accent-foreground: 215 20% 90%;
-    --sidebar-border: 222 30% 12%;
-    --sidebar-ring: 234 89% 64%;
+    --sidebar-accent: 235 30% 14%;
+    --sidebar-accent-foreground: 240 5% 90%;
+    --sidebar-border: 235 20% 18%;
+    --sidebar-ring: 245 58% 65%;
 
-    --bubble-inbound: 222 30% 15%;
-    --bubble-outbound: 234 89% 54%;
-    --ticket-hover: 222 30% 12%;
-    --ticket-selected: 234 50% 15%;
-    --ticket-selected-border: 234 89% 54%;
+    --bubble-inbound: 235 20% 15%;
+    --bubble-outbound: 245 40% 20%;
+    --ticket-hover: 235 20% 12%;
+    --ticket-selected: 245 30% 15%;
+    --ticket-selected-border: 245 58% 65%;
 
-    /* AI/Magic feature - Purple accent (dark mode) */
-    --ai-accent: 271 81% 66%;
+    --ai-accent: 245 58% 70%;
     --ai-accent-foreground: 0 0% 100%;
-    --ai-accent-muted: 271 50% 20%;
+    --ai-accent-muted: 245 30% 18%;
+
+    --success: 152 69% 45%;
+    --warning: 38 92% 55%;
+    --danger: 4 62% 50%;
   }
 }
 
@@ -127,14 +136,16 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 }
 
 @layer components {
+  /* Ticket list items */
   .ticket-item {
-    @apply p-4 border-b border-border cursor-pointer transition-all duration-150;
+    @apply px-4 py-3.5 border-b border-border cursor-pointer;
+    transition: all 150ms ease;
   }
   
   .ticket-item:hover {
@@ -142,54 +153,73 @@
   }
   
   .ticket-item-selected {
-    @apply bg-ticket-selected border-l-2 border-l-ticket-selected-border;
+    @apply bg-ticket-selected;
+    border-left: 3px solid hsl(var(--ticket-selected-border));
   }
   
+  /* Message bubbles */
   .message-bubble {
-    @apply rounded-2xl px-4 py-3 max-w-[75%];
+    @apply px-4 py-3 max-w-[72%];
   }
   
   .message-bubble-inbound {
-    @apply bg-bubble-inbound text-foreground rounded-bl-sm;
+    @apply bg-bubble-inbound text-foreground;
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px 12px 12px 2px;
   }
   
   .message-bubble-outbound {
-    @apply bg-bubble-outbound text-white rounded-br-sm;
+    border-radius: 12px 12px 2px 12px;
+    background: hsl(var(--bubble-outbound));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--primary) / 0.2);
   }
   
-  .nav-icon {
-    @apply p-3 rounded-lg transition-all duration-150 cursor-pointer;
-  }
-  
-  .nav-icon:hover {
-    @apply bg-sidebar-accent;
-  }
-  
-  .nav-icon-active {
-    @apply bg-sidebar-primary text-sidebar-primary-foreground;
-  }
-  
+  /* Status badges */
   .status-badge {
-    @apply px-2 py-0.5 rounded-full text-xs font-medium;
+    @apply px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
   
   .status-badge-open {
-    @apply bg-status-open/10 text-status-open;
+    background: hsl(var(--success) / 0.1);
+    color: hsl(var(--success));
   }
   
   .status-badge-closed {
-    @apply bg-status-closed/10 text-status-closed;
+    background: hsl(var(--muted-foreground) / 0.1);
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Filter pills */
+  .filter-pill {
+    @apply px-3 py-1 rounded-full text-xs font-medium cursor-pointer;
+    transition: all 150ms ease;
+    color: hsl(var(--muted-foreground));
+    background: transparent;
+  }
+
+  .filter-pill:hover {
+    background: hsl(var(--muted));
+  }
+
+  .filter-pill-active {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .filter-pill-active:hover {
+    background: hsl(var(--primary) / 0.9);
   }
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+    scrollbar-color: hsl(var(--border)) transparent;
   }
   
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
+    width: 4px;
   }
   
   .scrollbar-thin::-webkit-scrollbar-track {
@@ -197,7 +227,62 @@
   }
   
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--muted-foreground) / 0.3);
-    border-radius: 3px;
+    background-color: hsl(var(--border));
+    border-radius: 2px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.4);
+  }
+
+  .font-display {
+    font-family: 'Instrument Serif', Georgia, serif;
+  }
+
+  /* Stagger animation for ticket list */
+  .stagger-fade-in {
+    animation: staggerFadeIn 0.25s ease-out both;
+  }
+
+  @keyframes staggerFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* New ticket flash */
+  .ticket-flash {
+    animation: ticketFlash 0.8s ease-out;
+  }
+
+  @keyframes ticketFlash {
+    0% { background-color: hsl(var(--ticket-selected)); }
+    100% { background-color: transparent; }
+  }
+
+  /* Button press */
+  .btn-press:active {
+    transform: scale(0.97);
+  }
+
+  /* Message appear */
+  .msg-appear {
+    animation: msgAppear 0.2s ease-out both;
+  }
+
+  @keyframes msgAppear {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
