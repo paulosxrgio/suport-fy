@@ -144,37 +144,66 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
             if (!tokenResponse.ok) throw new Error(`Shopify auth failed: ${JSON.stringify(tokenData)}`);
             const accessToken = tokenData.access_token;
 
-            const encodedEmail = encodeURIComponent(ticket.customer_email);
-            const shopifyApiUrl = `https://${cleanUrl}/admin/api/2024-01/orders.json?email=${encodedEmail}&status=any&limit=5`;
+            const graphqlQuery = `
+              {
+                orders(first: 5, query: "email:${ticket.customer_email}") {
+                  edges {
+                    node {
+                      name
+                      displayFinancialStatus
+                      displayFulfillmentStatus
+                      totalPriceSet { shopMoney { amount currencyCode } }
+                      createdAt
+                      lineItems(first: 10) {
+                        edges {
+                          node {
+                            name
+                            variantTitle
+                            quantity
+                          }
+                        }
+                      }
+                      fulfillments {
+                        trackingInfo { number company }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
 
-            const shopifyResponse = await fetch(shopifyApiUrl, {
+            const shopifyResponse = await fetch(`https://${cleanUrl}/admin/api/2025-01/graphql.json`, {
+              method: 'POST',
               headers: {
-                'X-Shopify-Access-Token': accessToken,
                 'Content-Type': 'application/json',
+                'X-Shopify-Access-Token': accessToken,
               },
+              body: JSON.stringify({ query: graphqlQuery }),
             });
 
             if (shopifyResponse.ok) {
-              const shopifyData = await shopifyResponse.json();
-              const orders = (shopifyData.orders || []).map((order: any) => ({
-                order_number: order.order_number,
-                status: order.fulfillment_status || 'unfulfilled',
-                financial_status: order.financial_status,
-                total_price: order.total_price,
-                currency: order.currency,
-                tracking_number: order.fulfillments?.[0]?.tracking_number || null,
-                tracking_company: order.fulfillments?.[0]?.tracking_company || null,
-                items: (order.line_items || []).map((i: any) => ({
-                  name: i.name,
-                  variant: i.variant_title,
-                  quantity: i.quantity,
-                })),
-              }));
+              const responseData = await shopifyResponse.json();
+              if (!responseData.errors) {
+                const orders = responseData.data?.orders?.edges?.map(({ node: order }: any) => ({
+                  order_number: order.name,
+                  status: order.displayFulfillmentStatus || 'unfulfilled',
+                  financial_status: order.displayFinancialStatus,
+                  total_price: order.totalPriceSet?.shopMoney?.amount,
+                  currency: order.totalPriceSet?.shopMoney?.currencyCode,
+                  items: order.lineItems?.edges?.map(({ node: item }: any) => ({
+                    name: item.name,
+                    variant: item.variantTitle,
+                    quantity: item.quantity,
+                  })) || [],
+                  tracking_number: order.fulfillments?.[0]?.trackingInfo?.[0]?.number || null,
+                  tracking_company: order.fulfillments?.[0]?.trackingInfo?.[0]?.company || null,
+                })) || [];
 
-              if (orders.length > 0) {
-                shopifyContext = `\n\nDADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY:\n${orders.map((o: any) => `\n- Pedido #${o.order_number} | Status: ${o.status} | Pagamento: ${o.financial_status} | Total: ${o.currency} ${o.total_price}\n  Produtos: ${o.items.map((i: any) => `${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity}`).join(', ')}\n  Rastreamento: ${o.tracking_number || 'Não disponível'} ${o.tracking_company ? `via ${o.tracking_company}` : ''}`).join('')}`;
-              } else {
-                shopifyContext = '\n\nDADOS SHOPIFY: Nenhum pedido encontrado para este cliente.';
+                if (orders.length > 0) {
+                  shopifyContext = `\n\nDADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY:\n${orders.map((o: any) => `\n- Pedido ${o.order_number} | Status: ${o.status} | Pagamento: ${o.financial_status} | Total: ${o.currency} ${o.total_price}\n  Produtos: ${o.items.map((i: any) => `${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity}`).join(', ')}\n  Rastreamento: ${o.tracking_number || 'Não disponível'} ${o.tracking_company ? `via ${o.tracking_company}` : ''}`).join('')}`;
+                } else {
+                  shopifyContext = '\n\nDADOS SHOPIFY: Nenhum pedido encontrado para este cliente.';
+                }
               }
             }
           }
