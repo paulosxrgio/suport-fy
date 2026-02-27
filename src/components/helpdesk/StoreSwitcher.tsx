@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Store, Plus, Check, ChevronDown } from 'lucide-react';
+import { Storefront, Plus, Check, CaretDown } from '@phosphor-icons/react';
 import { useStore } from '@/contexts/StoreContext';
 import {
   Popover,
@@ -95,9 +95,9 @@ export function StoreSwitcher() {
           <button
             className="w-full flex items-center gap-2 px-3 py-2 rounded-full border border-border text-sm font-medium text-foreground hover:bg-muted transition-all duration-150"
           >
-            <Store className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Storefront className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="truncate flex-1 text-left">{currentStore?.name || 'Selecionar loja'}</span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <CaretDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-[200px] p-1 rounded-lg shadow-elevated" align="start">
@@ -112,7 +112,7 @@ export function StoreSwitcher() {
                   currentStore?.id === store.id && 'bg-muted'
                 )}
               >
-                <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <Storefront className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <span className="flex-1 truncate">{store.name}</span>
                 {currentStore?.id === store.id && (
                   <Check className="h-3.5 w-3.5 text-primary" />

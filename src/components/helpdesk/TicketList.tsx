@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { Ticket } from '@/types/helpdesk';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Mail } from 'lucide-react';
+import { EnvelopeSimple } from '@phosphor-icons/react';
 import { useMarkTicketAsRead } from '@/hooks/useTickets';
 
 interface TicketListProps {
@@ -42,7 +42,7 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
   if (!tickets || tickets.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-12">
-        <Mail className="w-12 h-12 mb-4 opacity-30" />
+        <EnvelopeSimple className="w-12 h-12 mb-4 opacity-30" />
         <p className="text-sm">Nenhum ticket encontrado</p>
       </div>
     );

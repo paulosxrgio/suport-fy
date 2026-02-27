@@ -1,4 +1,4 @@
-import { Inbox, Settings, BarChart3, Bot, LogOut } from 'lucide-react';
+import { Tray, Gear, ChartBar, Robot, SignOut } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { StoreSwitcher } from './StoreSwitcher';
@@ -15,10 +15,10 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
   const { signOut } = useAuth();
   
   const navItems = [
-    { id: 'inbox' as const, icon: Inbox, label: 'Tickets' },
-    { id: 'ai-agent' as const, icon: Bot, label: 'Agente IA' },
-    { id: 'analytics' as const, icon: BarChart3, label: 'Analytics' },
-    { id: 'settings' as const, icon: Settings, label: 'Configurações' },
+    { id: 'inbox' as const, icon: Tray, label: 'Tickets' },
+    { id: 'ai-agent' as const, icon: Robot, label: 'Agente IA' },
+    { id: 'analytics' as const, icon: ChartBar, label: 'Analytics' },
+    { id: 'settings' as const, icon: Gear, label: 'Configurações' },
   ];
 
   return (
@@ -64,7 +64,7 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
           onClick={signOut}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium w-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-150"
         >
-          <LogOut className="w-[18px] h-[18px]" />
+          <SignOut className="w-[18px] h-[18px]" />
           <span>Sair</span>
         </button>
       </div>

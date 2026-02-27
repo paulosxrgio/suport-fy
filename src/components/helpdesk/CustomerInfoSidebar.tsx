@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, Mail, User, Calendar, ShoppingBag, ExternalLink, Package, Truck, CreditCard } from 'lucide-react';
+import { CaretRight, EnvelopeSimple, User, CalendarBlank, ShoppingBag, ArrowSquareOut, Package, Truck, CreditCard } from '@phosphor-icons/react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -116,7 +116,7 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
           isOpen && 'right-[280px]'
         )}
       >
-        <ChevronRight className={cn('w-4 h-4 transition-transform duration-150', isOpen && 'rotate-180')} />
+        <CaretRight className={cn('w-4 h-4 transition-transform duration-150', isOpen && 'rotate-180')} />
       </Button>
 
       <div
@@ -127,13 +127,11 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
         )}
       >
         <div className="p-5">
-          {/* Section label */}
           <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium mb-4">
             Informações do Cliente
           </p>
 
           <div className="space-y-5">
-            {/* Avatar + Name */}
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
                 <User className="w-5 h-5 text-primary" />
@@ -148,18 +146,16 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
 
             <Separator />
 
-            {/* Email */}
             <div className="flex items-start gap-3">
-              <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
+              <EnvelopeSimple className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium mb-1">E-mail</p>
                 <p className="text-sm text-foreground break-all">{ticket.customer_email}</p>
               </div>
             </div>
 
-            {/* Created At */}
             <div className="flex items-start gap-3">
-              <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
+              <CalendarBlank className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium mb-1">Ticket criado</p>
                 <p className="text-sm text-foreground">
@@ -169,7 +165,6 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
               </div>
             </div>
 
-            {/* Shopify Section */}
             <div className="rounded-[10px] border border-border overflow-hidden shadow-card">
               <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/50 border-b border-border">
                 <ShoppingBag className="w-4 h-4 text-muted-foreground" />
@@ -262,7 +257,7 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
                                   className="text-primary underline hover:no-underline inline-flex items-center gap-0.5"
                                 >
                                   {order.tracking_number}
-                                  <ExternalLink className="w-2.5 h-2.5" />
+                                  <ArrowSquareOut className="w-2.5 h-2.5" />
                                 </a>
                               ) : (
                                 <span className="text-foreground">{order.tracking_number}</span>

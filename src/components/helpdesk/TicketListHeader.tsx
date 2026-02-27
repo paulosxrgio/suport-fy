@@ -1,4 +1,4 @@
-import { Search, RefreshCw } from 'lucide-react';
+import { MagnifyingGlass, ArrowsClockwise } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -46,7 +46,7 @@ export function TicketListHeader({
           disabled={isRefreshing}
           title="Atualizar lista"
         >
-          <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+          <ArrowsClockwise className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
         </Button>
       </div>
 
@@ -67,7 +67,7 @@ export function TicketListHeader({
       </div>
       
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}

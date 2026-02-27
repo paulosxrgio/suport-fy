@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Sparkles, Languages } from 'lucide-react';
+import { PaperPlaneRight, SpinnerGap, Sparkle, Translate } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -89,7 +89,6 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     }
   };
 
-  // Auto-resize textarea
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setReplyContent(e.target.value);
     const ta = e.target;
@@ -101,7 +100,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
         <div className="text-center text-muted-foreground">
-          <Send className="w-12 h-12 mx-auto mb-4 opacity-20" />
+          <PaperPlaneRight className="w-12 h-12 mx-auto mb-4 opacity-20" />
           <p className="text-sm">Selecione um ticket para ver a conversa</p>
         </div>
       </div>
@@ -134,12 +133,12 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
           >
             {isTranslating ? (
               <>
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                <SpinnerGap className="w-4 h-4 mr-1 animate-spin" />
                 Traduzindo...
               </>
             ) : (
               <>
-                <Languages className="w-4 h-4 mr-1" />
+                <Translate className="w-4 h-4 mr-1" />
                 {isTranslateEnabled ? 'Traduzido' : 'Traduzir'}
               </>
             )}
@@ -209,12 +208,12 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
               >
                 {generateAIReply.isPending ? (
                   <>
-                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    <SpinnerGap className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                     Escrevendo...
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                    <Sparkle className="w-3.5 h-3.5 mr-1.5" />
                     Gerar Resposta IA
                   </>
                 )}
@@ -226,10 +225,10 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
                 className="rounded-lg h-8 shadow-card btn-press transition-all duration-150"
               >
                 {sendMessage.isPending ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <SpinnerGap className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <>
-                    <Send className="w-3.5 h-3.5 mr-1.5" />
+                    <PaperPlaneRight className="w-3.5 h-3.5 mr-1.5" />
                     Enviar
                   </>
                 )}
