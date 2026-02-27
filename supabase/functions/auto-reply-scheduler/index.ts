@@ -146,14 +146,14 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
 
             const graphqlUrl = `https://${cleanUrl}/admin/api/2025-01/graphql.json`;
 
-            // Query 1 — buscar cliente pelo email
-            const customerQuery = `
+            // Query 1 — buscar cliente pelo email (com legacyResourceId)
+            const customerQuery = `#graphql
               query($q: String!) {
                 customers(first: 1, query: $q) {
                   nodes {
                     id
-                    firstName
-                    lastName
+                    legacyResourceId
+                    displayName
                     numberOfOrders
                     amountSpent { amount currencyCode }
                   }
@@ -178,26 +178,28 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
               const customer = customerData?.data?.customers?.nodes?.[0];
 
               if (customer) {
-                const customerId = customer.id.split('/').pop();
+                const customerId = customer.legacyResourceId;
 
-                // Query 2 — buscar pedidos pelo ID do cliente
-                const ordersQuery = `
+                // Query 2 — buscar pedidos pelo legacyResourceId do cliente
+                const ordersQuery = `#graphql
                   query($q: String!) {
                     orders(first: 5, query: $q, sortKey: CREATED_AT, reverse: true) {
-                      nodes {
-                        name
-                        displayFinancialStatus
-                        displayFulfillmentStatus
-                        totalPriceSet { shopMoney { amount currencyCode } }
-                        lineItems(first: 10) {
-                          nodes {
-                            name
-                            variantTitle
-                            quantity
+                      edges {
+                        node {
+                          name
+                          displayFinancialStatus
+                          displayFulfillmentStatus
+                          totalPriceSet { shopMoney { amount currencyCode } }
+                          lineItems(first: 10) {
+                            nodes {
+                              name
+                              variantTitle
+                              quantity
+                            }
                           }
-                        }
-                        fulfillments {
-                          trackingInfo { number company }
+                          fulfillments {
+                            trackingInfo { number company }
+                          }
                         }
                       }
                     }
@@ -217,20 +219,23 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
                 });
 
                 const ordersData = await ordersResponse.json();
-                const orders = ordersData?.data?.orders?.nodes?.map((order: any) => ({
-                  order_number: order.name,
-                  status: order.displayFulfillmentStatus || 'unfulfilled',
-                  financial_status: order.displayFinancialStatus,
-                  total_price: order.totalPriceSet?.shopMoney?.amount,
-                  currency: order.totalPriceSet?.shopMoney?.currencyCode,
-                  items: order.lineItems?.nodes?.map((item: any) => ({
-                    name: item.name,
-                    variant: item.variantTitle,
-                    quantity: item.quantity,
-                  })) || [],
-                  tracking_number: order.fulfillments?.[0]?.trackingInfo?.[0]?.number || null,
-                  tracking_company: order.fulfillments?.[0]?.trackingInfo?.[0]?.company || null,
-                })) || [];
+                const orders = ordersData?.data?.orders?.edges?.map((edge: any) => {
+                  const order = edge.node;
+                  return {
+                    order_number: order.name,
+                    status: order.displayFulfillmentStatus || 'unfulfilled',
+                    financial_status: order.displayFinancialStatus,
+                    total_price: order.totalPriceSet?.shopMoney?.amount,
+                    currency: order.totalPriceSet?.shopMoney?.currencyCode,
+                    items: order.lineItems?.nodes?.map((item: any) => ({
+                      name: item.name,
+                      variant: item.variantTitle,
+                      quantity: item.quantity,
+                    })) || [],
+                    tracking_number: order.fulfillments?.[0]?.trackingInfo?.[0]?.number || null,
+                    tracking_company: order.fulfillments?.[0]?.trackingInfo?.[0]?.company || null,
+                  };
+                }) || [];
 
                 if (orders.length > 0) {
                   shopifyContext = `\n\nDADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY:\n${orders.map((o: any) => `\n- Pedido ${o.order_number} | Status: ${o.status} | Pagamento: ${o.financial_status} | Total: ${o.currency} ${o.total_price}\n  Produtos: ${o.items.map((i: any) => `${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity}`).join(', ')}\n  Rastreamento: ${o.tracking_number || 'Não disponível'} ${o.tracking_company ? `via ${o.tracking_company}` : ''}`).join('')}`;

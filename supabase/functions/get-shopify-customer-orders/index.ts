@@ -95,14 +95,14 @@ serve(async (req) => {
     const accessToken = await getShopifyToken(cleanUrl, clientId, clientSecret);
     console.log('SHOPIFY DEBUG - Token gerado:', accessToken ? 'OK' : 'VAZIO');
 
-    // Query 1 — buscar cliente pelo email
-    const customerQuery = `
+    // Query 1 — buscar cliente pelo email (com legacyResourceId)
+    const customerQuery = `#graphql
       query($q: String!) {
         customers(first: 1, query: $q) {
           nodes {
             id
-            firstName
-            lastName
+            legacyResourceId
+            displayName
             numberOfOrders
             amountSpent { amount currencyCode }
           }
@@ -146,7 +146,7 @@ serve(async (req) => {
     }
 
     const customer = customerData.data?.customers?.nodes?.[0];
-    console.log('SHOPIFY DEBUG - Cliente encontrado:', customer ? `${customer.firstName} ${customer.lastName} (${customer.id})` : 'NÃO');
+    console.log('SHOPIFY DEBUG - Cliente encontrado:', customer ? `${customer.displayName} (${customer.id}, legacyId: ${customer.legacyResourceId})` : 'NÃO');
 
     if (!customer) {
       return new Response(JSON.stringify({ orders: [], customer: null }), {
@@ -154,29 +154,49 @@ serve(async (req) => {
       });
     }
 
-    // Query 2 — buscar pedidos pelo ID do cliente
-    const customerId = customer.id.split('/').pop();
+    // Test query — verificar se orders são acessíveis sem filtro
+    const testQuery = `#graphql
+      query {
+        orders(first: 1, sortKey: CREATED_AT, reverse: true) {
+          edges { node { id name createdAt email } }
+        }
+      }
+    `;
+    const testRes = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken,
+      },
+      body: JSON.stringify({ query: testQuery }),
+    });
+    console.log('SHOPIFY DEBUG - TEST ORDERS SEM FILTRO:', JSON.stringify(await testRes.json()));
+
+    // Query 2 — buscar pedidos pelo legacyResourceId do cliente
+    const customerId = customer.legacyResourceId;
     console.log('SHOPIFY DEBUG - Buscando pedidos para customer_id:', customerId);
 
-    const ordersQuery = `
+    const ordersQuery = `#graphql
       query($q: String!) {
         orders(first: 5, query: $q, sortKey: CREATED_AT, reverse: true) {
-          nodes {
-            name
-            displayFinancialStatus
-            displayFulfillmentStatus
-            createdAt
-            totalPriceSet { shopMoney { amount currencyCode } }
-            lineItems(first: 10) {
-              nodes {
-                name
-                variantTitle
-                quantity
-                originalUnitPriceSet { shopMoney { amount } }
+          edges {
+            node {
+              name
+              displayFinancialStatus
+              displayFulfillmentStatus
+              createdAt
+              totalPriceSet { shopMoney { amount currencyCode } }
+              lineItems(first: 10) {
+                nodes {
+                  name
+                  variantTitle
+                  quantity
+                  originalUnitPriceSet { shopMoney { amount } }
+                }
               }
-            }
-            fulfillments {
-              trackingInfo { number url company }
+              fulfillments {
+                trackingInfo { number url company }
+              }
             }
           }
         }
@@ -198,29 +218,32 @@ serve(async (req) => {
     const ordersData = await ordersResponse.json();
     console.log('SHOPIFY DEBUG - Orders response:', JSON.stringify(ordersData));
 
-    const orders = ordersData?.data?.orders?.nodes?.map((order: any) => ({
-      order_number: order.name,
-      status: order.displayFulfillmentStatus,
-      financial_status: order.displayFinancialStatus,
-      total_price: order.totalPriceSet?.shopMoney?.amount,
-      currency: order.totalPriceSet?.shopMoney?.currencyCode,
-      created_at: order.createdAt,
-      tracking_number: order.fulfillments?.[0]?.trackingInfo?.[0]?.number || null,
-      tracking_company: order.fulfillments?.[0]?.trackingInfo?.[0]?.company || null,
-      tracking_url: order.fulfillments?.[0]?.trackingInfo?.[0]?.url || null,
-      items: order.lineItems?.nodes?.map((item: any) => ({
-        name: item.name,
-        variant: item.variantTitle,
-        quantity: item.quantity,
-        price: item.originalUnitPriceSet?.shopMoney?.amount,
-      })) || [],
-    })) || [];
+    const orders = ordersData?.data?.orders?.edges?.map((edge: any) => {
+      const order = edge.node;
+      return {
+        order_number: order.name,
+        status: order.displayFulfillmentStatus,
+        financial_status: order.displayFinancialStatus,
+        total_price: order.totalPriceSet?.shopMoney?.amount,
+        currency: order.totalPriceSet?.shopMoney?.currencyCode,
+        created_at: order.createdAt,
+        tracking_number: order.fulfillments?.[0]?.trackingInfo?.[0]?.number || null,
+        tracking_company: order.fulfillments?.[0]?.trackingInfo?.[0]?.company || null,
+        tracking_url: order.fulfillments?.[0]?.trackingInfo?.[0]?.url || null,
+        items: order.lineItems?.nodes?.map((item: any) => ({
+          name: item.name,
+          variant: item.variantTitle,
+          quantity: item.quantity,
+          price: item.originalUnitPriceSet?.shopMoney?.amount,
+        })) || [],
+      };
+    }) || [];
     console.log('SHOPIFY DEBUG - Quantidade de pedidos:', orders.length);
 
     return new Response(JSON.stringify({
       orders,
       customer: {
-        name: `${customer.firstName} ${customer.lastName}`.trim(),
+        name: customer.displayName || '',
         numberOfOrders: customer.numberOfOrders,
         totalSpent: customer.amountSpent,
       },
