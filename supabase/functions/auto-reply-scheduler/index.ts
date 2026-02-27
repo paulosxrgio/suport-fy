@@ -111,8 +111,42 @@ serve(async (req: Request) => {
           })
           .join('\n\n') || '';
 
-        const defaultSystemPrompt = `Você é um assistente de suporte ao cliente profissional e amigável. 
-Responda de forma clara, educada e útil. Mantenha as respostas concisas mas completas.`;
+        const defaultSystemPrompt = `Você é Sophia, atendente de suporte ao cliente de uma loja online.
+Sua missão é responder emails de clientes em inglês (UK) com um tom extremamente simpático, educado, calmo, humano e persuasivo, sempre de forma natural e profissional.
+
+OBJETIVOS PRINCIPAIS
+• Resolver a dúvida do cliente com clareza e segurança.
+• Reduzir cancelamentos e disputas sem ser agressiva, defensiva ou desonesta.
+• Manter o cliente confiante de que está tudo certo, usando uma linguagem tranquila e acolhedora.
+
+FORMATO FIXO DA RESPOSTA
+• Sempre escrever apenas um email em inglês (UK).
+• Sempre começar com "Hi [Name]," usando o PRIMEIRO NOME DO CLIENTE fornecido nos dados abaixo.
+• Nunca usar Markdown (**, __, ###, listas formatadas).
+• Nunca usar travessão longo.
+• Se houver link de rastreio, colocá-lo em uma linha separada, visível e fácil de clicar.
+• Sempre assinar: Kind regards, Sophia
+
+REGRAS DE OURO
+• Se o cliente não mencionou cancelamento, nunca fale sobre cancelamento, reembolso, devolução ou disputa.
+• Se mencionar cancelamento: responda persuasivamente sem negar o direito do cliente.
+• Se mencionar disputa ou chargeback: peça calmamente para não abrir disputa e tranquilize.
+• Nunca culpar o cliente. Nunca soar defensiva ou robótica.
+• Sempre usar frases humanas como: "I've checked this personally", "I'm here to help you", "I'll keep an eye on it with you".
+
+RASTREAMENTO
+• Se o rastreio não for reconhecido: explique que envios internacionais demoram para aparecer em plataformas locais e forneça o link: https://t.17track.net/CODIGO
+• Se estiver em trânsito sem atualização: explique que atualizações acontecem por checkpoints e o pedido continua em rota.
+
+ENVIO
+• Se questionar por que vem da China: explique que é enviado direto do fabricante oficial, mantendo o preço acessível. Prazo: 8-12 business days from dispatch.
+
+ALTERAÇÃO DE PEDIDO
+• Se o pedido não foi enviado: confirme que a alteração foi feita.
+• Se já foi enviado: explique que não é possível antes da entrega e ofereça solução pós-entrega só se o cliente insistir.
+
+PERSUASÃO NATURAL (sem parecer manipulativa)
+• "I've checked this personally" • "Everything is moving as expected" • "I'll keep an eye on it with you"`;
 
         const systemPrompt = settings.ai_system_prompt || defaultSystemPrompt;
 
@@ -249,17 +283,26 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
           console.log(`Item ${item.id} - Shopify fetch skipped:`, shopifyError);
         }
 
-        const userMessage = `Contexto do Ticket:
-- Assunto: ${ticket.subject}
-- Cliente: ${ticket.customer_name || ticket.customer_email}
+        // Extract customer first name
+        const customerFirstName = ticket.customer_name?.split(' ')[0] 
+          || ticket.customer_email.split('@')[0];
 
-Histórico da Conversa:
-${conversationHistory || "Nenhuma mensagem anterior."}
-${shopifyContext}
+        const userMessage = (() => {
+          // Parse orders from shopifyContext if available
+          const orderContext = shopifyContext && !shopifyContext.includes('Nenhum pedido encontrado') 
+            ? shopifyContext + `\n- Primeiro nome do cliente: ${customerFirstName}`
+            : `\nDADOS DO PEDIDO: Nenhum pedido encontrado. Responda normalmente e peça o número do pedido educadamente no final.\n- Primeiro nome do cliente: ${customerFirstName}`;
 
-${lastInboundMessage ? `Última mensagem do cliente: ${lastInboundMessage}` : ""}
+          return `
+${orderContext}
 
-Por favor, gere uma resposta profissional e útil para o cliente.`;
+HISTÓRICO DA CONVERSA:
+${conversationHistory || 'Primeiro contato.'}
+
+ÚLTIMA MENSAGEM DO CLIENTE:
+${lastInboundMessage || 'Sem mensagem.'}
+`.trim();
+        })();
 
         const model = settings.ai_model || 'gpt-4o';
 
