@@ -125,6 +125,8 @@ export type Database = {
           sender_email: string | null
           sender_name: string | null
           shopify_api_token: string | null
+          shopify_client_id: string | null
+          shopify_client_secret: string | null
           shopify_store_url: string | null
           store_id: string | null
           updated_at: string
@@ -143,6 +145,8 @@ export type Database = {
           sender_email?: string | null
           sender_name?: string | null
           shopify_api_token?: string | null
+          shopify_client_id?: string | null
+          shopify_client_secret?: string | null
           shopify_store_url?: string | null
           store_id?: string | null
           updated_at?: string
@@ -161,6 +165,8 @@ export type Database = {
           sender_email?: string | null
           sender_name?: string | null
           shopify_api_token?: string | null
+          shopify_client_id?: string | null
+          shopify_client_secret?: string | null
           shopify_store_url?: string | null
           store_id?: string | null
           updated_at?: string

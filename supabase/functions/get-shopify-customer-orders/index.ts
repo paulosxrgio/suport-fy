@@ -6,6 +6,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function getShopifyToken(storeUrl: string, clientId: string, clientSecret: string): Promise<string> {
+  const response = await fetch(`https://${storeUrl}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'client_credentials',
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(`Shopify auth failed: ${JSON.stringify(data)}`);
+  return data.access_token;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -36,7 +51,6 @@ serve(async (req) => {
       });
     }
 
-    // Fetch ticket
     const { data: ticket, error: ticketError } = await supabase
       .from('tickets')
       .select('customer_email, store_id')
@@ -55,30 +69,33 @@ serve(async (req) => {
       });
     }
 
-    // Fetch settings
     const { data: settings } = await supabase
       .from('settings')
-      .select('shopify_store_url, shopify_api_token')
+      .select('shopify_store_url, shopify_client_id, shopify_client_secret')
       .eq('store_id', ticket.store_id)
       .single();
 
     const shopifyUrl = (settings as any)?.shopify_store_url;
-    const shopifyToken = (settings as any)?.shopify_api_token;
+    const clientId = (settings as any)?.shopify_client_id;
+    const clientSecret = (settings as any)?.shopify_client_secret;
 
-    if (!shopifyUrl || !shopifyToken) {
+    if (!shopifyUrl || !clientId || !clientSecret) {
       return new Response(JSON.stringify({ orders: [], not_configured: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Call Shopify API
     const cleanUrl = shopifyUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+    // Get token via client credentials
+    const accessToken = await getShopifyToken(cleanUrl, clientId, clientSecret);
+
     const encodedEmail = encodeURIComponent(ticket.customer_email);
     const shopifyApiUrl = `https://${cleanUrl}/admin/api/2024-01/orders.json?email=${encodedEmail}&status=any&limit=5`;
 
     const shopifyResponse = await fetch(shopifyApiUrl, {
       headers: {
-        'X-Shopify-Access-Token': shopifyToken,
+        'X-Shopify-Access-Token': accessToken,
         'Content-Type': 'application/json',
       },
     });
