@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.verify-resend-key]
 verify_jwt = false
+
+[functions.auto-reply-scheduler]
+verify_jwt = false
