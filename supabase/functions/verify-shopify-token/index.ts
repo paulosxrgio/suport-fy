@@ -19,6 +19,12 @@ serve(async (req) => {
       });
     }
 
+    if (!apiToken.startsWith('shpat_')) {
+      return new Response(JSON.stringify({ success: false, error: 'Token inválido. O token da Shopify Admin API deve começar com shpat_' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Normalize the store URL
     const cleanUrl = storeUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
     const shopifyApiUrl = `https://${cleanUrl}/admin/api/2024-01/shop.json`;
