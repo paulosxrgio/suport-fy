@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, Check, ExternalLink, Key, Mail, Eye, EyeOff, Loader2, User, Store } from 'lucide-react';
+import { Copy, Check, ExternalLink, Key, Mail, Eye, EyeOff, Loader2, User, Store, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +17,10 @@ export function SettingsPage() {
   const [resendApiKey, setResendApiKey] = useState('');
   const [senderName, setSenderName] = useState('');
   const [senderEmail, setSenderEmail] = useState('');
+  const [shopifyStoreUrl, setShopifyStoreUrl] = useState('');
+  const [shopifyApiToken, setShopifyApiToken] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showShopifyToken, setShowShopifyToken] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,6 +50,8 @@ export function SettingsPage() {
         setResendApiKey((data as any).resend_api_key || '');
         setSenderName((data as any).sender_name || '');
         setSenderEmail((data as any).sender_email || '');
+        setShopifyStoreUrl((data as any).shopify_store_url || '');
+        setShopifyApiToken((data as any).shopify_api_token || '');
       } else {
         // Clear form if no settings exist for this store
         setSettingsId(null);
@@ -54,6 +59,8 @@ export function SettingsPage() {
         setResendApiKey('');
         setSenderName('');
         setSenderEmail('');
+        setShopifyStoreUrl('');
+        setShopifyApiToken('');
       }
       setIsLoading(false);
     };
@@ -110,6 +117,8 @@ export function SettingsPage() {
         resend_api_key_configured: !!resendApiKey,
         sender_name: senderName,
         sender_email: senderEmail,
+        shopify_store_url: shopifyStoreUrl,
+        shopify_api_token: shopifyApiToken,
         updated_at: new Date().toISOString()
       };
 
@@ -341,6 +350,65 @@ export function SettingsPage() {
                   Documentação
                 </a>
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Shopify Integration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5" />
+              Integração Shopify
+            </CardTitle>
+            <CardDescription>
+              Conecte sua loja Shopify para sincronizar pedidos e produtos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="shopify-store-url">Shopify Store URL</Label>
+              <Input
+                id="shopify-store-url"
+                type="text"
+                value={shopifyStoreUrl}
+                onChange={(e) => setShopifyStoreUrl(e.target.value)}
+                placeholder="minha-loja.myshopify.com"
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                O endereço da sua loja no Shopify (ex: minha-loja.myshopify.com).
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shopify-api-token">Shopify Admin API Token</Label>
+              <div className="relative">
+                <Input
+                  id="shopify-api-token"
+                  type={showShopifyToken ? 'text' : 'password'}
+                  value={shopifyApiToken}
+                  onChange={(e) => setShopifyApiToken(e.target.value)}
+                  placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxx"
+                  className="pr-10 font-mono text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowShopifyToken(!showShopifyToken)}
+                >
+                  {showShopifyToken ? (
+                    <EyeOff className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Token gerado em Shopify Admin → Settings → Apps → Develop apps.
+              </p>
             </div>
           </CardContent>
         </Card>
