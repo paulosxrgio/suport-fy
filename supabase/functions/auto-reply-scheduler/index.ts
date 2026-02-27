@@ -249,6 +249,8 @@ Sophia`;
         // STEP 2a.2: Buscar pedidos Shopify do cliente
         // ========================================
         let shopifyContext = '';
+        let shopifyCustomerName: string | null = null;
+        let shopifyOrders: any[] = [];
         try {
           const shopifyUrl = (settings as any)?.shopify_store_url;
           const shopifyClientId = (settings as any)?.shopify_client_id;
@@ -307,6 +309,7 @@ Sophia`;
               const customer = customerData?.data?.customers?.nodes?.[0];
 
               if (customer) {
+                shopifyCustomerName = customer.displayName || null;
                 const customerId = customer.legacyResourceId;
 
                 // Query 2 — buscar pedidos pelo legacyResourceId do cliente
@@ -438,14 +441,25 @@ Sophia`;
             } else {
               shopifyContext = '\n\nDADOS SHOPIFY: Nenhum pedido encontrado para este cliente.';
             }
+            shopifyOrders = orders;
           }
         } catch (shopifyError) {
           console.log(`Item ${item.id} - Shopify fetch skipped:`, shopifyError);
         }
 
-        // Extract customer first name
-        const customerFirstName = ticket.customer_name?.split(' ')[0] 
-          || ticket.customer_email.split('@')[0];
+        // Extract customer first name (priority: Shopify displayName > order customer_name > ticket name > email)
+        const fullName =
+          shopifyCustomerName ||
+          shopifyOrders?.[0]?.customer_name ||
+          ticket.customer_name ||
+          null;
+
+        const customerFirstName =
+          fullName?.split(' ')[0] ||
+          fullName?.split(' ').slice(-1)[0] ||
+          ticket.customer_email?.split('@')[0];
+        
+        console.log(`Item ${item.id} - Customer name resolved: "${customerFirstName}" (from fullName: "${fullName}")`);
 
         // ========================================
         // STEP 2a.3: Buscar memória do cliente
