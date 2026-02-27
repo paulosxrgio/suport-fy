@@ -356,108 +356,155 @@ serve(async (req: Request) => {
       console.log('Step 5 - AVISO: Nenhuma loja encontrada pelo domínio, ticket sem store_id');
     }
     // ========================================
-    // STEP 6: ENCONTRAR OU CRIAR TICKET COM THREADING
+    // STEP 6: ENCONTRAR OU CRIAR TICKET COM THREADING (3 estratégias em cascata)
     // ========================================
     let ticketId: string | null = null;
     let existingReferences: string[] = [];
     let isNewTicket = false;
+    let existingTicket: any = null;
 
-    // Tentar threading primeiro usando headers do webhook
+    // Extrair headers de threading do webhook
     const headers = webhookData.headers || [];
     const inReplyTo = headers.find((h: { name: string }) => h.name?.toLowerCase() === 'in-reply-to')?.value;
     const incomingReferences = headers.find((h: { name: string }) => h.name?.toLowerCase() === 'references')?.value;
 
-    console.log('Step 6a - Headers de threading do e-mail recebido:', { inReplyTo, incomingReferences });
+    console.log('Step 6 - Headers de threading:', { inReplyTo, incomingReferences });
 
+    // ---- ESTRATÉGIA 1: Match pelo In-Reply-To/References ----
     if (inReplyTo || incomingReferences) {
-      const referencedIds = [inReplyTo, ...(incomingReferences?.split(/\s+/) || [])].filter(Boolean);
-      
-      if (referencedIds.length > 0) {
-        const { data: referencedMessages } = await supabase
-          .from('messages')
-          .select('ticket_id')
-          .in('email_message_id', referencedIds)
-          .limit(1);
+      const messageIds = [inReplyTo, ...(incomingReferences || '').split(/\s+/)]
+        .filter(Boolean)
+        .map((id: string) => id.trim());
 
-        if (referencedMessages && referencedMessages.length > 0) {
-          ticketId = referencedMessages[0].ticket_id;
-          console.log('Step 6a - Ticket encontrado por threading:', ticketId);
-          
-          // Buscar references existentes do ticket
-          const { data: ticketData } = await supabase
+      if (messageIds.length > 0) {
+        // 1a: Checar last_message_id na tabela tickets
+        if (storeId) {
+          const { data: threadMatch } = await supabase
             .from('tickets')
-            .select('references_chain, store_id, status')
-            .eq('id', ticketId)
-            .single();
-          
-          existingReferences = ticketData?.references_chain || [];
-          // Use ticket's store_id if found via threading
-          if (ticketData?.store_id) {
-            storeId = ticketData.store_id;
+            .select('*')
+            .eq('store_id', storeId)
+            .in('last_message_id', messageIds)
+            .maybeSingle();
+
+          if (threadMatch) {
+            existingTicket = threadMatch;
+            console.log('Step 6a - ESTRATÉGIA 1 (last_message_id): Ticket encontrado:', threadMatch.id);
           }
+        }
 
-          // Se o ticket existente estiver fechado, reabrir automaticamente
-          if (ticketData?.status === 'closed') {
-            await supabase
+        // 1b: Fallback - checar email_message_id na tabela messages
+        if (!existingTicket) {
+          const { data: referencedMessages } = await supabase
+            .from('messages')
+            .select('ticket_id')
+            .in('email_message_id', messageIds)
+            .limit(1);
+
+          if (referencedMessages && referencedMessages.length > 0) {
+            const { data: ticketData } = await supabase
               .from('tickets')
-              .update({ status: 'open' })
-              .eq('id', ticketId);
+              .select('*')
+              .eq('id', referencedMessages[0].ticket_id)
+              .single();
 
-            console.log('Step 6a - TICKET REOPENED:', ticketId);
-
-            // Se a loja tiver IA ativa, colocar na fila de auto-reply
-            if (storeId) {
-              const { data: storeSettings } = await supabase
-                .from('settings')
-                .select('ai_is_active, ai_response_delay')
-                .eq('store_id', storeId)
-                .maybeSingle();
-
-              if (storeSettings?.ai_is_active) {
-                const delay = storeSettings.ai_response_delay || 10;
-                const minDelay = 4;
-                const randomDelay = Math.floor(Math.random() * (delay - minDelay + 1)) + minDelay;
-                const scheduledFor = new Date(Date.now() + randomDelay * 60 * 1000).toISOString();
-
-                await supabase.from('auto_reply_queue').insert({
-                  ticket_id: ticketId,
-                  store_id: storeId,
-                  scheduled_for: scheduledFor,
-                  status: 'pending',
-                });
-
-                console.log('Step 6a - AUTO-REPLY SCHEDULED FOR REOPENED TICKET:', scheduledFor);
-              }
+            if (ticketData) {
+              existingTicket = ticketData;
+              console.log('Step 6a - ESTRATÉGIA 1 (messages): Ticket encontrado:', ticketData.id);
             }
           }
         }
       }
     }
 
-    // Fallback: buscar por e-mail do cliente (dentro da mesma loja se possível)
-    if (!ticketId) {
-      let ticketQuery = supabase
+    // ---- ESTRATÉGIA 2: Match pelo subject limpo + email do cliente ----
+    if (!existingTicket && storeId) {
+      const cleanSubject = subject
+        .replace(/^(Re|Fwd|Fw|Enc|Res):\s*/gi, '')
+        .trim();
+
+      if (cleanSubject.length > 0) {
+        const { data: subjectMatch } = await supabase
+          .from('tickets')
+          .select('*')
+          .eq('store_id', storeId)
+          .eq('customer_email', customerEmail)
+          .ilike('subject', `%${cleanSubject}%`)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (subjectMatch) {
+          existingTicket = subjectMatch;
+          console.log('Step 6b - ESTRATÉGIA 2 (subject): Ticket encontrado:', subjectMatch.id);
+        }
+      }
+    }
+
+    // ---- ESTRATÉGIA 3: Match pelo email do cliente com ticket aberto recente (72h) ----
+    if (!existingTicket && storeId) {
+      const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+
+      const { data: recentMatch } = await supabase
         .from('tickets')
-        .select('id, references_chain, store_id')
+        .select('*')
+        .eq('store_id', storeId)
         .eq('customer_email', customerEmail)
         .eq('status', 'open')
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .gte('last_message_at', seventyTwoHoursAgo)
+        .order('last_message_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (storeId) {
-        ticketQuery = ticketQuery.eq('store_id', storeId);
+      if (recentMatch) {
+        existingTicket = recentMatch;
+        console.log('Step 6c - ESTRATÉGIA 3 (recente 72h): Ticket encontrado:', recentMatch.id);
+      }
+    }
+
+    // ---- Processar ticket encontrado ----
+    if (existingTicket) {
+      ticketId = existingTicket.id;
+      existingReferences = existingTicket.references_chain || [];
+      if (existingTicket.store_id) {
+        storeId = existingTicket.store_id;
       }
 
-      const { data: existingTicket } = await ticketQuery.maybeSingle();
+      // Se o ticket existente estiver fechado, reabrir automaticamente
+      if (existingTicket.status === 'closed') {
+        await supabase
+          .from('tickets')
+          .update({ status: 'open' })
+          .eq('id', ticketId);
 
-      if (existingTicket) {
-        ticketId = existingTicket.id;
-        existingReferences = existingTicket.references_chain || [];
-        if (existingTicket.store_id) {
-          storeId = existingTicket.store_id;
+        console.log('Step 6 - TICKET REOPENED:', ticketId);
+
+        // Se a loja tiver IA ativa, colocar na fila de auto-reply
+        if (storeId) {
+          const { data: storeSettings } = await supabase
+            .from('settings')
+            .select('ai_is_active, ai_response_delay')
+            .eq('store_id', storeId)
+            .maybeSingle();
+
+          if (storeSettings?.ai_is_active) {
+            const delay = storeSettings.ai_response_delay || 10;
+            const minDelay = 4;
+            const randomDelay = Math.floor(Math.random() * (delay - minDelay + 1)) + minDelay;
+            const scheduledFor = new Date(Date.now() + randomDelay * 60 * 1000).toISOString();
+
+            await supabase.from('auto_reply_queue').insert({
+              ticket_id: ticketId,
+              store_id: storeId,
+              scheduled_for: scheduledFor,
+              status: 'pending',
+            });
+
+            console.log('Step 6 - AUTO-REPLY SCHEDULED FOR REOPENED TICKET:', scheduledFor);
+          }
         }
-        console.log('Step 6b - Ticket encontrado por e-mail:', ticketId);
       }
+    } else {
+      console.log('Step 6 - Nenhum ticket existente encontrado por nenhuma estratégia');
     }
 
     // Criar novo ticket se necessário
