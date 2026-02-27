@@ -95,15 +95,45 @@ serve(async (req) => {
     const accessToken = await getShopifyToken(cleanUrl, clientId, clientSecret);
     console.log('SHOPIFY DEBUG - Token gerado:', accessToken ? 'OK' : 'VAZIO');
 
-    const encodedEmail = encodeURIComponent(ticket.customer_email);
-    const shopifyApiUrl = `https://${cleanUrl}/admin/api/2024-01/orders.json?email=${encodedEmail}&status=any&limit=5`;
-    console.log('SHOPIFY DEBUG - URL da busca:', shopifyApiUrl);
+    const graphqlQuery = `
+      {
+        orders(first: 5, query: "email:${ticket.customer_email}") {
+          edges {
+            node {
+              name
+              displayFinancialStatus
+              displayFulfillmentStatus
+              totalPriceSet { shopMoney { amount currencyCode } }
+              createdAt
+              lineItems(first: 10) {
+                edges {
+                  node {
+                    name
+                    variantTitle
+                    quantity
+                    originalUnitPriceSet { shopMoney { amount } }
+                  }
+                }
+              }
+              fulfillments {
+                trackingInfo { number url company }
+              }
+            }
+          }
+        }
+      }
+    `;
 
-    const shopifyResponse = await fetch(shopifyApiUrl, {
+    const graphqlUrl = `https://${cleanUrl}/admin/api/2025-01/graphql.json`;
+    console.log('SHOPIFY DEBUG - GraphQL URL:', graphqlUrl);
+
+    const shopifyResponse = await fetch(graphqlUrl, {
+      method: 'POST',
       headers: {
-        'X-Shopify-Access-Token': accessToken,
         'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken,
       },
+      body: JSON.stringify({ query: graphqlQuery }),
     });
 
     console.log('SHOPIFY DEBUG - Status da resposta:', shopifyResponse.status);
@@ -116,26 +146,34 @@ serve(async (req) => {
       });
     }
 
-    const shopifyData = await shopifyResponse.json();
-    console.log('SHOPIFY DEBUG - Quantidade de pedidos:', shopifyData.orders?.length || 0);
-    console.log('SHOPIFY DEBUG - Resposta completa:', JSON.stringify(shopifyData));
-    const orders = (shopifyData.orders || []).map((order: any) => ({
-      order_number: order.order_number,
-      status: order.fulfillment_status || 'unfulfilled',
-      financial_status: order.financial_status,
-      total_price: order.total_price,
-      currency: order.currency,
-      created_at: order.created_at,
-      tracking_number: order.fulfillments?.[0]?.tracking_number || null,
-      tracking_company: order.fulfillments?.[0]?.tracking_company || null,
-      tracking_url: order.fulfillments?.[0]?.tracking_url || null,
-      items: (order.line_items || []).map((item: any) => ({
+    const responseData = await shopifyResponse.json();
+    console.log('SHOPIFY DEBUG - Resposta completa:', JSON.stringify(responseData));
+
+    if (responseData.errors) {
+      console.error('SHOPIFY DEBUG - GraphQL errors:', JSON.stringify(responseData.errors));
+      return new Response(JSON.stringify({ orders: [], error: `GraphQL errors: ${JSON.stringify(responseData.errors)}` }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const orders = responseData.data?.orders?.edges?.map(({ node: order }: any) => ({
+      order_number: order.name,
+      status: order.displayFulfillmentStatus,
+      financial_status: order.displayFinancialStatus,
+      total_price: order.totalPriceSet?.shopMoney?.amount,
+      currency: order.totalPriceSet?.shopMoney?.currencyCode,
+      created_at: order.createdAt,
+      tracking_number: order.fulfillments?.[0]?.trackingInfo?.[0]?.number || null,
+      tracking_company: order.fulfillments?.[0]?.trackingInfo?.[0]?.company || null,
+      tracking_url: order.fulfillments?.[0]?.trackingInfo?.[0]?.url || null,
+      items: order.lineItems?.edges?.map(({ node: item }: any) => ({
         name: item.name,
-        variant: item.variant_title,
+        variant: item.variantTitle,
         quantity: item.quantity,
-        price: item.price,
-      })),
-    }));
+        price: item.originalUnitPriceSet?.shopMoney?.amount,
+      })) || [],
+    })) || [];
+    console.log('SHOPIFY DEBUG - Quantidade de pedidos:', orders.length);
 
     return new Response(JSON.stringify({ orders }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
