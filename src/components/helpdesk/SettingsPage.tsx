@@ -18,9 +18,11 @@ export function SettingsPage() {
   const [senderName, setSenderName] = useState('');
   const [senderEmail, setSenderEmail] = useState('');
   const [shopifyStoreUrl, setShopifyStoreUrl] = useState('');
-  const [shopifyApiToken, setShopifyApiToken] = useState('');
+  const [shopifyClientId, setShopifyClientId] = useState('');
+  const [shopifyClientSecret, setShopifyClientSecret] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
-  const [showShopifyToken, setShowShopifyToken] = useState(false);
+  const [showShopifyClientId, setShowShopifyClientId] = useState(false);
+  const [showShopifyClientSecret, setShowShopifyClientSecret] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerifyingShopify, setIsVerifyingShopify] = useState(false);
@@ -52,7 +54,8 @@ export function SettingsPage() {
         setSenderName((data as any).sender_name || '');
         setSenderEmail((data as any).sender_email || '');
         setShopifyStoreUrl((data as any).shopify_store_url || '');
-        setShopifyApiToken((data as any).shopify_api_token || '');
+        setShopifyClientId((data as any).shopify_client_id || '');
+        setShopifyClientSecret((data as any).shopify_client_secret || '');
       } else {
         // Clear form if no settings exist for this store
         setSettingsId(null);
@@ -61,7 +64,8 @@ export function SettingsPage() {
         setSenderName('');
         setSenderEmail('');
         setShopifyStoreUrl('');
-        setShopifyApiToken('');
+        setShopifyClientId('');
+        setShopifyClientSecret('');
       }
       setIsLoading(false);
     };
@@ -104,20 +108,15 @@ export function SettingsPage() {
   };
 
   const handleVerifyShopify = async () => {
-    if (!shopifyStoreUrl.trim() || !shopifyApiToken.trim()) {
-      toast.error('Preencha a URL e o token para verificar');
-      return;
-    }
-
-    if (!shopifyApiToken.startsWith('shpat_')) {
-      toast.error('O token deve começar com shpat_. Verifique se copiou o token correto.');
+    if (!shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()) {
+      toast.error('Preencha a URL, Client ID e Client Secret para verificar');
       return;
     }
 
     setIsVerifyingShopify(true);
     try {
       const { data, error } = await supabase.functions.invoke('verify-shopify-token', {
-        body: { storeUrl: shopifyStoreUrl, apiToken: shopifyApiToken }
+        body: { storeUrl: shopifyStoreUrl, clientId: shopifyClientId, clientSecret: shopifyClientSecret }
       });
 
       if (error) throw error;
@@ -141,10 +140,6 @@ export function SettingsPage() {
       return;
     }
 
-    if (shopifyApiToken && !shopifyApiToken.startsWith('shpat_')) {
-      toast.warning('Atenção: O token Shopify não começa com shpat_. Verifique se copiou o token correto.');
-    }
-
     setIsSaving(true);
     try {
       const settingsData = {
@@ -155,7 +150,8 @@ export function SettingsPage() {
         sender_name: senderName,
         sender_email: senderEmail,
         shopify_store_url: shopifyStoreUrl,
-        shopify_api_token: shopifyApiToken,
+        shopify_client_id: shopifyClientId,
+        shopify_client_secret: shopifyClientSecret,
         updated_at: new Date().toISOString()
       };
 
@@ -419,15 +415,42 @@ export function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="shopify-api-token">Shopify Admin API Token</Label>
+              <Label htmlFor="shopify-client-id">Client ID</Label>
+              <div className="relative">
+                <Input
+                  id="shopify-client-id"
+                  type={showShopifyClientId ? 'text' : 'password'}
+                  value={shopifyClientId}
+                  onChange={(e) => setShopifyClientId(e.target.value)}
+                  placeholder="Client ID da aplicação Shopify"
+                  className="pr-10 font-mono text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowShopifyClientId(!showShopifyClientId)}
+                >
+                  {showShopifyClientId ? (
+                    <EyeOff className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shopify-client-secret">Client Secret</Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
-                    id="shopify-api-token"
-                    type={showShopifyToken ? 'text' : 'password'}
-                    value={shopifyApiToken}
-                    onChange={(e) => setShopifyApiToken(e.target.value)}
-                    placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxx"
+                    id="shopify-client-secret"
+                    type={showShopifyClientSecret ? 'text' : 'password'}
+                    value={shopifyClientSecret}
+                    onChange={(e) => setShopifyClientSecret(e.target.value)}
+                    placeholder="Client Secret da aplicação Shopify"
                     className="pr-10 font-mono text-sm"
                   />
                   <Button
@@ -435,9 +458,9 @@ export function SettingsPage() {
                     variant="ghost"
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowShopifyToken(!showShopifyToken)}
+                    onClick={() => setShowShopifyClientSecret(!showShopifyClientSecret)}
                   >
-                    {showShopifyToken ? (
+                    {showShopifyClientSecret ? (
                       <EyeOff className="w-4 h-4 text-muted-foreground" />
                     ) : (
                       <Eye className="w-4 h-4 text-muted-foreground" />
@@ -447,7 +470,7 @@ export function SettingsPage() {
                 <Button
                   variant="outline"
                   onClick={handleVerifyShopify}
-                  disabled={isVerifyingShopify || !shopifyStoreUrl.trim() || !shopifyApiToken.trim()}
+                  disabled={isVerifyingShopify || !shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()}
                 >
                   {isVerifyingShopify ? (
                     <>
@@ -460,7 +483,7 @@ export function SettingsPage() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Token gerado em Shopify Admin → Settings → Apps → Develop apps.
+                Gerados em Shopify Admin → Settings → Apps → Develop apps → API credentials.
               </p>
             </div>
           </CardContent>

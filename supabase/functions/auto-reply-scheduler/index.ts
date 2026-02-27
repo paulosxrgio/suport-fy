@@ -83,7 +83,7 @@ serve(async (req: Request) => {
         // Buscar settings da loja
         const { data: settings } = await supabase
           .from('settings')
-          .select('openai_api_key, ai_model, ai_system_prompt, sender_name, sender_email, email_signature, resend_api_key, shopify_store_url, shopify_api_token')
+          .select('openai_api_key, ai_model, ai_system_prompt, sender_name, sender_email, email_signature, resend_api_key, shopify_store_url, shopify_client_id, shopify_client_secret')
           .eq('store_id', item.store_id)
           .maybeSingle();
 
@@ -124,16 +124,32 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
         let shopifyContext = '';
         try {
           const shopifyUrl = (settings as any)?.shopify_store_url;
-          const shopifyToken = (settings as any)?.shopify_api_token;
+          const shopifyClientId = (settings as any)?.shopify_client_id;
+          const shopifyClientSecret = (settings as any)?.shopify_client_secret;
 
-          if (shopifyUrl && shopifyToken) {
+          if (shopifyUrl && shopifyClientId && shopifyClientSecret) {
             const cleanUrl = shopifyUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+            // Get token via client credentials
+            const tokenResponse = await fetch(`https://${cleanUrl}/admin/oauth/access_token`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                client_id: shopifyClientId,
+                client_secret: shopifyClientSecret,
+                grant_type: 'client_credentials',
+              }),
+            });
+            const tokenData = await tokenResponse.json();
+            if (!tokenResponse.ok) throw new Error(`Shopify auth failed: ${JSON.stringify(tokenData)}`);
+            const accessToken = tokenData.access_token;
+
             const encodedEmail = encodeURIComponent(ticket.customer_email);
             const shopifyApiUrl = `https://${cleanUrl}/admin/api/2024-01/orders.json?email=${encodedEmail}&status=any&limit=5`;
 
             const shopifyResponse = await fetch(shopifyApiUrl, {
               headers: {
-                'X-Shopify-Access-Token': shopifyToken,
+                'X-Shopify-Access-Token': accessToken,
                 'Content-Type': 'application/json',
               },
             });
