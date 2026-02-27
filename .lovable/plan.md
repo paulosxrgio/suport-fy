@@ -1,37 +1,29 @@
 
 
-## Plan: Shopify Orders in Sidebar + AI Context
+## Analysis
 
-### Part 1 — Shopify Orders in CustomerInfoSidebar
+The Shopify API is returning 401 errors. Looking at the stored token (`shpss_...`), it doesn't start with `shpat_` which is the correct prefix for Shopify Admin API tokens. The URL cleanup and headers in both edge functions already look correct, so the main issue is the invalid token format.
 
-**File: `src/components/helpdesk/CustomerInfoSidebar.tsx`**
+The requested changes are mostly about adding a `shpat_` prefix validation, since the existing code already handles URL normalization and correct headers.
 
-- Add `useState` + `useEffect` to call `get-shopify-customer-orders` when `ticket.id` changes
-- Track `orders`, `loading`, `notConfigured` state
-- After the existing "Ticket criado" section, add a new `Separator` + "Pedidos Shopify" section:
-  - Loading: `Skeleton` loaders
-  - `notConfigured`: subtle muted text "Integração Shopify não configurada"
-  - Empty orders: "Nenhum pedido encontrado"
-  - Orders list: card per order with:
-    - `#{order_number}` + `Badge` (unfulfilled=yellow, fulfilled=green, cancelled=red)
-    - Items list: name + variant + quantity
-    - Total price + financial_status badge
-    - Tracking link if available (clickable `tracking_url`)
-- Uses `supabase.functions.invoke('get-shopify-customer-orders', { body: { ticketId } })`
-- Imports: `useState`, `useEffect`, `ShoppingBag`, `ExternalLink`, `Package` from lucide; `Badge`, `Skeleton` from UI; `supabase` from client
+## Plan
 
-### Part 2 — Inject Shopify Data into AI Context
+### 1. Add `shpat_` token validation in SettingsPage.tsx
 
-**File: `supabase/functions/auto-reply-scheduler/index.ts`**
+- In `handleVerifyShopify`, before calling the edge function, check if `shopifyApiToken` starts with `shpat_`. If not, show a warning toast: "O token deve começar com shpat_. Verifique se copiou o token correto."
+- In `handleSaveSettings`, add the same warning (non-blocking) when saving a token that doesn't start with `shpat_`.
 
-- After fetching settings (line ~88), also fetch `shopify_store_url` and `shopify_api_token` from settings select
-- Before building `userMessage` (~line 121), add Shopify order fetch logic inline:
-  - If `shopify_store_url` and `shopify_api_token` exist, call Shopify API directly (same logic as `get-shopify-customer-orders`)
-  - Build `shopifyContext` string with order details
-  - If not configured or error, set `shopifyContext = ''` (silently skip)
-- Inject `shopifyContext` into `userMessage` before the last client message block
+### 2. Add `shpat_` validation in verify-shopify-token edge function
+
+- Before calling Shopify API, check if `apiToken` starts with `shpat_`. If not, return `{ success: false, error: 'Token inválido. O token da Shopify Admin API deve começar com shpat_' }`.
+
+### 3. No other changes needed
+
+- The URL cleanup (`replace(/^https?:\/\//, '').replace(/\/$/, '')`) is already in both `get-shopify-customer-orders` and `verify-shopify-token`.
+- The `X-Shopify-Access-Token` header is already correct in both functions.
+- The verify function already tests `GET /admin/api/2024-01/shop.json` correctly.
 
 ### Files to modify:
-1. `src/components/helpdesk/CustomerInfoSidebar.tsx` — add orders section
-2. `supabase/functions/auto-reply-scheduler/index.ts` — add Shopify context to AI prompt
+1. `src/components/helpdesk/SettingsPage.tsx` -- add `shpat_` validation warning
+2. `supabase/functions/verify-shopify-token/index.ts` -- add `shpat_` prefix check
 
