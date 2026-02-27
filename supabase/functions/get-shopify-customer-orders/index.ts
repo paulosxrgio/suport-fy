@@ -97,7 +97,7 @@ serve(async (req) => {
 
     const graphqlQuery = `
       {
-        orders(first: 5, query: "email:\\"${ticket.customer_email}\\"") {
+        orders(first: 5, query: "email:${ticket.customer_email}") {
           edges {
             node {
               name
