@@ -1,49 +1,37 @@
-# Sistema Multi-Lojas - Status das Correções
 
-## ✅ Correções Implementadas
 
-### 1. AIAgentPage.tsx - CORRIGIDO
-- Adicionado `useStore()` para obter `currentStore`
-- Query agora filtra por `store_id`
-- Save faz upsert por `store_id`
-- UI mostra mensagem quando nenhuma loja selecionada
-- Exibe nome da loja no header
+## Plan: Shopify Orders in Sidebar + AI Context
 
-### 2. translate-text Edge Function - CORRIGIDO
-- Aceita `ticketId` ou `storeId` no body
-- Busca `store_id` do ticket quando necessário
-- Filtra settings por `store_id`
+### Part 1 — Shopify Orders in CustomerInfoSidebar
 
-### 3. useTranslation.ts - CORRIGIDO
-- Passa `ticketId` e `storeId` para edge function
+**File: `src/components/helpdesk/CustomerInfoSidebar.tsx`**
 
-### 4. ConversationView.tsx - CORRIGIDO
-- Passa `ticket.id` e `ticket.store_id` para tradução
+- Add `useState` + `useEffect` to call `get-shopify-customer-orders` when `ticket.id` changes
+- Track `orders`, `loading`, `notConfigured` state
+- After the existing "Ticket criado" section, add a new `Separator` + "Pedidos Shopify" section:
+  - Loading: `Skeleton` loaders
+  - `notConfigured`: subtle muted text "Integração Shopify não configurada"
+  - Empty orders: "Nenhum pedido encontrado"
+  - Orders list: card per order with:
+    - `#{order_number}` + `Badge` (unfulfilled=yellow, fulfilled=green, cancelled=red)
+    - Items list: name + variant + quantity
+    - Total price + financial_status badge
+    - Tracking link if available (clickable `tracking_url`)
+- Uses `supabase.functions.invoke('get-shopify-customer-orders', { body: { ticketId } })`
+- Imports: `useState`, `useEffect`, `ShoppingBag`, `ExternalLink`, `Package` from lucide; `Badge`, `Skeleton` from UI; `supabase` from client
 
-### 5. generate-ai-reply Edge Function - CORRIGIDO
-- Removida busca duplicada na tabela `stores`
-- Agora busca apenas da tabela `settings` por `store_id`
+### Part 2 — Inject Shopify Data into AI Context
 
----
+**File: `supabase/functions/auto-reply-scheduler/index.ts`**
 
-## Componentes Funcionando Corretamente
+- After fetching settings (line ~88), also fetch `shopify_store_url` and `shopify_api_token` from settings select
+- Before building `userMessage` (~line 121), add Shopify order fetch logic inline:
+  - If `shopify_store_url` and `shopify_api_token` exist, call Shopify API directly (same logic as `get-shopify-customer-orders`)
+  - Build `shopifyContext` string with order details
+  - If not configured or error, set `shopifyContext = ''` (silently skip)
+- Inject `shopifyContext` into `userMessage` before the last client message block
 
-- SettingsPage.tsx ✅
-- useTickets.ts ✅
-- send-email-reply Edge Function ✅
-- process-inbound-email Edge Function ✅
-- useCreateTicket ✅
-- StoreSwitcher.tsx ✅
+### Files to modify:
+1. `src/components/helpdesk/CustomerInfoSidebar.tsx` — add orders section
+2. `supabase/functions/auto-reply-scheduler/index.ts` — add Shopify context to AI prompt
 
----
-
-## Melhoria Futura (Baixa Prioridade)
-
-### Limpeza da Tabela `stores`
-
-Remover colunas duplicadas da tabela `stores`:
-- `sender_name`, `sender_email`, `email_signature`
-- `resend_api_key`, `openai_api_key`
-- `ai_system_prompt`, `ai_model`, `ai_is_active`, `ai_response_delay`
-
-Manter apenas: `id`, `user_id`, `name`, `domain`, `created_at`, `updated_at`
