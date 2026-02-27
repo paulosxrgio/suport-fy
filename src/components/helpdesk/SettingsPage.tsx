@@ -109,6 +109,11 @@ export function SettingsPage() {
       return;
     }
 
+    if (!shopifyApiToken.startsWith('shpat_')) {
+      toast.error('O token deve começar com shpat_. Verifique se copiou o token correto.');
+      return;
+    }
+
     setIsVerifyingShopify(true);
     try {
       const { data, error } = await supabase.functions.invoke('verify-shopify-token', {
@@ -134,6 +139,10 @@ export function SettingsPage() {
     if (!currentStore) {
       toast.error('Selecione uma loja primeiro');
       return;
+    }
+
+    if (shopifyApiToken && !shopifyApiToken.startsWith('shpat_')) {
+      toast.warning('Atenção: O token Shopify não começa com shpat_. Verifique se copiou o token correto.');
     }
 
     setIsSaving(true);
