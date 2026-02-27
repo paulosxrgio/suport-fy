@@ -144,15 +144,46 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
             if (!tokenResponse.ok) throw new Error(`Shopify auth failed: ${JSON.stringify(tokenData)}`);
             const accessToken = tokenData.access_token;
 
+            const graphqlUrl = `https://${cleanUrl}/admin/api/2025-01/graphql.json`;
+
+            // Query 1 — buscar cliente pelo email
             const customerQuery = `
               query($q: String!) {
                 customers(first: 1, query: $q) {
                   nodes {
+                    id
                     firstName
                     lastName
                     numberOfOrders
                     amountSpent { amount currencyCode }
-                    orders(first: 5, sortKey: CREATED_AT, reverse: true) {
+                  }
+                }
+              }
+            `;
+
+            const customerResponse = await fetch(graphqlUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Shopify-Access-Token': accessToken,
+              },
+              body: JSON.stringify({
+                query: customerQuery,
+                variables: { q: `email:"${ticket.customer_email}"` },
+              }),
+            });
+
+            if (customerResponse.ok) {
+              const customerData = await customerResponse.json();
+              const customer = customerData?.data?.customers?.nodes?.[0];
+
+              if (customer) {
+                const customerId = customer.id.split('/').pop();
+
+                // Query 2 — buscar pedidos pelo ID do cliente
+                const ordersQuery = `
+                  query($q: String!) {
+                    orders(first: 5, query: $q, sortKey: CREATED_AT, reverse: true) {
                       nodes {
                         name
                         displayFinancialStatus
@@ -171,27 +202,22 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
                       }
                     }
                   }
-                }
-              }
-            `;
+                `;
 
-            const shopifyResponse = await fetch(`https://${cleanUrl}/admin/api/2025-01/graphql.json`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Shopify-Access-Token': accessToken,
-              },
-              body: JSON.stringify({
-                query: customerQuery,
-                variables: { q: `email:"${ticket.customer_email}"` },
-              }),
-            });
+                const ordersResponse = await fetch(graphqlUrl, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-Shopify-Access-Token': accessToken,
+                  },
+                  body: JSON.stringify({
+                    query: ordersQuery,
+                    variables: { q: `customer_id:${customerId}` },
+                  }),
+                });
 
-            if (shopifyResponse.ok) {
-              const responseData = await shopifyResponse.json();
-              if (!responseData.errors) {
-                const customer = responseData.data?.customers?.nodes?.[0];
-                const orders = customer?.orders?.nodes?.map((order: any) => ({
+                const ordersData = await ordersResponse.json();
+                const orders = ordersData?.data?.orders?.nodes?.map((order: any) => ({
                   order_number: order.name,
                   status: order.displayFulfillmentStatus || 'unfulfilled',
                   financial_status: order.displayFinancialStatus,
