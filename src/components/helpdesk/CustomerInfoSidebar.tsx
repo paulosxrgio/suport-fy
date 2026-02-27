@@ -167,132 +167,127 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
               </div>
             </div>
 
-            <Separator />
-
-            {/* Shopify Customer Info */}
-            {customer && (
-              <div className="flex items-start gap-3">
-                <ShoppingBag className="w-4 h-4 text-muted-foreground mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Cliente Shopify</p>
-                  <p className="text-sm font-medium text-foreground">{customer.name || ticket.customer_name || '—'}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-muted-foreground">
-                      {customer.numberOfOrders} pedido{customer.numberOfOrders !== '1' ? 's' : ''}
-                    </span>
-                    <span className="text-xs text-muted-foreground">•</span>
-                    <span className="text-xs text-muted-foreground">
-                      {customer.totalSpent?.currencyCode} {customer.totalSpent?.amount}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {customer && <Separator />}
-
-            {/* Orders Section */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Hash className="w-4 h-4 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Pedidos Shopify</p>
+            {/* Shopify Section — unified block */}
+            <div className="border border-border rounded-lg bg-muted/20 overflow-hidden">
+              {/* Section header */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border">
+                <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Shopify</span>
               </div>
 
-              {loadingOrders && (
-                <div className="space-y-2">
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
-                </div>
-              )}
-
-              {!loadingOrders && notConfigured && (
-                <p className="text-xs text-muted-foreground italic">Integração Shopify não configurada</p>
-              )}
-
-              {!loadingOrders && !notConfigured && orders.length === 0 && (
-                <p className="text-xs text-muted-foreground italic">Nenhum pedido encontrado</p>
-              )}
-
-              {!loadingOrders && orders.map((order, orderIdx) => (
-                <div
-                  key={orderIdx}
-                  className="border border-border rounded-lg p-3 space-y-2.5 bg-muted/30"
-                >
-                  {/* Header: order number + fulfillment badge */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-foreground">{order.order_number}</span>
-                    {getFulfillmentBadge(order.status)}
+              <div className="p-3 space-y-3">
+                {loadingOrders && (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-20 w-full" />
                   </div>
+                )}
 
-                  {/* Date */}
-                  <p className="text-[11px] text-muted-foreground">
-                    {order.created_at
-                      ? format(new Date(order.created_at), "dd MMM yyyy", { locale: ptBR })
-                      : '—'}
-                  </p>
+                {!loadingOrders && notConfigured && (
+                  <p className="text-xs text-muted-foreground italic">Integração não configurada</p>
+                )}
 
-                  {/* Items */}
-                  {order.items.length > 0 && (
-                    <div className="space-y-1 pt-0.5">
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="flex items-start gap-1.5">
-                          <Package className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
-                          <p className="text-xs text-foreground leading-tight">
-                            {item.name}
-                            {item.variant && (
-                              <span className="text-muted-foreground"> ({item.variant})</span>
-                            )}
-                            <span className="text-muted-foreground"> ×{item.quantity}</span>
+                {!loadingOrders && !notConfigured && (
+                  <>
+                    {/* Customer summary */}
+                    {customer && (
+                      <div className="flex items-center gap-2.5 pb-2 border-b border-border">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <User className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {customer.name || ticket?.customer_name || '—'}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {customer.numberOfOrders} pedido{customer.numberOfOrders !== '1' ? 's' : ''} · {customer.totalSpent?.currencyCode} {customer.totalSpent?.amount}
                           </p>
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Payment: total + financial badge */}
-                  <div className="flex items-center justify-between pt-1 border-t border-border">
-                    <div className="flex items-center gap-1.5">
-                      <CreditCard className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs font-medium text-foreground">
-                        {order.currency} {order.total_price}
-                      </span>
-                    </div>
-                    {getFinancialBadge(order.financial_status)}
-                  </div>
-
-                  {/* Tracking */}
-                  <div className="pt-1 border-t border-border">
-                    {order.tracking_number ? (
-                      <div className="flex items-start gap-1.5">
-                        <Truck className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
-                        <div className="text-xs">
-                          {order.tracking_company && (
-                            <span className="text-muted-foreground">{order.tracking_company} · </span>
-                          )}
-                          {order.tracking_url ? (
-                            <a
-                              href={order.tracking_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline inline-flex items-center gap-0.5"
-                            >
-                              {order.tracking_number}
-                              <ExternalLink className="w-2.5 h-2.5" />
-                            </a>
-                          ) : (
-                            <span className="text-foreground">{order.tracking_number}</span>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <Truck className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground italic">Rastreamento não disponível</span>
                       </div>
                     )}
-                  </div>
-                </div>
-              ))}
+
+                    {/* Orders */}
+                    {orders.length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">Nenhum pedido encontrado</p>
+                    )}
+
+                    {orders.map((order, orderIdx) => (
+                      <div key={orderIdx} className="space-y-2">
+                        {/* Order header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-semibold text-foreground">{order.order_number}</span>
+                            <span className="text-[11px] text-muted-foreground">
+                              · {order.created_at ? format(new Date(order.created_at), "dd MMM yyyy", { locale: ptBR }) : '—'}
+                            </span>
+                          </div>
+                          {getFulfillmentBadge(order.status)}
+                        </div>
+
+                        {/* Items */}
+                        {order.items.length > 0 && (
+                          <div className="space-y-1 pl-0.5">
+                            {order.items.map((item, idx) => (
+                              <div key={idx} className="flex items-start gap-1.5">
+                                <Package className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+                                <p className="text-xs text-foreground leading-tight">
+                                  {item.name}
+                                  {item.variant && <span className="text-muted-foreground"> ({item.variant})</span>}
+                                  <span className="text-muted-foreground"> ×{item.quantity}</span>
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Payment */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <CreditCard className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-xs font-medium text-foreground">
+                              {order.currency} {order.total_price}
+                            </span>
+                          </div>
+                          {getFinancialBadge(order.financial_status)}
+                        </div>
+
+                        {/* Tracking */}
+                        {order.tracking_number ? (
+                          <div className="flex items-start gap-1.5">
+                            <Truck className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+                            <div className="text-xs">
+                              {order.tracking_company && (
+                                <span className="text-muted-foreground">{order.tracking_company} · </span>
+                              )}
+                              {order.tracking_url ? (
+                                <a
+                                  href={order.tracking_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline inline-flex items-center gap-0.5"
+                                >
+                                  {order.tracking_number}
+                                  <ExternalLink className="w-2.5 h-2.5" />
+                                </a>
+                              ) : (
+                                <span className="text-foreground">{order.tracking_number}</span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <Truck className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground italic">Rastreamento não disponível</span>
+                          </div>
+                        )}
+
+                        {/* Divider between orders */}
+                        {orderIdx < orders.length - 1 && <Separator />}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
