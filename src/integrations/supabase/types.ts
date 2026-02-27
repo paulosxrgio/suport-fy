@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      auto_reply_queue: {
+        Row: {
+          created_at: string | null
+          id: string
+          scheduled_for: string
+          status: string
+          store_id: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          scheduled_for: string
+          status?: string
+          store_id: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          scheduled_for?: string
+          status?: string
+          store_id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_reply_queue_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_reply_queue_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
