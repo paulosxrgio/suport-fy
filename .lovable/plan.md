@@ -1,29 +1,47 @@
 
 
-## Analysis
+## Plan: Migrate Shopify Auth to Client Credentials (OAuth)
 
-The Shopify API is returning 401 errors. Looking at the stored token (`shpss_...`), it doesn't start with `shpat_` which is the correct prefix for Shopify Admin API tokens. The URL cleanup and headers in both edge functions already look correct, so the main issue is the invalid token format.
+### 1. Database Migration
+Add two new columns to `settings`:
+```sql
+ALTER TABLE settings
+ADD COLUMN IF NOT EXISTS shopify_client_id text,
+ADD COLUMN IF NOT EXISTS shopify_client_secret text;
+```
+Keep `shopify_api_token` for storing the temporary token (optional/cache).
 
-The requested changes are mostly about adding a `shpat_` prefix validation, since the existing code already handles URL normalization and correct headers.
+### 2. Update SettingsPage.tsx
+- Replace the single "API Token" field with two fields: **Client ID** and **Client Secret** (both `type="password"` with show/hide toggle)
+- Add state: `shopifyClientId`, `shopifyClientSecret`, `showShopifyClientId`, `showShopifyClientSecret`
+- Load from `shopify_client_id` / `shopify_client_secret`
+- Save to those columns; remove `shopify_api_token` from save data
+- Remove `shpat_` validation
+- Update verify button: disabled unless `shopifyStoreUrl + shopifyClientId + shopifyClientSecret` are filled
+- Pass `clientId` and `clientSecret` to verify function instead of `apiToken`
 
-## Plan
+### 3. Update verify-shopify-token Edge Function
+- Accept `{ storeUrl, clientId, clientSecret }` instead of `{ storeUrl, apiToken }`
+- Remove `shpat_` prefix check
+- Add `getShopifyToken()` helper that POSTs to `https://{cleanUrl}/admin/oauth/access_token` with `client_id`, `client_secret`, `grant_type: 'client_credentials'`
+- Use returned `access_token` to test `GET /admin/api/2024-01/shop.json`
 
-### 1. Add `shpat_` token validation in SettingsPage.tsx
+### 4. Update get-shopify-customer-orders Edge Function
+- Fetch `shopify_client_id` and `shopify_client_secret` from settings instead of `shopify_api_token`
+- Add same `getShopifyToken()` helper
+- Generate token before calling orders API
+- Use generated token in `X-Shopify-Access-Token` header
 
-- In `handleVerifyShopify`, before calling the edge function, check if `shopifyApiToken` starts with `shpat_`. If not, show a warning toast: "O token deve começar com shpat_. Verifique se copiou o token correto."
-- In `handleSaveSettings`, add the same warning (non-blocking) when saving a token that doesn't start with `shpat_`.
-
-### 2. Add `shpat_` validation in verify-shopify-token edge function
-
-- Before calling Shopify API, check if `apiToken` starts with `shpat_`. If not, return `{ success: false, error: 'Token inválido. O token da Shopify Admin API deve começar com shpat_' }`.
-
-### 3. No other changes needed
-
-- The URL cleanup (`replace(/^https?:\/\//, '').replace(/\/$/, '')`) is already in both `get-shopify-customer-orders` and `verify-shopify-token`.
-- The `X-Shopify-Access-Token` header is already correct in both functions.
-- The verify function already tests `GET /admin/api/2024-01/shop.json` correctly.
+### 5. Update auto-reply-scheduler Edge Function
+- Update settings select to include `shopify_client_id`, `shopify_client_secret` instead of `shopify_api_token`
+- Add same `getShopifyToken()` helper
+- Generate token before Shopify orders fetch
+- Use generated token in header
 
 ### Files to modify:
-1. `src/components/helpdesk/SettingsPage.tsx` -- add `shpat_` validation warning
-2. `supabase/functions/verify-shopify-token/index.ts` -- add `shpat_` prefix check
+1. **Database migration** — add `shopify_client_id` and `shopify_client_secret` columns
+2. `src/components/helpdesk/SettingsPage.tsx` — replace API token field with Client ID + Client Secret
+3. `supabase/functions/verify-shopify-token/index.ts` — use client credentials OAuth flow
+4. `supabase/functions/get-shopify-customer-orders/index.ts` — use client credentials OAuth flow
+5. `supabase/functions/auto-reply-scheduler/index.ts` — use client credentials OAuth flow
 
