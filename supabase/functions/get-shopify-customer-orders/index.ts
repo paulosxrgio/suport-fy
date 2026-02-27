@@ -95,28 +95,33 @@ serve(async (req) => {
     const accessToken = await getShopifyToken(cleanUrl, clientId, clientSecret);
     console.log('SHOPIFY DEBUG - Token gerado:', accessToken ? 'OK' : 'VAZIO');
 
-    const graphqlQuery = `
-      {
-        orders(first: 5, query: "email:${ticket.customer_email}") {
-          edges {
-            node {
-              name
-              displayFinancialStatus
-              displayFulfillmentStatus
-              totalPriceSet { shopMoney { amount currencyCode } }
-              createdAt
-              lineItems(first: 10) {
-                edges {
-                  node {
+    const customerQuery = `
+      query($q: String!) {
+        customers(first: 1, query: $q) {
+          nodes {
+            id
+            firstName
+            lastName
+            numberOfOrders
+            amountSpent { amount currencyCode }
+            orders(first: 5, sortKey: CREATED_AT, reverse: true) {
+              nodes {
+                name
+                displayFinancialStatus
+                displayFulfillmentStatus
+                createdAt
+                totalPriceSet { shopMoney { amount currencyCode } }
+                lineItems(first: 10) {
+                  nodes {
                     name
                     variantTitle
                     quantity
                     originalUnitPriceSet { shopMoney { amount } }
                   }
                 }
-              }
-              fulfillments {
-                trackingInfo { number url company }
+                fulfillments {
+                  trackingInfo { number url company }
+                }
               }
             }
           }
@@ -133,7 +138,10 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'X-Shopify-Access-Token': accessToken,
       },
-      body: JSON.stringify({ query: graphqlQuery }),
+      body: JSON.stringify({
+        query: customerQuery,
+        variables: { q: `email:"${ticket.customer_email}"` },
+      }),
     });
 
     console.log('SHOPIFY DEBUG - Status da resposta:', shopifyResponse.status);
@@ -156,7 +164,16 @@ serve(async (req) => {
       });
     }
 
-    const orders = responseData.data?.orders?.edges?.map(({ node: order }: any) => ({
+    const customer = responseData.data?.customers?.nodes?.[0];
+    console.log('SHOPIFY DEBUG - Cliente encontrado:', customer ? `${customer.firstName} ${customer.lastName}` : 'NÃO');
+
+    if (!customer) {
+      return new Response(JSON.stringify({ orders: [], customer: null }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const orders = customer.orders?.nodes?.map((order: any) => ({
       order_number: order.name,
       status: order.displayFulfillmentStatus,
       financial_status: order.displayFinancialStatus,
@@ -166,7 +183,7 @@ serve(async (req) => {
       tracking_number: order.fulfillments?.[0]?.trackingInfo?.[0]?.number || null,
       tracking_company: order.fulfillments?.[0]?.trackingInfo?.[0]?.company || null,
       tracking_url: order.fulfillments?.[0]?.trackingInfo?.[0]?.url || null,
-      items: order.lineItems?.edges?.map(({ node: item }: any) => ({
+      items: order.lineItems?.nodes?.map((item: any) => ({
         name: item.name,
         variant: item.variantTitle,
         quantity: item.quantity,
@@ -175,7 +192,14 @@ serve(async (req) => {
     })) || [];
     console.log('SHOPIFY DEBUG - Quantidade de pedidos:', orders.length);
 
-    return new Response(JSON.stringify({ orders }), {
+    return new Response(JSON.stringify({
+      orders,
+      customer: {
+        name: `${customer.firstName} ${customer.lastName}`.trim(),
+        numberOfOrders: customer.numberOfOrders,
+        totalSpent: customer.amountSpent,
+      },
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
