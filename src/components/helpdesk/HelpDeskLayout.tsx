@@ -7,6 +7,7 @@ import { CustomerInfoSidebar } from './CustomerInfoSidebar';
 import { SettingsPage } from './SettingsPage';
 import { AnalyticsPage } from './AnalyticsPage';
 import { AIAgentPage } from './AIAgentPage';
+import { RequestsPage } from './RequestsPage';
 import { NewTicketDialog } from './NewTicketDialog';
 import { useTickets, useTicket } from '@/hooks/useTickets';
 import { useMessages } from '@/hooks/useMessages';
@@ -16,7 +17,7 @@ import { toast } from 'sonner';
 import { Store } from 'lucide-react';
 
 export function HelpDeskLayout() {
-  const [activeNav, setActiveNav] = useState<'inbox' | 'ai-agent' | 'analytics' | 'settings'>('inbox');
+  const [activeNav, setActiveNav] = useState<'inbox' | 'ai-agent' | 'requests' | 'analytics' | 'settings'>('inbox');
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,6 +88,8 @@ export function HelpDeskLayout() {
         return <SettingsPage />;
       case 'analytics':
         return <AnalyticsPage tickets={allTickets || []} />;
+      case 'requests':
+        return <RequestsPage />;
       case 'ai-agent':
         return <AIAgentPage />;
       case 'inbox':
