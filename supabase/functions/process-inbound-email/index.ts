@@ -386,7 +386,7 @@ serve(async (req: Request) => {
           // Buscar references existentes do ticket
           const { data: ticketData } = await supabase
             .from('tickets')
-            .select('references_chain, store_id')
+            .select('references_chain, store_id, status')
             .eq('id', ticketId)
             .single();
           
@@ -394,6 +394,41 @@ serve(async (req: Request) => {
           // Use ticket's store_id if found via threading
           if (ticketData?.store_id) {
             storeId = ticketData.store_id;
+          }
+
+          // Se o ticket existente estiver fechado, reabrir automaticamente
+          if (ticketData?.status === 'closed') {
+            await supabase
+              .from('tickets')
+              .update({ status: 'open' })
+              .eq('id', ticketId);
+
+            console.log('Step 6a - TICKET REOPENED:', ticketId);
+
+            // Se a loja tiver IA ativa, colocar na fila de auto-reply
+            if (storeId) {
+              const { data: storeSettings } = await supabase
+                .from('settings')
+                .select('ai_is_active, ai_response_delay')
+                .eq('store_id', storeId)
+                .maybeSingle();
+
+              if (storeSettings?.ai_is_active) {
+                const delay = storeSettings.ai_response_delay || 10;
+                const minDelay = 4;
+                const randomDelay = Math.floor(Math.random() * (delay - minDelay + 1)) + minDelay;
+                const scheduledFor = new Date(Date.now() + randomDelay * 60 * 1000).toISOString();
+
+                await supabase.from('auto_reply_queue').insert({
+                  ticket_id: ticketId,
+                  store_id: storeId,
+                  scheduled_for: scheduledFor,
+                  status: 'pending',
+                });
+
+                console.log('Step 6a - AUTO-REPLY SCHEDULED FOR REOPENED TICKET:', scheduledFor);
+              }
+            }
           }
         }
       }
