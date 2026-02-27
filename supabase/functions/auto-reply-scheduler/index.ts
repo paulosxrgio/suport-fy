@@ -95,18 +95,19 @@ serve(async (req: Request) => {
           throw new Error(`Resend API key não configurada para loja ${item.store_id}`);
         }
 
-        // Buscar últimas 3 mensagens para contexto
+        // Buscar últimas 5 mensagens para contexto
         const { data: messages } = await supabase
           .from('messages')
           .select('content, direction, created_at')
           .eq('ticket_id', item.ticket_id)
           .order('created_at', { ascending: false })
-          .limit(3);
+          .limit(5);
 
+        // Build history in chronological order with clear roles
         const conversationHistory = messages
           ?.reverse()
           .map((msg) => {
-            const role = msg.direction === 'inbound' ? 'Cliente' : 'Atendente';
+            const role = msg.direction === 'inbound' ? 'Customer' : 'Sophia';
             return `${role}: ${msg.content}`;
           })
           .join('\n\n') || '';
@@ -334,11 +335,11 @@ Sophia`;
           return `
 ${orderContext}
 
-HISTÓRICO DA CONVERSA:
-${conversationHistory || 'Primeiro contato.'}
+CONVERSATION HISTORY (read carefully before replying — continue naturally from where it left off):
+${conversationHistory || 'This is the first message from this customer.'}
 
-ÚLTIMA MENSAGEM DO CLIENTE:
-${lastInboundMessage || 'Sem mensagem.'}
+CUSTOMER'S LATEST MESSAGE:
+${lastInboundMessage || 'No message.'}
 `.trim();
         })();
 

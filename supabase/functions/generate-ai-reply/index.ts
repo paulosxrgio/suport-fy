@@ -72,13 +72,13 @@ serve(async (req) => {
       );
     }
 
-    // Fetch last 3 messages
+    // Fetch last 5 messages for context
     const { data: messages, error: messagesError } = await supabase
       .from("messages")
       .select("content, direction, created_at")
       .eq("ticket_id", ticketId)
       .order("created_at", { ascending: false })
-      .limit(3);
+      .limit(5);
 
     if (messagesError) {
       console.error("Error fetching messages:", messagesError);
@@ -88,13 +88,14 @@ serve(async (req) => {
       );
     }
 
+    // Build history in chronological order with clear roles
     const conversationHistory = messages
       ?.reverse()
       .map((msg) => {
-        const role = msg.direction === "inbound" ? "Cliente" : "Atendente";
+        const role = msg.direction === "inbound" ? "Customer" : "Sophia";
         return `${role}: ${msg.content}`;
       })
-      .join("\n\n");
+      .join("\n\n") || '';
 
     // ========================================
     // Fetch Shopify orders for context
@@ -309,11 +310,11 @@ Sophia`;
     const userMessage = `
 ${orderContext}
 
-HISTÓRICO DA CONVERSA:
-${conversationHistory || 'Primeiro contato.'}
+CONVERSATION HISTORY (read carefully before replying — continue naturally from where it left off):
+${conversationHistory || 'This is the first message from this customer.'}
 
-ÚLTIMA MENSAGEM DO CLIENTE:
-${lastInboundMessage || 'Sem mensagem.'}
+CUSTOMER'S LATEST MESSAGE:
+${lastInboundMessage || 'No message.'}
 `.trim();
 
     // Call OpenAI
