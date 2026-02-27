@@ -2,6 +2,47 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
+// Strip quoted text from email replies (multi-language support)
+function stripQuotedText(text: string): string {
+  if (!text) return '';
+  
+  const lines = text.split('\n');
+  const cleanLines: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    
+    if (/^Em\s.+escreveu:/i.test(trimmed)) break;
+    if (/^On\s.+wrote:/i.test(trimmed)) break;
+    if (/^Le\s.+a\s+écrit\s*:/i.test(trimmed)) break;
+    if (/^El\s.+escribi[oó]:/i.test(trimmed)) break;
+    if (/^Am\s.+schrieb/i.test(trimmed)) break;
+    if (/<[^>]+@[^>]+>\s*(wrote|escreveu|a écrit|escribió|schrieb)\s*:/i.test(trimmed)) break;
+    if (/^-{3,}\s*Original Message\s*-{3,}$/i.test(trimmed)) break;
+    if (/^-{3,}\s*Mensagem Original\s*-{3,}$/i.test(trimmed)) break;
+    if (/^-{5,}$/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^From:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^De:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^Sent:\s/i.test(trimmed)) break;
+    if (/^Enviado:\s/i.test(trimmed)) break;
+    if (/^To:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^Para:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^Subject:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^Assunto:\s/i.test(trimmed) && cleanLines.length > 0) break;
+    if (/^--\s*$/.test(trimmed)) break;
+    if (/^—\s*$/.test(trimmed)) break;
+    if (/^_{3,}$/.test(trimmed) && cleanLines.length > 0) break;
+    if (trimmed.startsWith('>') && cleanLines.length > 0) continue;
+    
+    cleanLines.push(line);
+  }
+  
+  let result = cleanLines.join('\n');
+  result = result.replace(/\n{3,}/g, '\n\n');
+  return result.trim();
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -200,7 +241,9 @@ Sophia`;
 
         const systemPrompt = settings.ai_system_prompt || defaultSystemPrompt;
 
-        const lastInboundMessage = messages?.reverse().find(m => m.direction === 'inbound')?.content || '';
+        const rawLastInbound = messages?.reverse().find(m => m.direction === 'inbound')?.content || '';
+        const lastInboundMessage = stripQuotedText(rawLastInbound);
+        console.log(`Item ${item.id} - Last inbound cleaned: ${rawLastInbound.length} → ${lastInboundMessage.length} chars`);
 
         // ========================================
         // STEP 2a.2: Buscar pedidos Shopify do cliente
