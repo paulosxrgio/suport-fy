@@ -514,6 +514,56 @@ serve(async (req: Request) => {
     }
 
     console.log('Step 8 - Mensagem inserida com sucesso!');
+
+    // ========================================
+    // STEP 9: ENFILEIRAR AUTO-RESPOSTA IA (apenas para tickets novos)
+    // ========================================
+    let queuedAutoReply = false;
+
+    if (isNewTicket && storeId) {
+      console.log('Step 9 - Verificando se IA está ativa para loja:', storeId);
+
+      const { data: storeSettings } = await supabase
+        .from('settings')
+        .select('ai_is_active, ai_response_delay')
+        .eq('store_id', storeId)
+        .maybeSingle();
+
+      if (storeSettings?.ai_is_active === true) {
+        const maxDelay = storeSettings.ai_response_delay ?? 10;
+        const minDelay = 4;
+        // Random delay between minDelay and maxDelay minutes
+        const delayMinutes = Math.floor(Math.random() * (Math.max(maxDelay, minDelay + 1) - minDelay + 1)) + minDelay;
+        const scheduledFor = new Date(Date.now() + delayMinutes * 60 * 1000).toISOString();
+
+        console.log('Step 9 - IA ativa! Enfileirando auto-resposta:', {
+          delayMinutes,
+          scheduledFor,
+          maxDelay,
+        });
+
+        const { error: queueError } = await supabase
+          .from('auto_reply_queue')
+          .insert({
+            ticket_id: ticketId,
+            store_id: storeId,
+            scheduled_for: scheduledFor,
+            status: 'pending',
+          });
+
+        if (queueError) {
+          console.error('Step 9 - ERRO ao enfileirar auto-resposta:', queueError);
+        } else {
+          queuedAutoReply = true;
+          console.log('Step 9 - Auto-resposta enfileirada com sucesso!');
+        }
+      } else {
+        console.log('Step 9 - IA não está ativa para esta loja, pulando auto-resposta');
+      }
+    } else {
+      console.log('Step 9 - Não é ticket novo ou sem store_id, pulando auto-resposta');
+    }
+
     console.log('=== PROCESS INBOUND EMAIL COMPLETE ===');
 
     return new Response(
@@ -524,6 +574,7 @@ serve(async (req: Request) => {
         isNewTicket,
         storeId,
         hasContent: !!cleanedContent,
+        queuedAutoReply,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
