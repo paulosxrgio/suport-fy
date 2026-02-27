@@ -146,7 +146,7 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
 
             const graphqlQuery = `
               {
-                orders(first: 5, query: "email:${ticket.customer_email}") {
+                orders(first: 5, query: "email:\\"${ticket.customer_email}\\"") {
                   edges {
                     node {
                       name
