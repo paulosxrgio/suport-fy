@@ -1,47 +1,32 @@
 
 
-## Plan: Migrate Shopify Auth to Client Credentials (OAuth)
+## Plan: Migrate Shopify order lookup to customer-first GraphQL approach
 
-### 1. Database Migration
-Add two new columns to `settings`:
-```sql
-ALTER TABLE settings
-ADD COLUMN IF NOT EXISTS shopify_client_id text,
-ADD COLUMN IF NOT EXISTS shopify_client_secret text;
-```
-Keep `shopify_api_token` for storing the temporary token (optional/cache).
+### Problem
+The current GraphQL query searches orders directly by email, which returns empty results. The correct approach is to first find the customer by email, then fetch their orders through the customer object.
 
-### 2. Update SettingsPage.tsx
-- Replace the single "API Token" field with two fields: **Client ID** and **Client Secret** (both `type="password"` with show/hide toggle)
-- Add state: `shopifyClientId`, `shopifyClientSecret`, `showShopifyClientId`, `showShopifyClientSecret`
-- Load from `shopify_client_id` / `shopify_client_secret`
-- Save to those columns; remove `shopify_api_token` from save data
-- Remove `shpat_` validation
-- Update verify button: disabled unless `shopifyStoreUrl + shopifyClientId + shopifyClientSecret` are filled
-- Pass `clientId` and `clientSecret` to verify function instead of `apiToken`
+### Changes
 
-### 3. Update verify-shopify-token Edge Function
-- Accept `{ storeUrl, clientId, clientSecret }` instead of `{ storeUrl, apiToken }`
-- Remove `shpat_` prefix check
-- Add `getShopifyToken()` helper that POSTs to `https://{cleanUrl}/admin/oauth/access_token` with `client_id`, `client_secret`, `grant_type: 'client_credentials'`
-- Use returned `access_token` to test `GET /admin/api/2024-01/shop.json`
+#### 1. Update `get-shopify-customer-orders` Edge Function
+Replace the current `orders(query: "email:...")` GraphQL query with a two-step approach:
+- Use `customers(first: 1, query: $q)` with variable `q = email:"<email>"` to find the customer
+- Fetch orders nested under the customer node (`customer.orders`)
+- Use `nodes` instead of `edges` for cleaner syntax
+- Include customer metadata (firstName, lastName, numberOfOrders, amountSpent)
+- Return `{ orders, customer }` instead of just `{ orders }`
+- Keep existing debug logs, update them for the new response shape
 
-### 4. Update get-shopify-customer-orders Edge Function
-- Fetch `shopify_client_id` and `shopify_client_secret` from settings instead of `shopify_api_token`
-- Add same `getShopifyToken()` helper
-- Generate token before calling orders API
-- Use generated token in `X-Shopify-Access-Token` header
+#### 2. Update `auto-reply-scheduler` Edge Function
+Apply the same customer-first GraphQL query in the Shopify context section (~line 110-170):
+- Replace `orders(first: 5, query: "email:...")` with `customers(first: 1, query: $q)` + nested orders
+- Update the response parsing to use `data.customers.nodes[0].orders.nodes`
+- Use parameterized variables instead of string interpolation for the email
 
-### 5. Update auto-reply-scheduler Edge Function
-- Update settings select to include `shopify_client_id`, `shopify_client_secret` instead of `shopify_api_token`
-- Add same `getShopifyToken()` helper
-- Generate token before Shopify orders fetch
-- Use generated token in header
+#### 3. Note to user
+Add a reminder that `read_customers` scope must be enabled in the Shopify Dev Dashboard app settings (this is a manual step outside the codebase).
 
-### Files to modify:
-1. **Database migration** — add `shopify_client_id` and `shopify_client_secret` columns
-2. `src/components/helpdesk/SettingsPage.tsx` — replace API token field with Client ID + Client Secret
-3. `supabase/functions/verify-shopify-token/index.ts` — use client credentials OAuth flow
-4. `supabase/functions/get-shopify-customer-orders/index.ts` — use client credentials OAuth flow
-5. `supabase/functions/auto-reply-scheduler/index.ts` — use client credentials OAuth flow
+### Technical details
+- GraphQL query uses `$q: String!` variable with value `email:"exact@email.com"` (quotes inside the variable for exact match)
+- Response structure changes from `data.orders.edges[].node` to `data.customers.nodes[0].orders.nodes[]`
+- Customer info added to response: `firstName`, `lastName`, `numberOfOrders`, `amountSpent`
 
