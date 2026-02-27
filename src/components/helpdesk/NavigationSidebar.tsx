@@ -1,10 +1,10 @@
-import { Inbox, Settings, BarChart3, Bot, LogOut } from 'lucide-react';
+import { Inbox, Settings, BarChart3, Bot, LogOut, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { StoreSwitcher } from './StoreSwitcher';
 import { AccountSettingsDialog } from './AccountSettingsDialog';
 
-type NavItem = 'inbox' | 'ai-agent' | 'analytics' | 'settings';
+type NavItem = 'inbox' | 'ai-agent' | 'requests' | 'analytics' | 'settings';
 
 interface NavigationSidebarProps {
   activeNav: NavItem;
@@ -17,6 +17,7 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
   const navItems = [
     { id: 'inbox' as const, icon: Inbox, label: 'Tickets' },
     { id: 'ai-agent' as const, icon: Bot, label: 'Agente IA' },
+    { id: 'requests' as const, icon: ClipboardList, label: 'Solicitações' },
     { id: 'analytics' as const, icon: BarChart3, label: 'Analytics' },
     { id: 'settings' as const, icon: Settings, label: 'Configurações' },
   ];
