@@ -83,7 +83,7 @@ serve(async (req: Request) => {
         // Buscar settings da loja
         const { data: settings } = await supabase
           .from('settings')
-          .select('openai_api_key, ai_model, ai_system_prompt, sender_name, sender_email, email_signature, resend_api_key')
+          .select('openai_api_key, ai_model, ai_system_prompt, sender_name, sender_email, email_signature, resend_api_key, shopify_store_url, shopify_api_token')
           .eq('store_id', item.store_id)
           .maybeSingle();
 
@@ -118,12 +118,61 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
 
         const lastInboundMessage = messages?.reverse().find(m => m.direction === 'inbound')?.content || '';
 
+        // ========================================
+        // STEP 2a.2: Buscar pedidos Shopify do cliente
+        // ========================================
+        let shopifyContext = '';
+        try {
+          const shopifyUrl = (settings as any)?.shopify_store_url;
+          const shopifyToken = (settings as any)?.shopify_api_token;
+
+          if (shopifyUrl && shopifyToken) {
+            const cleanUrl = shopifyUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+            const encodedEmail = encodeURIComponent(ticket.customer_email);
+            const shopifyApiUrl = `https://${cleanUrl}/admin/api/2024-01/orders.json?email=${encodedEmail}&status=any&limit=5`;
+
+            const shopifyResponse = await fetch(shopifyApiUrl, {
+              headers: {
+                'X-Shopify-Access-Token': shopifyToken,
+                'Content-Type': 'application/json',
+              },
+            });
+
+            if (shopifyResponse.ok) {
+              const shopifyData = await shopifyResponse.json();
+              const orders = (shopifyData.orders || []).map((order: any) => ({
+                order_number: order.order_number,
+                status: order.fulfillment_status || 'unfulfilled',
+                financial_status: order.financial_status,
+                total_price: order.total_price,
+                currency: order.currency,
+                tracking_number: order.fulfillments?.[0]?.tracking_number || null,
+                tracking_company: order.fulfillments?.[0]?.tracking_company || null,
+                items: (order.line_items || []).map((i: any) => ({
+                  name: i.name,
+                  variant: i.variant_title,
+                  quantity: i.quantity,
+                })),
+              }));
+
+              if (orders.length > 0) {
+                shopifyContext = `\n\nDADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY:\n${orders.map((o: any) => `\n- Pedido #${o.order_number} | Status: ${o.status} | Pagamento: ${o.financial_status} | Total: ${o.currency} ${o.total_price}\n  Produtos: ${o.items.map((i: any) => `${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity}`).join(', ')}\n  Rastreamento: ${o.tracking_number || 'Não disponível'} ${o.tracking_company ? `via ${o.tracking_company}` : ''}`).join('')}`;
+              } else {
+                shopifyContext = '\n\nDADOS SHOPIFY: Nenhum pedido encontrado para este cliente.';
+              }
+            }
+          }
+        } catch (shopifyError) {
+          console.log(`Item ${item.id} - Shopify fetch skipped:`, shopifyError);
+        }
+
         const userMessage = `Contexto do Ticket:
 - Assunto: ${ticket.subject}
 - Cliente: ${ticket.customer_name || ticket.customer_email}
 
 Histórico da Conversa:
 ${conversationHistory || "Nenhuma mensagem anterior."}
+${shopifyContext}
 
 ${lastInboundMessage ? `Última mensagem do cliente: ${lastInboundMessage}` : ""}
 
