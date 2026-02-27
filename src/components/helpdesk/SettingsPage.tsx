@@ -23,6 +23,7 @@ export function SettingsPage() {
   const [showShopifyToken, setShowShopifyToken] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerifyingShopify, setIsVerifyingShopify] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -99,6 +100,33 @@ export function SettingsPage() {
       toast.error('Erro ao verificar conexão');
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  const handleVerifyShopify = async () => {
+    if (!shopifyStoreUrl.trim() || !shopifyApiToken.trim()) {
+      toast.error('Preencha a URL e o token para verificar');
+      return;
+    }
+
+    setIsVerifyingShopify(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-shopify-token', {
+        body: { storeUrl: shopifyStoreUrl, apiToken: shopifyApiToken }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success(data.message || 'Conexão com Shopify realizada com sucesso!');
+      } else {
+        toast.error(data.error || 'Falha ao conectar com Shopify');
+      }
+    } catch (error) {
+      console.error('Error verifying Shopify:', error);
+      toast.error('Erro ao verificar conexão com Shopify');
+    } finally {
+      setIsVerifyingShopify(false);
     }
   };
 
@@ -383,26 +411,42 @@ export function SettingsPage() {
 
             <div className="space-y-2">
               <Label htmlFor="shopify-api-token">Shopify Admin API Token</Label>
-              <div className="relative">
-                <Input
-                  id="shopify-api-token"
-                  type={showShopifyToken ? 'text' : 'password'}
-                  value={shopifyApiToken}
-                  onChange={(e) => setShopifyApiToken(e.target.value)}
-                  placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxx"
-                  className="pr-10 font-mono text-sm"
-                />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="shopify-api-token"
+                    type={showShopifyToken ? 'text' : 'password'}
+                    value={shopifyApiToken}
+                    onChange={(e) => setShopifyApiToken(e.target.value)}
+                    placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxx"
+                    className="pr-10 font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowShopifyToken(!showShopifyToken)}
+                  >
+                    {showShopifyToken ? (
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
                 <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                  onClick={() => setShowShopifyToken(!showShopifyToken)}
+                  variant="outline"
+                  onClick={handleVerifyShopify}
+                  disabled={isVerifyingShopify || !shopifyStoreUrl.trim() || !shopifyApiToken.trim()}
                 >
-                  {showShopifyToken ? (
-                    <EyeOff className="w-4 h-4 text-muted-foreground" />
+                  {isVerifyingShopify ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Verificando...
+                    </>
                   ) : (
-                    <Eye className="w-4 h-4 text-muted-foreground" />
+                    'Verificar Conexão'
                   )}
                 </Button>
               </div>
