@@ -379,6 +379,83 @@ ${lastInboundMessage || 'No message.'}
         console.log(`Item ${item.id} - Resposta IA gerada (${aiReply.length} chars)`);
 
         // ========================================
+        // STEP 2a.3: Classificar solicitação do cliente
+        // ========================================
+        const lastInboundMsg = messages?.find(m => m.direction === 'inbound')?.content || '';
+        try {
+          const classifyResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${settings.openai_api_key}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                {
+                  role: 'system',
+                  content: `You are a classifier. Analyze the customer message and detect if they are requesting any of these actions:
+
+- edition_change: customer wants to change Bible edition (ESV, NIV, etc.)
+- address_change: customer wants to change delivery address
+- model_change: customer wants to change color or model
+- cancellation: customer wants to cancel the order
+
+Respond ONLY with a valid JSON object in this exact format (no markdown, no explanation):
+{
+  "detected": true or false,
+  "type": "edition_change" | "address_change" | "model_change" | "cancellation" | null,
+  "details": {
+    "from": "current value if mentioned",
+    "to": "requested value if mentioned",
+    "new_address": "full address if mentioned",
+    "order_number": "order number if mentioned"
+  },
+  "description": "short human-readable summary in English, max 1 sentence"
+}
+
+If no actionable request is detected, return { "detected": false, "type": null, "details": {}, "description": "" }`
+                },
+                {
+                  role: 'user',
+                  content: lastInboundMsg,
+                }
+              ],
+              max_tokens: 200,
+              temperature: 0,
+            }),
+          });
+
+          if (classifyResponse.ok) {
+            const classifyData = await classifyResponse.json();
+            const classifyText = classifyData.choices?.[0]?.message?.content?.trim();
+
+            const classification = JSON.parse(classifyText);
+
+            if (classification.detected && classification.type) {
+              await supabase.from('requests').insert({
+                ticket_id: item.ticket_id,
+                store_id: item.store_id,
+                customer_name: ticket.customer_name,
+                customer_email: ticket.customer_email,
+                type: classification.type,
+                description: classification.description,
+                details: {
+                  ...classification.details,
+                  order_number: classification.details?.order_number || null,
+                },
+                status: 'pending',
+              });
+              console.log(`Item ${item.id} - REQUEST CREATED:`, classification.type, classification.description);
+            } else {
+              console.log(`Item ${item.id} - No actionable request detected`);
+            }
+          }
+        } catch (classifyError) {
+          console.error(`Item ${item.id} - Classification error (non-blocking):`, classifyError);
+        }
+
+        // ========================================
         // STEP 2b: Enviar email
         // (mesma lógica de send-email-reply)
         // ========================================
