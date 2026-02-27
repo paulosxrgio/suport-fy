@@ -87,11 +87,17 @@ serve(async (req) => {
 
     const cleanUrl = shopifyUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
+    console.log('SHOPIFY DEBUG - Store URL:', cleanUrl);
+    console.log('SHOPIFY DEBUG - Customer email:', ticket.customer_email);
+    console.log('SHOPIFY DEBUG - Gerando token...');
+
     // Get token via client credentials
     const accessToken = await getShopifyToken(cleanUrl, clientId, clientSecret);
+    console.log('SHOPIFY DEBUG - Token gerado:', accessToken ? 'OK' : 'VAZIO');
 
     const encodedEmail = encodeURIComponent(ticket.customer_email);
     const shopifyApiUrl = `https://${cleanUrl}/admin/api/2024-01/orders.json?email=${encodedEmail}&status=any&limit=5`;
+    console.log('SHOPIFY DEBUG - URL da busca:', shopifyApiUrl);
 
     const shopifyResponse = await fetch(shopifyApiUrl, {
       headers: {
@@ -100,14 +106,19 @@ serve(async (req) => {
       },
     });
 
+    console.log('SHOPIFY DEBUG - Status da resposta:', shopifyResponse.status);
+
     if (!shopifyResponse.ok) {
-      console.error('Shopify API error:', shopifyResponse.status);
+      const errorText = await shopifyResponse.text();
+      console.error('SHOPIFY DEBUG - Erro body:', errorText);
       return new Response(JSON.stringify({ orders: [], error: `Shopify API error: ${shopifyResponse.status}` }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const shopifyData = await shopifyResponse.json();
+    console.log('SHOPIFY DEBUG - Quantidade de pedidos:', shopifyData.orders?.length || 0);
+    console.log('SHOPIFY DEBUG - Resposta completa:', JSON.stringify(shopifyData));
     const orders = (shopifyData.orders || []).map((order: any) => ({
       order_number: order.order_number,
       status: order.fulfillment_status || 'unfulfilled',
