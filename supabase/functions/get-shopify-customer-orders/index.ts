@@ -156,8 +156,7 @@ serve(async (req) => {
 
     // Query 2 — buscar pedidos pelo ID do cliente
     const customerId = customer.id.split('/').pop();
-    const orderSearchQuery = `email:${ticket.customer_email}`;
-    console.log('SHOPIFY DEBUG - Buscando pedidos com query:', orderSearchQuery);
+    console.log('SHOPIFY DEBUG - Buscando pedidos para customer_id:', customerId);
 
     const ordersQuery = `
       query($q: String!) {
@@ -192,7 +191,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         query: ordersQuery,
-        variables: { q: orderSearchQuery },
+        variables: { q: `customer_id:${customerId}` },
       }),
     });
 

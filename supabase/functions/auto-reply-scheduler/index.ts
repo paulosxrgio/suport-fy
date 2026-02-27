@@ -204,8 +204,6 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
                   }
                 `;
 
-                const orderSearchQuery = `email:${ticket.customer_email}`;
-
                 const ordersResponse = await fetch(graphqlUrl, {
                   method: 'POST',
                   headers: {
@@ -214,7 +212,7 @@ Responda de forma clara, educada e útil. Mantenha as respostas concisas mas com
                   },
                   body: JSON.stringify({
                     query: ordersQuery,
-                    variables: { q: orderSearchQuery },
+                    variables: { q: `customer_id:${customerId}` },
                   }),
                 });
 
