@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { User, Headphones, Languages, Loader2 } from 'lucide-react';
+import { Languages, Loader2 } from 'lucide-react';
 import { useMemo } from 'react';
 import DOMPurify from 'dompurify';
 
@@ -65,6 +65,35 @@ function stripQuotedHtml(html: string): string {
   return cleaned.trim();
 }
 
+// Generate a consistent color from email hash
+function getAvatarColor(email: string): string {
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const colors = [
+    'bg-rose-100 text-rose-700',
+    'bg-sky-100 text-sky-700',
+    'bg-amber-100 text-amber-700',
+    'bg-emerald-100 text-emerald-700',
+    'bg-violet-100 text-violet-700',
+    'bg-pink-100 text-pink-700',
+    'bg-teal-100 text-teal-700',
+    'bg-orange-100 text-orange-700',
+  ];
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function getInitials(name: string | undefined, email: string): string {
+  if (name) {
+    const parts = name.split(' ');
+    return parts.length > 1
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : parts[0].substring(0, 2).toUpperCase();
+  }
+  return email.substring(0, 2).toUpperCase();
+}
+
 interface Message {
   id: string;
   ticket_id: string;
@@ -124,32 +153,31 @@ export function MessageBubble({ message, senderName, translatedContent, isTransl
     return message.sender_email.split('@')[0] || 'Cliente';
   }, [isOutbound, senderName, message.sender_email]);
   
+  const avatarColor = useMemo(() => getAvatarColor(message.sender_email), [message.sender_email]);
+  const initials = useMemo(() => getInitials(senderName, message.sender_email), [senderName, message.sender_email]);
+  
   return (
     <div
       className={cn(
-        'flex gap-3 animate-fade-in',
+        'flex gap-3 msg-appear',
         isOutbound ? 'flex-row-reverse' : 'flex-row'
       )}
     >
       {/* Avatar */}
       <div
         className={cn(
-          'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
-          isOutbound ? 'bg-primary' : 'bg-muted'
+          'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold',
+          isOutbound ? 'bg-primary text-primary-foreground' : avatarColor
         )}
       >
-        {isOutbound ? (
-          <Headphones className="w-4 h-4 text-primary-foreground" />
-        ) : (
-          <User className="w-4 h-4 text-muted-foreground" />
-        )}
+        {isOutbound ? 'S' : initials}
       </div>
       
       {/* Bubble */}
-      <div className={cn('flex flex-col min-w-0 max-w-[75%]', isOutbound ? 'items-end' : 'items-start')}>
+      <div className={cn('flex flex-col min-w-0 max-w-[72%]', isOutbound ? 'items-end' : 'items-start')}>
         {/* Sender name for inbound messages */}
         {displayName && (
-          <span className="text-xs font-semibold text-muted-foreground mb-1 px-1">
+          <span className="text-xs font-medium text-muted-foreground mb-1 px-1">
             {displayName}
           </span>
         )}
@@ -192,7 +220,7 @@ export function MessageBubble({ message, senderName, translatedContent, isTransl
         </div>
         
         {/* Timestamp */}
-        <span className="text-xs text-muted-foreground mt-1 px-1">
+        <span className="text-[11px] text-muted-foreground mt-1 px-1">
           {formatDistanceToNow(new Date(message.created_at), { 
             addSuffix: true, 
             locale: ptBR 

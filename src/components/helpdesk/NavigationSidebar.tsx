@@ -1,9 +1,9 @@
-import { Inbox, Settings, BarChart3, HelpCircle, Bot, LogOut } from 'lucide-react';
+import { Inbox, Settings, BarChart3, Bot, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
 import { StoreSwitcher } from './StoreSwitcher';
 import { AccountSettingsDialog } from './AccountSettingsDialog';
+
 type NavItem = 'inbox' | 'ai-agent' | 'analytics' | 'settings';
 
 interface NavigationSidebarProps {
@@ -22,66 +22,51 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
   ];
 
   return (
-    <div className="w-64 bg-sidebar flex flex-col border-r border-border">
+    <div className="w-[220px] bg-sidebar flex flex-col border-r border-border">
       {/* Logo */}
-      <div className="h-14 flex items-center px-4 border-b border-border">
-        <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center mr-2">
-          <HelpCircle className="w-5 h-5 text-sidebar-primary-foreground" />
-        </div>
-        <span className="font-semibold text-sidebar-foreground">Suportfy</span>
+      <div className="h-14 flex items-center px-5">
+        <span className="font-display text-[22px] text-foreground">Suportfy</span>
       </div>
 
       {/* Store Switcher */}
       <StoreSwitcher />
       
       {/* Navigation Items */}
-      <nav className="flex flex-col px-2 flex-1">
+      <nav className="flex flex-col px-3 gap-0.5 flex-1 mt-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeNav === item.id;
           
           return (
-            <Tooltip key={item.id}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => onNavChange(item.id)}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                    isActive 
-                      ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                  )}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="hidden">
-                {item.label}
-              </TooltipContent>
-            </Tooltip>
+            <button
+              key={item.id}
+              onClick={() => onNavChange(item.id)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium',
+                'transition-all duration-150',
+                isActive 
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Icon className="w-[18px] h-[18px]" />
+              <span>{item.label}</span>
+            </button>
           );
         })}
       </nav>
       
       {/* Account Settings & Logout */}
-      <div className="px-2 pb-4 space-y-1 border-t border-border pt-2">
+      <div className="px-3 pb-4 space-y-0.5 border-t border-border pt-3">
         <AccountSettingsDialog />
         
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={signOut}
-              className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium w-full text-sidebar-foreground hover:bg-destructive/20 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Sair</span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="hidden">
-            Sair
-          </TooltipContent>
-        </Tooltip>
+        <button
+          onClick={signOut}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium w-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-150"
+        >
+          <LogOut className="w-[18px] h-[18px]" />
+          <span>Sair</span>
+        </button>
       </div>
     </div>
   );

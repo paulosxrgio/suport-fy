@@ -25,18 +25,12 @@ export function HelpDeskLayout() {
   const queryClient = useQueryClient();
   const { currentStore, stores, isLoading: isLoadingStores } = useStore();
 
-  // Fetch tickets
   const { data: allTickets, isLoading: isLoadingTickets } = useTickets(
     statusFilter === 'all' ? undefined : statusFilter
   );
-  
-  // Fetch selected ticket details
   const { data: selectedTicket } = useTicket(selectedTicketId);
-  
-  // Fetch messages for selected ticket
   const { data: messages, isLoading: isLoadingMessages } = useMessages(selectedTicketId);
 
-  // Handle manual refresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -48,11 +42,9 @@ export function HelpDeskLayout() {
     }
   };
 
-  // Filter tickets by search query
   const filteredTickets = useMemo(() => {
     if (!allTickets) return [];
     if (!searchQuery.trim()) return allTickets;
-    
     const query = searchQuery.toLowerCase();
     return allTickets.filter(
       (ticket) =>
@@ -62,9 +54,8 @@ export function HelpDeskLayout() {
     );
   }, [allTickets, searchQuery]);
 
-  // Render empty state when no stores exist
   const renderEmptyStoreState = () => (
-    <div className="flex-1 flex items-center justify-center bg-muted/30">
+    <div className="flex-1 flex items-center justify-center bg-background">
       <div className="text-center max-w-md px-4">
         <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
           <Store className="w-8 h-8 text-muted-foreground" />
@@ -78,9 +69,7 @@ export function HelpDeskLayout() {
     </div>
   );
 
-  // Render content based on active nav
   const renderContent = () => {
-    // Show empty state if no stores and still loading
     if (isLoadingStores) {
       return (
         <div className="flex-1 flex items-center justify-center">
@@ -89,7 +78,6 @@ export function HelpDeskLayout() {
       );
     }
 
-    // Show empty state if no stores exist
     if (stores.length === 0 && activeNav === 'inbox') {
       return renderEmptyStoreState();
     }
@@ -105,13 +93,11 @@ export function HelpDeskLayout() {
       default:
         return (
           <div className="flex-1 flex">
-            {/* Ticket List */}
-            <div className="w-80 border-r border-border flex flex-col bg-card">
-              {/* New Ticket Button */}
+            {/* Ticket List — 320px */}
+            <div className="w-[320px] border-r border-border flex flex-col bg-card">
               <div className="p-3 border-b border-border">
                 <NewTicketDialog />
               </div>
-              
               <TicketListHeader
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
@@ -136,7 +122,6 @@ export function HelpDeskLayout() {
                 messages={messages}
                 isLoading={isLoadingMessages}
               />
-              
               <CustomerInfoSidebar
                 ticket={selectedTicket ?? null}
                 isOpen={isCustomerInfoOpen}
@@ -150,10 +135,7 @@ export function HelpDeskLayout() {
 
   return (
     <div className="h-screen flex bg-background">
-      {/* Navigation Sidebar */}
       <NavigationSidebar activeNav={activeNav} onNavChange={setActiveNav} />
-      
-      {/* Main Content */}
       {renderContent()}
     </div>
   );

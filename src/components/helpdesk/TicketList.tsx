@@ -18,7 +18,6 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
   const markAsRead = useMarkTicketAsRead();
 
   const handleSelectTicket = (ticket: Ticket) => {
-    // Mark as read if unread
     if (!ticket.is_read) {
       markAsRead.mutate(ticket.id);
     }
@@ -29,7 +28,7 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
     return (
       <div className="flex flex-col">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="p-4 border-b border-border">
+          <div key={i} className="px-4 py-3.5 border-b border-border">
             <Skeleton className="h-4 w-20 mb-2" />
             <Skeleton className="h-5 w-3/4 mb-1" />
             <Skeleton className="h-4 w-full mb-2" />
@@ -43,7 +42,7 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
   if (!tickets || tickets.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-12">
-        <Mail className="w-12 h-12 mb-4 opacity-50" />
+        <Mail className="w-12 h-12 mb-4 opacity-30" />
         <p className="text-sm">Nenhum ticket encontrado</p>
       </div>
     );
@@ -51,7 +50,7 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
 
   return (
     <div className="flex flex-col overflow-y-auto scrollbar-thin">
-      {tickets.map((ticket) => {
+      {tickets.map((ticket, index) => {
         const isSelected = selectedTicketId === ticket.id;
         const isUnread = !ticket.is_read;
         
@@ -60,13 +59,14 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
             key={ticket.id}
             onClick={() => handleSelectTicket(ticket)}
             className={cn(
-              'ticket-item animate-fade-in',
+              'ticket-item stagger-fade-in',
               isSelected && 'ticket-item-selected',
-              isUnread && !isSelected && 'bg-primary/5'
+              isUnread && !isSelected && 'bg-primary/[0.03]'
             )}
+            style={{ animationDelay: `${index * 20}ms` }}
           >
             {/* Status Badge & Time */}
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1.5">
               <Badge 
                 variant="secondary"
                 className={cn(
@@ -86,7 +86,6 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
                     locale: ptBR 
                   })}
                 </span>
-                {/* Unread indicator dot */}
                 {isUnread && (
                   <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
                 )}
@@ -104,12 +103,12 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
             {/* Subject */}
             <p className={cn(
               'text-sm truncate mt-0.5',
-              isUnread ? 'text-foreground font-medium' : 'text-foreground/80'
+              isUnread ? 'text-foreground/80' : 'text-muted-foreground'
             )}>
               {ticket.subject}
             </p>
             
-            {/* Customer Email (if name is shown) */}
+            {/* Customer Email */}
             {ticket.customer_name && (
               <p className="text-xs text-muted-foreground mt-1 truncate">
                 {ticket.customer_email}

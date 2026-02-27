@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Sparkles, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Ticket, Message } from '@/types/helpdesk';
@@ -21,6 +20,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
   const [replyContent, setReplyContent] = useState('');
   const [isTranslateEnabled, setIsTranslateEnabled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const sendMessage = useSendMessage();
   const generateAIReply = useGenerateAIReply();
   const { 
@@ -31,21 +31,17 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     clearTranslations 
   } = useTranslation();
 
-  // Reset translation state when ticket changes
   useEffect(() => {
     setIsTranslateEnabled(false);
     clearTranslations();
   }, [ticket?.id, clearTranslations]);
 
-  // Scroll to bottom when ticket changes or messages load
   useEffect(() => {
     if (messages && messages.length > 0) {
-      // Use instant scroll when changing tickets, smooth for new messages
       messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
     }
   }, [ticket?.id]);
 
-  // Scroll to bottom when new messages arrive
   useEffect(() => {
     if (messages && messages.length > 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,34 +49,23 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
   }, [messages?.length]);
 
   const handleSendReply = async () => {
-    // Double-check to prevent duplicate sends
     if (!ticket || !replyContent.trim() || sendMessage.isPending) return;
-
     const contentToSend = replyContent.trim();
-    
     try {
-      await sendMessage.mutateAsync({
-        ticketId: ticket.id,
-        content: contentToSend,
-      });
-      // Clear input only after successful send
+      await sendMessage.mutateAsync({ ticketId: ticket.id, content: contentToSend });
       setReplyContent('');
       toast.success('Resposta enviada com sucesso!');
     } catch (error: any) {
-      // Don't show error for duplicate prevention
       if (error?.message !== 'Envio já em andamento') {
         toast.error('Erro ao enviar resposta. Verifique a configuração do Resend.');
       }
     }
   };
 
-  // Handle translation toggle - pass ticketId and storeId
   const handleTranslateToggle = async () => {
     const newState = !isTranslateEnabled;
     setIsTranslateEnabled(newState);
-
     if (newState && messages && ticket) {
-      // Pass ticketId and storeId for proper store isolation
       await translateMessages(messages, ticket.id, ticket.store_id || undefined);
       toast.success('Tradução ativada!');
     } else {
@@ -90,10 +75,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
 
   const handleGenerateAIReply = async () => {
     if (!ticket || generateAIReply.isPending) return;
-
-    // Get the last inbound message content for context
     const lastInboundMessage = messages?.filter(m => m.direction === 'inbound').pop();
-
     try {
       const reply = await generateAIReply.mutateAsync({
         ticketId: ticket.id,
@@ -107,12 +89,20 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     }
   };
 
+  // Auto-resize textarea
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setReplyContent(e.target.value);
+    const ta = e.target;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
+  };
+
   if (!ticket) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
         <div className="text-center text-muted-foreground">
-          <Send className="w-12 h-12 mx-auto mb-4 opacity-30" />
-          <p>Selecione um ticket para ver a conversa</p>
+          <Send className="w-12 h-12 mx-auto mb-4 opacity-20" />
+          <p className="text-sm">Selecione um ticket para ver a conversa</p>
         </div>
       </div>
     );
@@ -121,24 +111,24 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
   return (
     <div className="flex-1 flex flex-col bg-background">
       {/* Header */}
-      <div className="h-16 border-b border-border px-6 flex items-center justify-between bg-card">
+      <div className="h-16 border-b border-border px-6 flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <h2 className="font-semibold text-foreground truncate">{ticket.subject}</h2>
-          <p className="text-sm text-muted-foreground truncate">
+          <h2 className="font-display italic text-xl text-foreground truncate">
             {ticket.customer_name || ticket.customer_email}
-          </p>
+          </h2>
+          <p className="text-sm text-muted-foreground truncate">{ticket.subject}</p>
         </div>
         
         <div className="flex items-center gap-2 ml-4">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={handleTranslateToggle}
             disabled={isTranslating}
             className={cn(
-              "transition-all",
+              "transition-all duration-150 rounded-lg",
               isTranslateEnabled 
-                ? "bg-primary/10 border-primary text-primary hover:bg-primary/20" 
+                ? "bg-primary/10 text-primary hover:bg-primary/15" 
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -158,13 +148,13 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
+      <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin">
         {isLoading ? (
           <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className={cn('flex gap-3', i % 2 === 0 ? '' : 'flex-row-reverse')}>
                 <Skeleton className="w-8 h-8 rounded-full" />
-                <Skeleton className="h-20 w-64 rounded-2xl" />
+                <Skeleton className="h-20 w-64 rounded-xl" />
               </div>
             ))}
           </div>
@@ -188,36 +178,14 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
       </div>
 
       {/* Reply Editor */}
-      <div className="border-t border-border p-4 bg-card">
-        {/* Magic Reply Button */}
-        <div className="mb-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleGenerateAIReply}
-            disabled={generateAIReply.isPending}
-            className="border-ai-accent/30 text-ai-accent hover:bg-ai-accent-muted hover:text-ai-accent hover:border-ai-accent/50"
-          >
-            {generateAIReply.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Escrevendo...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 mr-2" />
-                Gerar Resposta IA
-              </>
-            )}
-          </Button>
-        </div>
-
-        <div className="flex gap-3">
-          <Textarea
+      <div className="border-t border-border p-4">
+        <div className="bg-muted rounded-xl border border-border focus-within:border-primary/60 transition-all duration-150">
+          <textarea
+            ref={textareaRef}
             value={replyContent}
-            onChange={(e) => setReplyContent(e.target.value)}
+            onChange={handleTextareaChange}
             placeholder="Digite sua resposta..."
-            className="min-h-[80px] resize-none"
+            className="w-full bg-transparent px-4 pt-3 pb-2 text-sm resize-none outline-none min-h-[80px] max-h-[200px] placeholder:text-muted-foreground"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !sendMessage.isPending) {
                 e.preventDefault();
@@ -225,21 +193,50 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
               }
             }}
           />
-          <Button
-            onClick={handleSendReply}
-            disabled={!replyContent.trim() || sendMessage.isPending}
-            className="self-end"
-          >
-            {sendMessage.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </Button>
+          
+          {/* Toolbar */}
+          <div className="flex items-center justify-between px-3 pb-3">
+            <p className="text-[11px] text-muted-foreground">
+              Cmd+Enter para enviar
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGenerateAIReply}
+                disabled={generateAIReply.isPending}
+                className="text-muted-foreground hover:bg-ai-accent-muted hover:text-primary rounded-lg h-8 transition-all duration-150"
+              >
+                {generateAIReply.isPending ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Escrevendo...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                    Gerar Resposta IA
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleSendReply}
+                disabled={!replyContent.trim() || sendMessage.isPending}
+                size="sm"
+                className="rounded-lg h-8 shadow-card btn-press transition-all duration-150"
+              >
+                {sendMessage.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5 mr-1.5" />
+                    Enviar
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Pressione Cmd+Enter ou Ctrl+Enter para enviar
-        </p>
       </div>
     </div>
   );
