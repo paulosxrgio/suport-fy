@@ -154,6 +154,22 @@ serve(async (req) => {
       });
     }
 
+    // Debug: buscar TODOS os pedidos (sem filtro) para verificar acesso
+    const debugOrdersQuery = `
+      query {
+        orders(first: 3, sortKey: CREATED_AT, reverse: true) {
+          nodes { name }
+        }
+      }
+    `;
+    const debugResponse = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': accessToken },
+      body: JSON.stringify({ query: debugOrdersQuery }),
+    });
+    const debugData = await debugResponse.json();
+    console.log('SHOPIFY DEBUG - ALL orders (no filter):', JSON.stringify(debugData));
+
     // Query 2 — buscar pedidos pelo ID do cliente
     const customerId = customer.id.split('/').pop();
     console.log('SHOPIFY DEBUG - Buscando pedidos para customer_id:', customerId);
