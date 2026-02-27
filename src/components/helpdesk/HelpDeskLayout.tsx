@@ -13,7 +13,7 @@ import { useMessages } from '@/hooks/useMessages';
 import { useStore } from '@/contexts/StoreContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Storefront } from '@phosphor-icons/react';
+import { Store } from 'lucide-react';
 
 export function HelpDeskLayout() {
   const [activeNav, setActiveNav] = useState<'inbox' | 'ai-agent' | 'analytics' | 'settings'>('inbox');
@@ -58,7 +58,7 @@ export function HelpDeskLayout() {
     <div className="flex-1 flex items-center justify-center bg-background">
       <div className="text-center max-w-md px-4">
         <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-          <Storefront className="w-8 h-8 text-muted-foreground" />
+          <Store className="w-8 h-8 text-muted-foreground" />
         </div>
         <h2 className="text-xl font-semibold mb-2">Crie sua primeira loja</h2>
         <p className="text-muted-foreground mb-4">

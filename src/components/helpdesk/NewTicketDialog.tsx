@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, SpinnerGap, PaperPlaneRight } from '@phosphor-icons/react';
+import { Plus, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +37,7 @@ export function NewTicketDialog() {
       return;
     }
 
+    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.to)) {
       toast.error('Digite um e-mail válido');
@@ -51,6 +52,7 @@ export function NewTicketDialog() {
     setIsSubmitting(true);
 
     try {
+      // 1. Create the ticket with store_id
       const { data: ticket, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -65,6 +67,7 @@ export function NewTicketDialog() {
 
       if (ticketError) throw ticketError;
 
+      // 2. Call edge function to send email and create message
       const { error: sendError } = await supabase.functions.invoke('send-email-reply', {
         body: {
           ticketId: ticket.id,
@@ -74,6 +77,7 @@ export function NewTicketDialog() {
 
       if (sendError) throw sendError;
 
+      // 3. Invalidate queries to refresh the list
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
 
       toast.success('E-mail enviado com sucesso!');
@@ -95,7 +99,7 @@ export function NewTicketDialog() {
           Novo Ticket
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[525px] rounded-[14px] shadow-elevated">
+      <DialogContent className="sm:max-w-[525px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Novo Ticket</DialogTitle>
@@ -114,7 +118,6 @@ export function NewTicketDialog() {
                 value={formData.to}
                 onChange={(e) => setFormData({ ...formData, to: e.target.value })}
                 disabled={isSubmitting}
-                className="rounded-lg h-[38px]"
               />
             </div>
             
@@ -127,7 +130,6 @@ export function NewTicketDialog() {
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                 disabled={isSubmitting}
-                className="rounded-lg h-[38px]"
               />
             </div>
             
@@ -150,19 +152,18 @@ export function NewTicketDialog() {
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
-              className="rounded-lg"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="rounded-lg">
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <SpinnerGap className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Enviando...
                 </>
               ) : (
                 <>
-                  <PaperPlaneRight className="w-4 h-4" />
+                  <Send className="w-4 h-4" />
                   Enviar E-mail
                 </>
               )}

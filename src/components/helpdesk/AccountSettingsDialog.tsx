@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, DotsSixVertical, Storefront } from '@phosphor-icons/react';
+import { User, GripVertical, Store as StoreIcon } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -139,7 +139,7 @@ export function AccountSettingsDialog() {
             </div>
           ) : stores.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <Storefront className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <StoreIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
               <p>Nenhuma loja encontrada</p>
             </div>
           ) : (
@@ -162,7 +162,7 @@ export function AccountSettingsDialog() {
                       !store.is_visible_in_dashboard && "opacity-60"
                     )}
                   >
-                    <DotsSixVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{store.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{store.domain}</p>

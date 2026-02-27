@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ChartBar, Ticket, CheckCircle, Clock } from '@phosphor-icons/react';
+import { BarChart3, Ticket, CheckCircle, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ticket as TicketType } from '@/types/helpdesk';
 
@@ -13,6 +13,7 @@ export function AnalyticsPage({ tickets }: AnalyticsPageProps) {
     const open = tickets.filter((t) => t.status === 'open').length;
     const closed = tickets.filter((t) => t.status === 'closed').length;
     
+    // Calculate average resolution time (for closed tickets)
     const closedTickets = tickets.filter((t) => t.status === 'closed');
     const avgResolutionTime = closedTickets.length > 0
       ? closedTickets.reduce((acc, t) => {
@@ -22,16 +23,46 @@ export function AnalyticsPage({ tickets }: AnalyticsPageProps) {
         }, 0) / closedTickets.length
       : 0;
     
+    // Convert to hours
     const avgResolutionHours = Math.round(avgResolutionTime / (1000 * 60 * 60));
     
-    return { total, open, closed, avgResolutionHours };
+    return {
+      total,
+      open,
+      closed,
+      avgResolutionHours,
+    };
   }, [tickets]);
 
   const statCards = [
-    { title: 'Total de Tickets', value: stats.total, icon: Ticket, color: 'text-primary', bgColor: 'bg-primary/10' },
-    { title: 'Tickets Abertos', value: stats.open, icon: Clock, color: 'text-status-open', bgColor: 'bg-status-open/10' },
-    { title: 'Tickets Fechados', value: stats.closed, icon: CheckCircle, color: 'text-muted-foreground', bgColor: 'bg-muted' },
-    { title: 'Tempo Médio de Resolução', value: stats.avgResolutionHours > 0 ? `${stats.avgResolutionHours}h` : 'N/A', icon: ChartBar, color: 'text-primary', bgColor: 'bg-primary/10' },
+    {
+      title: 'Total de Tickets',
+      value: stats.total,
+      icon: Ticket,
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
+    },
+    {
+      title: 'Tickets Abertos',
+      value: stats.open,
+      icon: Clock,
+      color: 'text-status-open',
+      bgColor: 'bg-status-open/10',
+    },
+    {
+      title: 'Tickets Fechados',
+      value: stats.closed,
+      icon: CheckCircle,
+      color: 'text-muted-foreground',
+      bgColor: 'bg-muted',
+    },
+    {
+      title: 'Tempo Médio de Resolução',
+      value: stats.avgResolutionHours > 0 ? `${stats.avgResolutionHours}h` : 'N/A',
+      icon: BarChart3,
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
+    },
   ];
 
   return (
@@ -65,9 +96,10 @@ export function AnalyticsPage({ tickets }: AnalyticsPageProps) {
           })}
         </div>
 
+        {/* Placeholder for future charts */}
         <Card className="min-h-[300px] flex items-center justify-center">
           <div className="text-center text-muted-foreground">
-            <ChartBar className="w-12 h-12 mx-auto mb-4 opacity-30" />
+            <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p>Gráficos detalhados em breve</p>
           </div>
         </Card>
