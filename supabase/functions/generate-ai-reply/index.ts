@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -22,12 +21,11 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch ticket info including store_id
+    // Fetch ticket info
     const { data: ticket, error: ticketError } = await supabase
       .from("tickets")
       .select("subject, customer_name, customer_email, store_id")
@@ -42,15 +40,18 @@ serve(async (req) => {
       );
     }
 
-    // Fetch AI settings from settings table filtered by store_id
+    // Fetch settings
     let openaiApiKey: string | null = null;
     let aiSystemPrompt: string | null = null;
     let aiModel: string | null = null;
+    let shopifyStoreUrl: string | null = null;
+    let shopifyClientId: string | null = null;
+    let shopifyClientSecret: string | null = null;
 
     if (ticket.store_id) {
       const { data: settings } = await supabase
         .from("settings")
-        .select("openai_api_key, ai_system_prompt, ai_model")
+        .select("openai_api_key, ai_system_prompt, ai_model, shopify_store_url, shopify_client_id, shopify_client_secret")
         .eq("store_id", ticket.store_id)
         .maybeSingle();
 
@@ -58,6 +59,9 @@ serve(async (req) => {
         openaiApiKey = settings.openai_api_key;
         aiSystemPrompt = settings.ai_system_prompt;
         aiModel = settings.ai_model;
+        shopifyStoreUrl = (settings as any).shopify_store_url;
+        shopifyClientId = (settings as any).shopify_client_id;
+        shopifyClientSecret = (settings as any).shopify_client_secret;
       }
     }
 
@@ -68,7 +72,7 @@ serve(async (req) => {
       );
     }
 
-    // Fetch last 3 messages for context
+    // Fetch last 3 messages
     const { data: messages, error: messagesError } = await supabase
       .from("messages")
       .select("content, direction, created_at")
@@ -84,7 +88,6 @@ serve(async (req) => {
       );
     }
 
-    // Build conversation history for context
     const conversationHistory = messages
       ?.reverse()
       .map((msg) => {
@@ -93,27 +96,190 @@ serve(async (req) => {
       })
       .join("\n\n");
 
-    // Build the system prompt
-    const defaultSystemPrompt = `Você é um assistente de suporte ao cliente profissional e amigável. 
-Responda de forma clara, educada e útil. Mantenha as respostas concisas mas completas.`;
+    // ========================================
+    // Fetch Shopify orders for context
+    // ========================================
+    let shopifyContext = '';
+    try {
+      if (shopifyStoreUrl && shopifyClientId && shopifyClientSecret) {
+        const cleanUrl = shopifyStoreUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+        const tokenResponse = await fetch(`https://${cleanUrl}/admin/oauth/access_token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: shopifyClientId,
+            client_secret: shopifyClientSecret,
+            grant_type: 'client_credentials',
+          }),
+        });
+        const tokenData = await tokenResponse.json();
+        if (!tokenResponse.ok) throw new Error(`Shopify auth failed: ${JSON.stringify(tokenData)}`);
+        const accessToken = tokenData.access_token;
+
+        const graphqlUrl = `https://${cleanUrl}/admin/api/2025-01/graphql.json`;
+
+        // Query customer
+        const customerQuery = `#graphql
+          query($q: String!) {
+            customers(first: 1, query: $q) {
+              nodes {
+                id
+                legacyResourceId
+                displayName
+                numberOfOrders
+                amountSpent { amount currencyCode }
+              }
+            }
+          }
+        `;
+
+        const customerResponse = await fetch(graphqlUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': accessToken,
+          },
+          body: JSON.stringify({
+            query: customerQuery,
+            variables: { q: `email:"${ticket.customer_email}"` },
+          }),
+        });
+
+        if (customerResponse.ok) {
+          const customerData = await customerResponse.json();
+          const customer = customerData?.data?.customers?.nodes?.[0];
+
+          if (customer) {
+            const customerId = customer.legacyResourceId;
+
+            const ordersQuery = `#graphql
+              query($q: String!) {
+                orders(first: 5, query: $q, sortKey: CREATED_AT, reverse: true) {
+                  edges {
+                    node {
+                      name
+                      displayFinancialStatus
+                      displayFulfillmentStatus
+                      totalPriceSet { shopMoney { amount currencyCode } }
+                      lineItems(first: 10) {
+                        nodes { name variantTitle quantity }
+                      }
+                      fulfillments {
+                        trackingInfo { number company }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            const ordersResponse = await fetch(graphqlUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Shopify-Access-Token': accessToken,
+              },
+              body: JSON.stringify({
+                query: ordersQuery,
+                variables: { q: `customer_id:${customerId}` },
+              }),
+            });
+
+            const ordersData = await ordersResponse.json();
+            const orders = ordersData?.data?.orders?.edges?.map((edge: any) => {
+              const order = edge.node;
+              return {
+                order_number: order.name,
+                status: order.displayFulfillmentStatus || 'unfulfilled',
+                financial_status: order.displayFinancialStatus,
+                total_price: order.totalPriceSet?.shopMoney?.amount,
+                currency: order.totalPriceSet?.shopMoney?.currencyCode,
+                items: order.lineItems?.nodes?.map((item: any) => ({
+                  name: item.name,
+                  variant: item.variantTitle,
+                  quantity: item.quantity,
+                })) || [],
+                tracking_number: order.fulfillments?.[0]?.trackingInfo?.[0]?.number || null,
+                tracking_company: order.fulfillments?.[0]?.trackingInfo?.[0]?.company || null,
+              };
+            }) || [];
+
+            if (orders.length > 0) {
+              shopifyContext = `\n\nDADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY:\n${orders.map((o: any) => `\n- Pedido ${o.order_number} | Status: ${o.status} | Pagamento: ${o.financial_status} | Total: ${o.currency} ${o.total_price}\n  Produtos: ${o.items.map((i: any) => `${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity}`).join(', ')}\n  Rastreamento: ${o.tracking_number ? `${o.tracking_number} via ${o.tracking_company || 'courier'} — https://t.17track.net/${o.tracking_number}` : 'Não disponível ainda'}\n  Situação: ${o.status === 'FULFILLED' ? 'dispatched' : o.status === 'UNFULFILLED' ? 'processed, not yet dispatched' : 'in transit'}`).join('')}`;
+            } else {
+              shopifyContext = '\n\nDADOS SHOPIFY: Nenhum pedido encontrado para este cliente.';
+            }
+          }
+        }
+      }
+    } catch (shopifyError) {
+      console.log('Shopify fetch skipped in generate-ai-reply:', shopifyError);
+    }
+
+    // Extract customer first name
+    const customerFirstName = ticket.customer_name?.split(' ')[0] 
+      || ticket.customer_email.split('@')[0];
+
+    // System prompt
+    const defaultSystemPrompt = `Você é Sophia, atendente de suporte ao cliente de uma loja online.
+Sua missão é responder emails de clientes em inglês (UK) com um tom extremamente simpático, educado, calmo, humano e persuasivo, sempre de forma natural e profissional.
+
+OBJETIVOS PRINCIPAIS
+• Resolver a dúvida do cliente com clareza e segurança.
+• Reduzir cancelamentos e disputas sem ser agressiva, defensiva ou desonesta.
+• Manter o cliente confiante de que está tudo certo, usando uma linguagem tranquila e acolhedora.
+
+FORMATO FIXO DA RESPOSTA
+• Sempre escrever apenas um email em inglês (UK).
+• Sempre começar com "Hi [Name]," usando o PRIMEIRO NOME DO CLIENTE fornecido nos dados abaixo.
+• Nunca usar Markdown (**, __, ###, listas formatadas).
+• Nunca usar travessão longo.
+• Se houver link de rastreio, colocá-lo em uma linha separada, visível e fácil de clicar.
+• Sempre assinar: Kind regards, Sophia
+
+REGRAS DE OURO
+• Se o cliente não mencionou cancelamento, nunca fale sobre cancelamento, reembolso, devolução ou disputa.
+• Se mencionar cancelamento: responda persuasivamente sem negar o direito do cliente.
+• Se mencionar disputa ou chargeback: peça calmamente para não abrir disputa e tranquilize.
+• Nunca culpar o cliente. Nunca soar defensiva ou robótica.
+• Sempre usar frases humanas como: "I've checked this personally", "I'm here to help you", "I'll keep an eye on it with you".
+
+RASTREAMENTO
+• Se o rastreio não for reconhecido: explique que envios internacionais demoram para aparecer em plataformas locais e forneça o link: https://t.17track.net/CODIGO
+• Se estiver em trânsito sem atualização: explique que atualizações acontecem por checkpoints e o pedido continua em rota.
+
+ENVIO
+• Se questionar por que vem da China: explique que é enviado direto do fabricante oficial, mantendo o preço acessível. Prazo: 8-12 business days from dispatch.
+
+ALTERAÇÃO DE PEDIDO
+• Se o pedido não foi enviado: confirme que a alteração foi feita.
+• Se já foi enviado: explique que não é possível antes da entrega e ofereça solução pós-entrega só se o cliente insistir.
+
+PERSUASÃO NATURAL (sem parecer manipulativa)
+• "I've checked this personally" • "Everything is moving as expected" • "I'll keep an eye on it with you"`;
 
     const systemPrompt = aiSystemPrompt || defaultSystemPrompt;
 
-    // Build the user message with context
-    const userMessage = `Contexto do Ticket:
-- Assunto: ${ticket.subject}
-- Cliente: ${ticket.customer_name || ticket.customer_email}
+    // Build user message with order context
+    const orderContext = shopifyContext && !shopifyContext.includes('Nenhum pedido encontrado')
+      ? shopifyContext + `\n- Primeiro nome do cliente: ${customerFirstName}`
+      : `\nDADOS DO PEDIDO: Nenhum pedido encontrado. Responda normalmente e peça o número do pedido educadamente no final.\n- Primeiro nome do cliente: ${customerFirstName}`;
 
-Histórico da Conversa:
-${conversationHistory || "Nenhuma mensagem anterior."}
+    const lastInboundMessage = lastMessageContent || messages?.find(m => m.direction === 'inbound')?.content || '';
 
-${lastMessageContent ? `Última mensagem do cliente: ${lastMessageContent}` : ""}
+    const userMessage = `
+${orderContext}
 
-Por favor, gere uma resposta profissional e útil para o cliente.`;
+HISTÓRICO DA CONVERSA:
+${conversationHistory || 'Primeiro contato.'}
 
-    // Call OpenAI API
+ÚLTIMA MENSAGEM DO CLIENTE:
+${lastInboundMessage || 'Sem mensagem.'}
+`.trim();
+
+    // Call OpenAI
     const model = aiModel || "gpt-4o";
-    
     console.log(`Calling OpenAI API with model: ${model} for store: ${ticket.store_id}`);
 
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
