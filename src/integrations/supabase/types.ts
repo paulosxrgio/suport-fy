@@ -56,6 +56,53 @@ export type Database = {
           },
         ]
       }
+      customer_memory: {
+        Row: {
+          created_at: string | null
+          customer_email: string
+          id: string
+          last_sentiment: string | null
+          notes: string | null
+          preferred_edition: string | null
+          preferred_language: string | null
+          store_id: string | null
+          total_interactions: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_email: string
+          id?: string
+          last_sentiment?: string | null
+          notes?: string | null
+          preferred_edition?: string | null
+          preferred_language?: string | null
+          store_id?: string | null
+          total_interactions?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_email?: string
+          id?: string
+          last_sentiment?: string | null
+          notes?: string | null
+          preferred_edition?: string | null
+          preferred_language?: string | null
+          store_id?: string | null
+          total_interactions?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_memory_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string

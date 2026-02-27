@@ -404,6 +404,34 @@ Sophia`;
         const customerFirstName = ticket.customer_name?.split(' ')[0] 
           || ticket.customer_email.split('@')[0];
 
+        // ========================================
+        // STEP 2a.3: Buscar memória do cliente
+        // ========================================
+        let customerMemory: any = null;
+        let memoryContext = 'CUSTOMER MEMORY: First interaction with this customer.';
+        try {
+          const { data: memData } = await supabase
+            .from('customer_memory')
+            .select('*')
+            .eq('store_id', item.store_id)
+            .eq('customer_email', ticket.customer_email)
+            .maybeSingle();
+
+          customerMemory = memData;
+
+          if (customerMemory) {
+            memoryContext = `
+CUSTOMER MEMORY (from previous interactions — use this to personalize your response):
+- Preferred edition: ${customerMemory.preferred_edition || 'unknown'}
+- Preferred language: ${customerMemory.preferred_language || 'unknown'}
+- Total interactions: ${customerMemory.total_interactions}
+- Last sentiment: ${customerMemory.last_sentiment || 'unknown'}
+- Notes: ${customerMemory.notes || 'none'}`;
+          }
+        } catch (memError) {
+          console.log(`Item ${item.id} - Memory fetch skipped:`, memError);
+        }
+
         const userMessage = (() => {
           const orderContext = shopifyContext && !shopifyContext.includes('Nenhum pedido encontrado') 
             ? shopifyContext + `\n- Primeiro nome do cliente: ${customerFirstName}`
@@ -411,6 +439,8 @@ Sophia`;
 
           return `
 ${orderContext}
+
+${memoryContext}
 
 CONVERSATION HISTORY (read carefully before replying — continue naturally from where it left off):
 ${conversationHistory || 'This is the first message from this customer.'}
@@ -617,6 +647,63 @@ If no actionable request is detected, return { "detected": false, "type": null, 
           .from('tickets')
           .update({ status: 'closed' })
           .eq('id', item.ticket_id);
+
+        // ========================================
+        // STEP 2c.2: Atualizar memória do cliente
+        // ========================================
+        try {
+          const updateMemoryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${settings.openai_api_key}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                {
+                  role: 'system',
+                  content: `Analyze this customer interaction and extract memory data. Respond ONLY with valid JSON, no markdown:
+{
+  "preferred_edition": "ESV or NIV or null if not mentioned",
+  "preferred_language": "detected language of customer message (e.g. English, Portuguese)",
+  "last_sentiment": "positive, neutral, frustrated or angry",
+  "notes": "one sentence summary of what the customer wanted or any important detail to remember"
+}`
+                },
+                {
+                  role: 'user',
+                  content: `Customer message: ${lastInboundMessage}\n\nSophia's reply: ${aiReply}`
+                }
+              ],
+              max_tokens: 150,
+              temperature: 0,
+            }),
+          });
+
+          if (updateMemoryResponse.ok) {
+            const memoryData = await updateMemoryResponse.json();
+            const memoryText = memoryData.choices?.[0]?.message?.content?.trim();
+            const memory = JSON.parse(memoryText);
+
+            await supabase.from('customer_memory').upsert({
+              store_id: item.store_id,
+              customer_email: ticket.customer_email,
+              preferred_edition: memory.preferred_edition || customerMemory?.preferred_edition,
+              preferred_language: memory.preferred_language || customerMemory?.preferred_language,
+              last_sentiment: memory.last_sentiment,
+              notes: memory.notes,
+              total_interactions: (customerMemory?.total_interactions || 0) + 1,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'store_id,customer_email',
+            });
+
+            console.log(`Item ${item.id} - MEMORY UPDATED:`, memory);
+          }
+        } catch (memUpdateError) {
+          console.error(`Item ${item.id} - Memory update error (non-blocking):`, memUpdateError);
+        }
 
         // ========================================
         // STEP 2d: Marcar como done na fila
