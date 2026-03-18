@@ -168,6 +168,21 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
         </div>
         
         <div className="flex items-center gap-2 ml-4">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePrint}
+                  className="text-muted-foreground hover:text-foreground transition-all duration-150 rounded-lg"
+                >
+                  <Printer className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Imprimir conversa</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button
             variant="ghost"
             size="sm"
