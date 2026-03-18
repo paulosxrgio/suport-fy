@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Sparkles, Languages } from 'lucide-react';
+import { Send, Loader2, Sparkles, Languages, Printer } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
