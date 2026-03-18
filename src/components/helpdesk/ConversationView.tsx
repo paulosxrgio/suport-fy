@@ -90,6 +90,53 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     }
   };
 
+  const handlePrint = () => {
+    if (!ticket || !messages) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const html = `<!DOCTYPE html>
+<html><head>
+<title>Conversa - ${ticket.customer_name || ticket.customer_email}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 32px; background: #fff; color: #1a1a2e; }
+  .header { border-bottom: 2px solid #e8e8ed; padding-bottom: 16px; margin-bottom: 24px; }
+  .header h2 { font-size: 18px; font-weight: 600; }
+  .header p { font-size: 13px; color: #6b6b80; margin-top: 4px; }
+  .message { margin-bottom: 16px; max-width: 72%; }
+  .message.inbound { margin-right: auto; }
+  .message.outbound { margin-left: auto; text-align: right; }
+  .bubble { display: inline-block; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; text-align: left; }
+  .inbound .bubble { background: #f3f3f5; border: 1px solid #e8e8ed; border-radius: 12px 12px 12px 2px; }
+  .outbound .bubble { background: #ededfc; border: 1px solid rgba(91,91,214,0.2); border-radius: 12px 12px 2px 12px; }
+  .meta { font-size: 11px; color: #a0a0b0; margin-top: 4px; }
+  .inbound .meta { text-align: left; }
+  .outbound .meta { text-align: right; }
+  @media print { body { padding: 16px; } }
+</style>
+</head><body>
+  <div class="header">
+    <h2>${ticket.customer_name || ticket.customer_email}</h2>
+    <p>${ticket.customer_email} · ${ticket.subject || 'Sem assunto'} · ${new Date(ticket.created_at).toLocaleDateString('pt-BR')}</p>
+  </div>
+  ${messages.map(msg => `
+    <div class="message ${msg.direction}">
+      <div class="bubble">${msg.content.replace(/\n/g, '<br>')}</div>
+      <div class="meta">
+        ${msg.direction === 'inbound' ? (ticket.customer_name || 'Cliente') : 'Sophia'} · 
+        ${new Date(msg.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+      </div>
+    </div>
+  `).join('')}
+</body></html>`;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 500);
+  };
+
   // Auto-resize textarea
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setReplyContent(e.target.value);
