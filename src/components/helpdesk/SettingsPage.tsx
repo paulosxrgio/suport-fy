@@ -211,8 +211,10 @@ export function SettingsPage() {
         shopify_store_url: shopifyStoreUrl,
         shopify_client_id: shopifyClientId,
         shopify_client_secret: shopifyClientSecret,
-        anthropic_api_key: anthropicApiKey || null,
         ai_provider: aiProvider,
+        openai_api_key: aiProvider === 'openai' ? openaiApiKey : null,
+        anthropic_api_key: aiProvider === 'anthropic' ? anthropicApiKey : null,
+        ai_model: aiModel,
         updated_at: new Date().toISOString()
       };
 
