@@ -781,7 +781,9 @@ ${lastInboundMessage || 'No message.'}
           throw new Error('OpenAI não gerou resposta');
         }
 
-        console.log(`Item ${item.id} - Resposta IA gerada (${aiReply.length} chars)`);
+        const cleanedReply = stripMarkdownLinks(aiReply);
+
+        console.log(`Item ${item.id} - Resposta IA gerada (${cleanedReply.length} chars)`);
 
         // ========================================
         // STEP 2a.3: Classificar solicitação do cliente
