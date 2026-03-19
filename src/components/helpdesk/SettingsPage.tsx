@@ -21,15 +21,17 @@ export function SettingsPage() {
   const [shopifyStoreUrl, setShopifyStoreUrl] = useState('');
   const [shopifyClientId, setShopifyClientId] = useState('');
   const [shopifyClientSecret, setShopifyClientSecret] = useState('');
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [anthropicApiKey, setAnthropicApiKey] = useState('');
   const [aiProvider, setAiProvider] = useState('openai');
+  const [aiModel, setAiModel] = useState('gpt-4o');
   const [showApiKey, setShowApiKey] = useState(false);
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showShopifyClientId, setShowShopifyClientId] = useState(false);
   const [showShopifyClientSecret, setShowShopifyClientSecret] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isVerifyingAnthropic, setIsVerifyingAnthropic] = useState(false);
+  const [isVerifyingAI, setIsVerifyingAI] = useState(false);
   const [isVerifyingShopify, setIsVerifyingShopify] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -62,8 +64,10 @@ export function SettingsPage() {
         setShopifyStoreUrl((data as any).shopify_store_url || '');
         setShopifyClientId((data as any).shopify_client_id || '');
         setShopifyClientSecret((data as any).shopify_client_secret || '');
+        setOpenaiApiKey((data as any).openai_api_key || '');
         setAnthropicApiKey((data as any).anthropic_api_key || '');
         setAiProvider((data as any).ai_provider || 'openai');
+        setAiModel((data as any).ai_model || 'gpt-4o');
       } else {
         setSettingsId(null);
         setEmailSignature('');
@@ -73,8 +77,10 @@ export function SettingsPage() {
         setShopifyStoreUrl('');
         setShopifyClientId('');
         setShopifyClientSecret('');
+        setOpenaiApiKey('');
         setAnthropicApiKey('');
         setAiProvider('openai');
+        setAiModel('gpt-4o');
       }
       setIsLoading(false);
     };
@@ -116,31 +122,47 @@ export function SettingsPage() {
     }
   };
 
-  const handleVerifyAnthropic = async () => {
-    if (!anthropicApiKey.trim()) {
-      toast.error('Digite a API Key do Anthropic para verificar');
-      return;
-    }
-
-    setIsVerifyingAnthropic(true);
+  const handleVerifyAI = async () => {
+    setIsVerifyingAI(true);
     try {
-      const response = await fetch('https://api.anthropic.com/v1/models', {
-        headers: {
-          'x-api-key': anthropicApiKey,
-          'anthropic-version': '2023-06-01',
-        },
-      });
-
-      if (response.ok) {
-        toast.success('Conexão com Anthropic bem-sucedida!');
+      if (aiProvider === 'openai') {
+        if (!openaiApiKey.trim()) {
+          toast.error('Digite a API Key da OpenAI para verificar');
+          setIsVerifyingAI(false);
+          return;
+        }
+        const res = await fetch('https://api.openai.com/v1/models', {
+          headers: { 'Authorization': `Bearer ${openaiApiKey}` },
+        });
+        if (res.ok) toast.success('OpenAI conectada com sucesso!');
+        else toast.error('API Key OpenAI inválida. Verifique e tente novamente.');
       } else {
-        toast.error('API Key do Anthropic inválida');
+        if (!anthropicApiKey.trim()) {
+          toast.error('Digite a API Key do Anthropic para verificar');
+          setIsVerifyingAI(false);
+          return;
+        }
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': anthropicApiKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 10,
+            messages: [{ role: 'user', content: 'Hi' }],
+          }),
+        });
+        if (res.ok) toast.success('Anthropic Claude conectado com sucesso!');
+        else toast.error('API Key Anthropic inválida. Verifique e tente novamente.');
       }
     } catch (error) {
-      console.error('Error verifying Anthropic:', error);
-      toast.error('Erro ao verificar conexão com Anthropic');
+      console.error('Error verifying AI:', error);
+      toast.error('Erro ao verificar conexão de IA');
     } finally {
-      setIsVerifyingAnthropic(false);
+      setIsVerifyingAI(false);
     }
   };
 
@@ -189,8 +211,10 @@ export function SettingsPage() {
         shopify_store_url: shopifyStoreUrl,
         shopify_client_id: shopifyClientId,
         shopify_client_secret: shopifyClientSecret,
-        anthropic_api_key: anthropicApiKey || null,
         ai_provider: aiProvider,
+        openai_api_key: aiProvider === 'openai' ? openaiApiKey : null,
+        anthropic_api_key: aiProvider === 'anthropic' ? anthropicApiKey : null,
+        ai_model: aiModel,
         updated_at: new Date().toISOString()
       };
 
@@ -414,87 +438,138 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Anthropic Integration Card */}
+        {/* AI Provider Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="w-5 h-5" />
-              Integração Anthropic Claude
+              Provedor de IA
             </CardTitle>
             <CardDescription>
-              Configure sua API Key do Anthropic para usar modelos Claude.
+              Configure o provedor, API key e modelo para respostas automáticas.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="ai-provider">Provedor de IA</Label>
-              <Select value={aiProvider} onValueChange={setAiProvider}>
+              <Label htmlFor="ai-provider">Provedor</Label>
+              <Select value={aiProvider} onValueChange={(value) => {
+                setAiProvider(value);
+                setAiModel(value === 'openai' ? 'gpt-4o' : 'claude-haiku-4-5-20251001');
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o provedor" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="openai">OpenAI</SelectItem>
-                  <SelectItem value="anthropic">Anthropic Claude</SelectItem>
+                  <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                  <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                O provedor selecionado será usado para gerar respostas automáticas.
-              </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="anthropic-api-key">API Key do Anthropic</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    id="anthropic-api-key"
-                    type={showAnthropicKey ? 'text' : 'password'}
-                    value={anthropicApiKey}
-                    onChange={(e) => setAnthropicApiKey(e.target.value)}
-                    placeholder="sk-ant-..."
-                    className="pr-10 font-mono text-sm"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowAnthropicKey(!showAnthropicKey)}
-                  >
-                    {showAnthropicKey ? (
-                      <EyeOff className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </Button>
+            {aiProvider === 'openai' ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="openai-api-key">OpenAI API Key</Label>
+                  <div className="relative">
+                    <Input
+                      id="openai-api-key"
+                      type={showApiKey ? 'text' : 'password'}
+                      value={openaiApiKey}
+                      onChange={(e) => setOpenaiApiKey(e.target.value)}
+                      placeholder="sk-..."
+                      className="pr-10 font-mono text-sm"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                    >
+                      {showApiKey ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Obtenha em{' '}
+                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      platform.openai.com
+                    </a>
+                  </p>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={handleVerifyAnthropic}
-                  disabled={isVerifyingAnthropic || !anthropicApiKey.trim()}
-                >
-                  {isVerifyingAnthropic ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Verificando...
-                    </>
-                  ) : (
-                    'Verificar Conexão'
-                  )}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Você pode obter sua API Key em{' '}
-                <a 
-                  href="https://console.anthropic.com/settings/keys" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  console.anthropic.com
-                </a>
-              </p>
-            </div>
+                <div className="space-y-2">
+                  <Label>Modelo</Label>
+                  <Select value={aiModel} onValueChange={setAiModel}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                      <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                      <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="anthropic-api-key">Anthropic API Key</Label>
+                  <div className="relative">
+                    <Input
+                      id="anthropic-api-key"
+                      type={showAnthropicKey ? 'text' : 'password'}
+                      value={anthropicApiKey}
+                      onChange={(e) => setAnthropicApiKey(e.target.value)}
+                      placeholder="sk-ant-..."
+                      className="pr-10 font-mono text-sm"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                    >
+                      {showAnthropicKey ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Obtenha em{' '}
+                    <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      console.anthropic.com
+                    </a>
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Modelo</Label>
+                  <Select value={aiModel} onValueChange={setAiModel}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (mais barato)</SelectItem>
+                      <SelectItem value="claude-sonnet-4-6">Claude Sonnet 4.6 (melhor qualidade)</SelectItem>
+                      <SelectItem value="claude-opus-4-5">Claude Opus 4.5 (premium)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
+            <Button
+              variant="outline"
+              onClick={handleVerifyAI}
+              disabled={isVerifyingAI || (aiProvider === 'openai' ? !openaiApiKey.trim() : !anthropicApiKey.trim())}
+            >
+              {isVerifyingAI ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Verificando...
+                </>
+              ) : (
+                'Verificar Conexão'
+              )}
+            </Button>
           </CardContent>
         </Card>
 

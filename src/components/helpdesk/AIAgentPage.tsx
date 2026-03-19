@@ -3,40 +3,28 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/contexts/StoreContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
-import { Bot, Key, Brain, Zap, Loader2, CheckCircle2, XCircle, Eye, EyeOff, Store } from 'lucide-react';
+import { Bot, Brain, Loader2, Store } from 'lucide-react';
 
 interface AISettings {
-  openai_api_key: string | null;
-  ai_model: string | null;
   ai_system_prompt: string | null;
   ai_response_delay: number | null;
   ai_is_active: boolean | null;
-  ai_provider: string | null;
-  anthropic_api_key: string | null;
 }
 
 export function AIAgentPage() {
   const queryClient = useQueryClient();
   const { currentStore } = useStore();
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   
   // Form state
-  const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState('gpt-4o');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [responseDelay, setResponseDelay] = useState(2);
   const [isActive, setIsActive] = useState(false);
-  const [aiProvider, setAiProvider] = useState('openai');
 
   // Fetch current settings filtered by store
   const { data: settings, isLoading } = useQuery({
@@ -44,7 +32,7 @@ export function AIAgentPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('settings')
-        .select('openai_api_key, ai_model, ai_system_prompt, ai_response_delay, ai_is_active, ai_provider, anthropic_api_key')
+        .select('ai_system_prompt, ai_response_delay, ai_is_active')
         .eq('store_id', currentStore!.id)
         .maybeSingle();
       
@@ -57,19 +45,13 @@ export function AIAgentPage() {
   // Populate form when settings load
   useEffect(() => {
     if (settings) {
-      setApiKey(settings.openai_api_key || '');
-      setModel(settings.ai_model || 'gpt-4o');
       setSystemPrompt(settings.ai_system_prompt || '');
       setResponseDelay(settings.ai_response_delay || 2);
       setIsActive(settings.ai_is_active || false);
-      setAiProvider((settings as any).ai_provider || 'openai');
     } else {
-      setApiKey('');
-      setModel('gpt-4o');
       setSystemPrompt('');
       setResponseDelay(2);
       setIsActive(false);
-      setAiProvider('openai');
     }
   }, [settings, currentStore?.id]);
 
@@ -86,12 +68,9 @@ export function AIAgentPage() {
 
       const settingsData = {
         store_id: currentStore.id,
-        openai_api_key: apiKey || null,
-        ai_model: model,
         ai_system_prompt: systemPrompt || null,
         ai_response_delay: responseDelay,
         ai_is_active: isActive,
-        ai_provider: aiProvider,
         updated_at: new Date().toISOString(),
       };
 
@@ -117,38 +96,6 @@ export function AIAgentPage() {
       toast.error('Erro ao salvar configurações');
     },
   });
-
-  // Test connection
-  const handleTestConnection = async () => {
-    if (!apiKey) {
-      toast.error('Insira a API Key primeiro');
-      return;
-    }
-
-    setIsTesting(true);
-    setTestResult(null);
-
-    try {
-      const response = await fetch('https://api.openai.com/v1/models', {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-        },
-      });
-
-      if (response.ok) {
-        setTestResult('success');
-        toast.success('Conexão bem-sucedida!');
-      } else {
-        setTestResult('error');
-        toast.error('Falha na conexão. Verifique sua API Key.');
-      }
-    } catch (error) {
-      setTestResult('error');
-      toast.error('Erro ao testar conexão');
-    } finally {
-      setIsTesting(false);
-    }
-  };
 
   // Show message when no store is selected
   if (!currentStore) {
@@ -186,84 +133,7 @@ export function AIAgentPage() {
           </div>
         </div>
 
-        {/* Card 1: Conexão */}
-        <Card>
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <Key className="w-5 h-5 text-primary" />
-              <CardTitle className="text-lg">Conexão OpenAI</CardTitle>
-            </div>
-            <CardDescription>
-              Configure sua chave de API e modelo preferido
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="api-key">API Key</Label>
-              <div className="relative">
-                <Input
-                  id="api-key"
-                  type={showApiKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-..."
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="model">Modelo</Label>
-              <Select value={model} onValueChange={setModel}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o modelo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {aiProvider === 'anthropic' ? (
-                    <>
-                      <SelectItem value="claude-haiku-4-5-20251001">Claude Haiku 4.5</SelectItem>
-                      <SelectItem value="claude-sonnet-4-6">Claude Sonnet 4.6</SelectItem>
-                      <SelectItem value="claude-opus-4-5">Claude Opus 4.5</SelectItem>
-                    </>
-                  ) : (
-                    <>
-                      <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
-                      <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
-                      <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={handleTestConnection}
-              disabled={isTesting || !apiKey}
-              className="mt-2"
-            >
-              {isTesting ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : testResult === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" />
-              ) : testResult === 'error' ? (
-                <XCircle className="w-4 h-4 mr-2 text-destructive" />
-              ) : (
-                <Zap className="w-4 h-4 mr-2" />
-              )}
-              Testar Conexão
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Card 2: Personalidade */}
+        {/* Card 1: Personalidade */}
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
@@ -311,7 +181,7 @@ export function AIAgentPage() {
           </CardContent>
         </Card>
 
-        {/* Card 3: Status */}
+        {/* Card 2: Status */}
         <Card className={isActive ? 'border-primary/50 bg-primary/5' : ''}>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">

@@ -120,13 +120,22 @@ serve(async (req) => {
       }
     }
 
-    const useAnthropic = aiProvider === 'anthropic' && anthropicApiKey;
+    const useAnthropic = aiProvider === 'anthropic';
 
-    if (!useAnthropic && !openaiApiKey) {
-      return new Response(
-        JSON.stringify({ error: "API key de IA não configurada. Configure nas configurações do Agente de IA." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (useAnthropic) {
+      if (!anthropicApiKey) {
+        return new Response(
+          JSON.stringify({ error: "Anthropic API key não configurada. Configure nas Configurações." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      if (!openaiApiKey) {
+        return new Response(
+          JSON.stringify({ error: "OpenAI API key não configurada. Configure nas Configurações." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Fetch last 5 messages for context
