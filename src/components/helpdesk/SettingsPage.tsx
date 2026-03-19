@@ -184,9 +184,99 @@ export function SettingsPage() {
       setIsSaving(false);
     }
   };
+  const handleExportChats = async () => {
+    if (!currentStore) return;
+    setExporting(true);
+
+    try {
+      const { data: tickets } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('store_id', currentStore.id)
+        .order('created_at', { ascending: true });
+
+      if (!tickets || tickets.length === 0) {
+        toast.info('Nenhum ticket encontrado.');
+        setExporting(false);
+        return;
+      }
+
+      const { data: messages } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('store_id', currentStore.id)
+        .order('created_at', { ascending: true });
+
+      const msgsByTicket: Record<string, typeof messages> = {};
+      messages?.forEach(m => {
+        if (!msgsByTicket[m.ticket_id]) msgsByTicket[m.ticket_id] = [];
+        msgsByTicket[m.ticket_id].push(m);
+      });
+
+      const separator = '═'.repeat(60);
+      const thinSep = '─'.repeat(60);
+
+      let output = '';
+      output += `SUPORTFY — EXPORTAÇÃO COMPLETA DE CONVERSAS\n`;
+      output += `Loja: ${currentStore.name}\n`;
+      output += `Exportado em: ${new Date().toLocaleString('pt-BR')}\n`;
+      output += `Total de tickets: ${tickets.length}\n`;
+      output += `${separator}\n\n`;
+
+      tickets.forEach((ticket, i) => {
+        const msgs = msgsByTicket[ticket.id] || [];
+        const status = ticket.status === 'open' ? 'ABERTO' : 'FECHADO';
+        const date = new Date(ticket.created_at).toLocaleString('pt-BR');
+
+        output += `${separator}\n`;
+        output += `TICKET #${i + 1} — ${status}\n`;
+        output += `${separator}\n`;
+        output += `Cliente : ${ticket.customer_name || 'Sem nome'}\n`;
+        output += `Email   : ${ticket.customer_email}\n`;
+        output += `Assunto : ${ticket.subject || 'Sem assunto'}\n`;
+        output += `Data    : ${date}\n`;
+        output += `Msgs    : ${msgs.length}\n`;
+        output += `${thinSep}\n\n`;
+
+        if (msgs.length === 0) {
+          output += `  (sem mensagens)\n\n`;
+        } else {
+          msgs.forEach(msg => {
+            const time = new Date(msg.created_at).toLocaleString('pt-BR', {
+              day: '2-digit', month: '2-digit', year: 'numeric',
+              hour: '2-digit', minute: '2-digit'
+            });
+            const role = msg.direction === 'outbound' ? '🤖 SOPHIA' : '👤 CLIENTE';
+            output += `[${time}] ${role}\n`;
+            output += `${msg.content}\n\n`;
+          });
+        }
+
+        output += '\n';
+      });
+
+      output += `${separator}\n`;
+      output += `FIM DA EXPORTAÇÃO — ${tickets.length} tickets · ${messages?.length || 0} mensagens\n`;
+      output += `${separator}\n`;
+
+      const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `suportfy-${currentStore.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success(`Exportado! ${tickets.length} tickets · ${messages?.length || 0} mensagens`);
+    } catch (error) {
+      console.error('Error exporting:', error);
+      toast.error('Erro ao exportar dados');
+    } finally {
+      setExporting(false);
+    }
+  };
 
 
-  if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
