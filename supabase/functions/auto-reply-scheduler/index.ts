@@ -145,17 +145,18 @@ serve(async (req: Request) => {
           .limit(5);
 
         // Build history in chronological order with clear roles
-        const conversationHistory = messages
-          ?.reverse()
+        const messagesSorted = [...(messages || [])].reverse(); // chronological copy
+
+        const conversationHistory = messagesSorted
           .map((msg) => {
             const role = msg.direction === 'inbound' ? 'Customer' : 'Sophia';
             return `${role}: ${msg.content}`;
           })
-          .join('\n\n') || '';
+          .join('\n\n');
 
         // Detect order number mentioned in customer messages
-        const allCustomerMessages = messages
-          ?.filter((m: any) => m.direction === 'inbound')
+        const allCustomerMessages = messagesSorted
+          .filter((m: any) => m.direction === 'inbound')
           .map((m: any) => m.content)
           .join(' ') || '';
         const orderNumberMatch = allCustomerMessages.match(/#?(\d{4,})/);
