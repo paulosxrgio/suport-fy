@@ -63,13 +63,14 @@ export function AIAgentPage() {
       setSystemPrompt(settings.ai_system_prompt || '');
       setResponseDelay(settings.ai_response_delay || 2);
       setIsActive(settings.ai_is_active || false);
+      setAiProvider((settings as any).ai_provider || 'openai');
     } else {
-      // Reset form when no settings (new store)
       setApiKey('');
       setModel('gpt-4o');
       setSystemPrompt('');
       setResponseDelay(2);
       setIsActive(false);
+      setAiProvider('openai');
     }
   }, [settings, currentStore?.id]);
 
