@@ -1,23 +1,32 @@
 
 
-## Analysis: Orders query returns empty despite correct customer
+## Plan: Replace system prompt in both edge functions
 
-### Current State (from logs)
-- **Customer query**: Works. Finds `GOMES` (ID: `11131624947978`), `numberOfOrders: "1"`, `amountSpent: 3.1 GBP`
-- **Orders query**: `orders(first: 5, query: "customer_id:11131624947978")` returns `nodes: []`
-- Query cost is only 5 (vs requested 29), confirming zero results — not a parsing error
+### Problem
+The current system prompt in `auto-reply-scheduler` and `generate-ai-reply` is missing critical spam/scam detection, system email handling, and refined response rules. Neither function currently fetches the store name needed for the new prompt's `${store.name}`.
 
-### Root Cause
-The `client_credentials` grant type used in `getShopifyToken` generates a token whose scopes are defined by the **Shopify app configuration**. The token can read customers (proven by the working query) but cannot read orders.
+### Changes
 
-This is **not a code issue** — the code and queries are correct. The problem is in the Shopify Dev Dashboard app configuration.
+**File: `supabase/functions/auto-reply-scheduler/index.ts`**
+1. After fetching settings (~line 129), add a query to fetch the store name from the `stores` table using `item.store_id`
+2. Replace the `defaultSystemPrompt` (lines 167-240) with the new comprehensive prompt that includes spam detection, system email handling, and refined customer response rules, using the fetched store name
 
-### Required Action (Manual — outside codebase)
-1. Go to **Shopify Partners Dashboard** → Your App → **Configuration**
-2. Under **Admin API access scopes**, ensure **`read_orders`** is checked
-3. **Important**: After adding the scope, you may need to **reinstall the app** on the store or **re-authorize** for the new scope to take effect with client credentials
-4. Some Shopify development stores also have a setting under **Settings → Checkout → Order processing** that restricts API access to orders — ensure that is not blocking
+**File: `supabase/functions/generate-ai-reply/index.ts`**
+1. After fetching ticket data (~line 35), add a query to fetch the store name from the `stores` table using `ticket.store_id`
+2. Replace the `defaultSystemPrompt` (lines 226-299) with the same new prompt, using the fetched store name
 
-### No Code Changes Required
-The two-query split is correctly implemented. Once the `read_orders` scope is properly granted and active, the orders will appear.
+### Store name fetch (added to both functions)
+```typescript
+const { data: storeData } = await supabase
+  .from('stores')
+  .select('name')
+  .eq('id', storeId)
+  .maybeSingle();
+const storeName = storeData?.name || 'our store';
+```
+
+The new prompt will use `${storeName}` instead of `${store.name}`.
+
+### No other changes
+- No changes to the rest of the logic, user message building, or any other files
 
