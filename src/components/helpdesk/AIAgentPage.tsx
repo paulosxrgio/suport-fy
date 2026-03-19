@@ -36,6 +36,8 @@ export function AIAgentPage() {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [responseDelay, setResponseDelay] = useState(2);
   const [isActive, setIsActive] = useState(false);
+  const [aiProvider, setAiProvider] = useState('openai');
+  const [isActive, setIsActive] = useState(false);
 
   // Fetch current settings filtered by store
   const { data: settings, isLoading } = useQuery({
