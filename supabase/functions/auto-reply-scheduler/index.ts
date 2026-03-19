@@ -134,12 +134,15 @@ serve(async (req: Request) => {
         // Buscar settings da loja
         const { data: settings } = await supabase
           .from('settings')
-          .select('openai_api_key, ai_model, ai_system_prompt, sender_name, sender_email, email_signature, resend_api_key, shopify_store_url, shopify_client_id, shopify_client_secret')
+          .select('openai_api_key, ai_model, ai_system_prompt, sender_name, sender_email, email_signature, resend_api_key, shopify_store_url, shopify_client_id, shopify_client_secret, ai_provider, anthropic_api_key')
           .eq('store_id', item.store_id)
           .maybeSingle();
 
-        if (!settings?.openai_api_key) {
-          throw new Error(`OpenAI API key não configurada para loja ${item.store_id}`);
+        const aiProvider = (settings as any)?.ai_provider || 'openai';
+        const useAnthropic = aiProvider === 'anthropic' && (settings as any)?.anthropic_api_key;
+
+        if (!useAnthropic && !settings?.openai_api_key) {
+          throw new Error(`API key de IA não configurada para loja ${item.store_id}`);
         }
 
         if (!settings?.resend_api_key) {
