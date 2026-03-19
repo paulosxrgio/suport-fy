@@ -61,8 +61,9 @@ export function SettingsPage() {
         setShopifyStoreUrl((data as any).shopify_store_url || '');
         setShopifyClientId((data as any).shopify_client_id || '');
         setShopifyClientSecret((data as any).shopify_client_secret || '');
+        setAnthropicApiKey((data as any).anthropic_api_key || '');
+        setAiProvider((data as any).ai_provider || 'openai');
       } else {
-        // Clear form if no settings exist for this store
         setSettingsId(null);
         setEmailSignature('');
         setResendApiKey('');
@@ -71,6 +72,8 @@ export function SettingsPage() {
         setShopifyStoreUrl('');
         setShopifyClientId('');
         setShopifyClientSecret('');
+        setAnthropicApiKey('');
+        setAiProvider('openai');
       }
       setIsLoading(false);
     };
