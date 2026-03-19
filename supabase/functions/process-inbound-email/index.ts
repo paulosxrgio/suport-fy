@@ -329,14 +329,15 @@ serve(async (req: Request) => {
       'chargeflow.io',
       'mail.chargeflow.io',
       'hubspotemail.net',
+      'merge.email',
     ];
 
-    const isInternalEmail = blockedSenders.some(blocked =>
+    const isSystemEmail = blockedSenders.some(blocked =>
       customerEmail.toLowerCase().includes(blocked)
     );
 
-    if (isInternalEmail) {
-      console.log('BLOCKED: Internal/system email from', customerEmail);
+    if (isSystemEmail) {
+      console.log('BLOCKED: System email from', customerEmail);
       return new Response(JSON.stringify({ success: true, skipped: true }), { status: 200 });
     }
     

@@ -510,10 +510,65 @@ NUNCA USE:
       ? shopifyContext + `\n- Primeiro nome do cliente: ${customerFirstName}`
       : `\nDADOS DO PEDIDO: Nenhum pedido encontrado. Responda normalmente e peça o número do pedido educadamente no final.\n- Primeiro nome do cliente: ${customerFirstName}`;
 
-    const lastInboundMessage = lastMessageContent || messages?.find(m => m.direction === 'inbound')?.content || '';
+    const rawLastInbound = messagesSorted
+      .filter(m => m.direction === 'inbound')
+      .slice(-1)[0]?.content || '';
+    const lastInboundMessage = stripQuotedText(rawLastInbound) || lastMessageContent || '';
+
+    // Fetch customer memory
+    let memoryContext = 'CUSTOMER MEMORY: First interaction with this customer.';
+    try {
+      const { data: customerMemory } = await supabase
+        .from('customer_memory')
+        .select('*')
+        .eq('store_id', ticket.store_id)
+        .eq('customer_email', ticket.customer_email)
+        .maybeSingle();
+
+      if (customerMemory) {
+        memoryContext = `
+CUSTOMER MEMORY (use this to personalize your response):
+- Preferred language: ${customerMemory.preferred_language || 'unknown'}
+- Total interactions: ${customerMemory.total_interactions}
+- Last sentiment: ${customerMemory.last_sentiment || 'unknown'}
+- Notes: ${customerMemory.notes || 'none'}`;
+      }
+    } catch (e) { /* silent */ }
+
+    // Detect sentiment
+    let sentimentInstruction = 'TONE INSTRUCTION: Be warm, friendly and professional.';
+    try {
+      const sentRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${openaiApiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'Analyze the customer message sentiment. Return ONLY JSON: {"sentiment": "positive"|"neutral"|"frustrated"|"furious", "language": "English"}' },
+            { role: 'user', content: lastInboundMessage }
+          ],
+          max_tokens: 50, temperature: 0,
+        }),
+      });
+      if (sentRes.ok) {
+        const sentData = await sentRes.json();
+        const parsed = JSON.parse(sentData.choices?.[0]?.message?.content?.trim());
+        const sentimentMap: Record<string, string> = {
+          positive: 'TONE INSTRUCTION: Customer is happy. Be warm and concise.',
+          neutral: 'TONE INSTRUCTION: Simple question. Be clear and efficient.',
+          frustrated: 'TONE INSTRUCTION: Customer is frustrated. Start with genuine apology, validate feelings first.',
+          furious: 'TONE INSTRUCTION: Customer is furious. Stay calm, be extremely empathetic, never defensive.',
+        };
+        sentimentInstruction = sentimentMap[parsed.sentiment] || sentimentInstruction;
+      }
+    } catch (e) { /* silent */ }
 
     const userMessage = `
 ${orderContext}
+
+${memoryContext}
+
+${sentimentInstruction}
 
 CONVERSATION HISTORY (read carefully before replying — continue naturally from where it left off):
 ${conversationHistory || 'This is the first message from this customer.'}

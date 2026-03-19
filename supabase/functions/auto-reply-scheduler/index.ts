@@ -402,7 +402,9 @@ NUNCA USE:
 
         const systemPrompt = settings.ai_system_prompt || defaultSystemPrompt;
 
-        const rawLastInbound = messages?.reverse().find(m => m.direction === 'inbound')?.content || '';
+        const rawLastInbound = messagesSorted
+          .filter(m => m.direction === 'inbound')
+          .slice(-1)[0]?.content || '';
         const lastInboundMessage = stripQuotedText(rawLastInbound);
         console.log(`Item ${item.id} - Last inbound cleaned: ${rawLastInbound.length} → ${lastInboundMessage.length} chars`);
 
