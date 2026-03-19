@@ -98,11 +98,13 @@ serve(async (req) => {
     let shopifyStoreUrl: string | null = null;
     let shopifyClientId: string | null = null;
     let shopifyClientSecret: string | null = null;
+    let aiProvider: string = 'openai';
+    let anthropicApiKey: string | null = null;
 
     if (ticket.store_id) {
       const { data: settings } = await supabase
         .from("settings")
-        .select("openai_api_key, ai_system_prompt, ai_model, shopify_store_url, shopify_client_id, shopify_client_secret")
+        .select("openai_api_key, ai_system_prompt, ai_model, shopify_store_url, shopify_client_id, shopify_client_secret, ai_provider, anthropic_api_key")
         .eq("store_id", ticket.store_id)
         .maybeSingle();
 
@@ -113,12 +115,16 @@ serve(async (req) => {
         shopifyStoreUrl = (settings as any).shopify_store_url;
         shopifyClientId = (settings as any).shopify_client_id;
         shopifyClientSecret = (settings as any).shopify_client_secret;
+        aiProvider = (settings as any).ai_provider || 'openai';
+        anthropicApiKey = (settings as any).anthropic_api_key;
       }
     }
 
-    if (!openaiApiKey) {
+    const useAnthropic = aiProvider === 'anthropic' && anthropicApiKey;
+
+    if (!useAnthropic && !openaiApiKey) {
       return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured. Please configure it in AI Agent settings for this store." }),
+        JSON.stringify({ error: "API key de IA não configurada. Configure nas configurações do Agente de IA." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
