@@ -413,6 +413,90 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Anthropic Integration Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="w-5 h-5" />
+              Integração Anthropic Claude
+            </CardTitle>
+            <CardDescription>
+              Configure sua API Key do Anthropic para usar modelos Claude.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="ai-provider">Provedor de IA</Label>
+              <Select value={aiProvider} onValueChange={setAiProvider}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o provedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="openai">OpenAI</SelectItem>
+                  <SelectItem value="anthropic">Anthropic Claude</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                O provedor selecionado será usado para gerar respostas automáticas.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="anthropic-api-key">API Key do Anthropic</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="anthropic-api-key"
+                    type={showAnthropicKey ? 'text' : 'password'}
+                    value={anthropicApiKey}
+                    onChange={(e) => setAnthropicApiKey(e.target.value)}
+                    placeholder="sk-ant-..."
+                    className="pr-10 font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                  >
+                    {showAnthropicKey ? (
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleVerifyAnthropic}
+                  disabled={isVerifyingAnthropic || !anthropicApiKey.trim()}
+                >
+                  {isVerifyingAnthropic ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Verificando...
+                    </>
+                  ) : (
+                    'Verificar Conexão'
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Você pode obter sua API Key em{' '}
+                <a 
+                  href="https://console.anthropic.com/settings/keys" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  console.anthropic.com
+                </a>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Sender Identity Card */}
         <Card>
           <CardHeader>
