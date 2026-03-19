@@ -875,8 +875,8 @@ If no actionable request is detected, return { "detected": false, "type": null, 
         const fromAddress = `${senderName} <${senderEmail}>`;
 
         const fullContent = emailSignature
-          ? `${aiReply}\n\n${emailSignature}`
-          : aiReply;
+          ? `${cleanedReply}\n\n${emailSignature}`
+          : cleanedReply;
 
         // Threading (RFC 2822)
         const originalSubject = ticket.thread_subject || ticket.subject;
