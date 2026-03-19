@@ -400,7 +400,14 @@ NUNCA USE:
 - Markdown (**bold**, listas, ###)
 - Travessões de qualquer tipo`;
 
-        const systemPrompt = settings.ai_system_prompt || defaultSystemPrompt;
+        const systemPrompt = settings.ai_system_prompt
+          ? `${defaultSystemPrompt}
+
+━━━━━━━━━━━━━━━━━━━━━━
+REGRAS ESPECÍFICAS DESTA LOJA — PRIORIDADE MÁXIMA
+━━━━━━━━━━━━━━━━━━━━━━
+${settings.ai_system_prompt}`
+          : defaultSystemPrompt;
 
         const rawLastInbound = messagesSorted
           .filter(m => m.direction === 'inbound')

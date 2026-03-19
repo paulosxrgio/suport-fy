@@ -503,7 +503,14 @@ NUNCA USE:
 - Markdown (**bold**, listas, ###)
 - Travessões de qualquer tipo`;
 
-    const systemPrompt = aiSystemPrompt || defaultSystemPrompt;
+    const systemPrompt = aiSystemPrompt
+      ? `${defaultSystemPrompt}
+
+━━━━━━━━━━━━━━━━━━━━━━
+REGRAS ESPECÍFICAS DESTA LOJA — PRIORIDADE MÁXIMA
+━━━━━━━━━━━━━━━━━━━━━━
+${aiSystemPrompt}`
+      : defaultSystemPrompt;
 
     // Build user message with order context
     const orderContext = shopifyContext && !shopifyContext.includes('Nenhum pedido encontrado')
