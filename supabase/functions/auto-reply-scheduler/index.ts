@@ -973,7 +973,7 @@ If no actionable request is detected, return { "detected": false, "type": null, 
                 },
                 {
                   role: 'user',
-                  content: `Customer message: ${lastInboundMessage}\n\nSophia's reply: ${aiReply}`
+                  content: `Customer message: ${lastInboundMessage}\n\nSophia's reply: ${cleanedReply}`
                 }
               ],
               max_tokens: 150,

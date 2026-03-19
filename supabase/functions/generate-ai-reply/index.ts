@@ -642,10 +642,12 @@ ${lastInboundMessage || 'No message.'}
       );
     }
 
+    const cleanedReply = stripMarkdownLinks(suggestedReply);
+
     console.log("AI reply generated successfully");
 
     return new Response(
-      JSON.stringify({ reply: suggestedReply }),
+      JSON.stringify({ reply: cleanedReply }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
