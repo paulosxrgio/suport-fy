@@ -218,8 +218,10 @@ export type Database = {
         Row: {
           ai_is_active: boolean | null
           ai_model: string | null
+          ai_provider: string | null
           ai_response_delay: number | null
           ai_system_prompt: string | null
+          anthropic_api_key: string | null
           created_at: string
           email_signature: string | null
           id: string
@@ -238,8 +240,10 @@ export type Database = {
         Insert: {
           ai_is_active?: boolean | null
           ai_model?: string | null
+          ai_provider?: string | null
           ai_response_delay?: number | null
           ai_system_prompt?: string | null
+          anthropic_api_key?: string | null
           created_at?: string
           email_signature?: string | null
           id?: string
@@ -258,8 +262,10 @@ export type Database = {
         Update: {
           ai_is_active?: boolean | null
           ai_model?: string | null
+          ai_provider?: string | null
           ai_response_delay?: number | null
           ai_system_prompt?: string | null
+          anthropic_api_key?: string | null
           created_at?: string
           email_signature?: string | null
           id?: string
