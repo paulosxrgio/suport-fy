@@ -19,6 +19,8 @@ interface AISettings {
   ai_system_prompt: string | null;
   ai_response_delay: number | null;
   ai_is_active: boolean | null;
+  ai_provider: string | null;
+  anthropic_api_key: string | null;
 }
 
 export function AIAgentPage() {
