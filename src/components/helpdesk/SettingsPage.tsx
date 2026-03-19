@@ -20,11 +20,15 @@ export function SettingsPage() {
   const [shopifyStoreUrl, setShopifyStoreUrl] = useState('');
   const [shopifyClientId, setShopifyClientId] = useState('');
   const [shopifyClientSecret, setShopifyClientSecret] = useState('');
+  const [anthropicApiKey, setAnthropicApiKey] = useState('');
+  const [aiProvider, setAiProvider] = useState('openai');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showShopifyClientId, setShowShopifyClientId] = useState(false);
   const [showShopifyClientSecret, setShowShopifyClientSecret] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerifyingAnthropic, setIsVerifyingAnthropic] = useState(false);
   const [isVerifyingShopify, setIsVerifyingShopify] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
