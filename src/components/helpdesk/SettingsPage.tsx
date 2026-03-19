@@ -599,6 +599,39 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Export Data */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Exportar Dados
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Exporta todo o histórico de conversas da loja em formato .txt organizado —
+              incluindo todas as mensagens, datas, clientes e respostas da IA.
+              Ideal para análise de comportamento e auditoria.
+            </p>
+            <pre className="bg-muted p-4 rounded-lg text-xs text-muted-foreground overflow-x-auto whitespace-pre leading-relaxed">
+{`══════════════════════════════
+TICKET #1 — FECHADO
+══════════════════════════════
+Cliente : Sarah Johnson
+──────────────────────────────
+[27/02/2026 09:14] 👤 CLIENTE
+Where is my order?
+
+[27/02/2026 09:18] 🤖 SOPHIA
+Hi Sarah, I've checked this personally...`}
+            </pre>
+            <Button onClick={handleExportChats} disabled={exporting} variant="outline">
+              <Download className="w-4 h-4" />
+              {exporting ? 'Exportando...' : 'Exportar histórico completo (.txt)'}
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Single Save Button */}
         <div className="flex justify-end pt-4 pb-8">
           <Button size="lg" onClick={handleSaveSettings} disabled={isSaving}>
