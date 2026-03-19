@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.auto-reply-scheduler]
 verify_jwt = false
+
+[functions.analyze-response]
+verify_jwt = false
