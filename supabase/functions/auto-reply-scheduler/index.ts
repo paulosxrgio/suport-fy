@@ -134,12 +134,15 @@ serve(async (req: Request) => {
         // Buscar settings da loja
         const { data: settings } = await supabase
           .from('settings')
-          .select('openai_api_key, ai_model, ai_system_prompt, sender_name, sender_email, email_signature, resend_api_key, shopify_store_url, shopify_client_id, shopify_client_secret')
+          .select('openai_api_key, ai_model, ai_system_prompt, sender_name, sender_email, email_signature, resend_api_key, shopify_store_url, shopify_client_id, shopify_client_secret, ai_provider, anthropic_api_key')
           .eq('store_id', item.store_id)
           .maybeSingle();
 
-        if (!settings?.openai_api_key) {
-          throw new Error(`OpenAI API key não configurada para loja ${item.store_id}`);
+        const aiProvider = (settings as any)?.ai_provider || 'openai';
+        const useAnthropic = aiProvider === 'anthropic' && (settings as any)?.anthropic_api_key;
+
+        if (!useAnthropic && !settings?.openai_api_key) {
+          throw new Error(`API key de IA não configurada para loja ${item.store_id}`);
         }
 
         if (!settings?.resend_api_key) {
@@ -748,37 +751,66 @@ ${lastInboundMessage || 'No message.'}
 `.trim();
         })();
 
-        const model = settings.ai_model || 'gpt-4o';
+        const model = settings.ai_model || (useAnthropic ? 'claude-haiku-4-5-20251001' : 'gpt-4o');
 
-        console.log(`Item ${item.id} - Chamando OpenAI (${model})...`);
+        console.log(`Item ${item.id} - Chamando ${useAnthropic ? 'Anthropic' : 'OpenAI'} (${model})...`);
 
-        const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${settings.openai_api_key}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userMessage },
-            ],
-            max_tokens: 500,
-            temperature: 0.7,
-          }),
-        });
+        let aiReply = '';
 
-        if (!openaiResponse.ok) {
-          const errorText = await openaiResponse.text();
-          throw new Error(`OpenAI API error ${openaiResponse.status}: ${errorText}`);
+        if (useAnthropic) {
+          const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': (settings as any).anthropic_api_key,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 1024,
+              system: systemPrompt,
+              messages: [
+                { role: 'user', content: userMessage }
+              ],
+            }),
+          });
+
+          if (!anthropicResponse.ok) {
+            const err = await anthropicResponse.text();
+            throw new Error(`Anthropic API error: ${err}`);
+          }
+
+          const anthropicData = await anthropicResponse.json();
+          aiReply = anthropicData.content?.[0]?.text?.trim() || '';
+        } else {
+          const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${settings.openai_api_key}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userMessage },
+              ],
+              max_tokens: 500,
+              temperature: 0.7,
+            }),
+          });
+
+          if (!openaiResponse.ok) {
+            const errorText = await openaiResponse.text();
+            throw new Error(`OpenAI API error ${openaiResponse.status}: ${errorText}`);
+          }
+
+          const openaiData = await openaiResponse.json();
+          aiReply = openaiData.choices?.[0]?.message?.content?.trim() || '';
         }
 
-        const openaiData = await openaiResponse.json();
-        const aiReply = openaiData.choices?.[0]?.message?.content?.trim();
-
         if (!aiReply) {
-          throw new Error('OpenAI não gerou resposta');
+          throw new Error('IA não gerou resposta');
         }
 
         const cleanedReply = stripMarkdownLinks(aiReply);

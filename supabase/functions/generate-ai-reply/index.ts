@@ -98,11 +98,13 @@ serve(async (req) => {
     let shopifyStoreUrl: string | null = null;
     let shopifyClientId: string | null = null;
     let shopifyClientSecret: string | null = null;
+    let aiProvider: string = 'openai';
+    let anthropicApiKey: string | null = null;
 
     if (ticket.store_id) {
       const { data: settings } = await supabase
         .from("settings")
-        .select("openai_api_key, ai_system_prompt, ai_model, shopify_store_url, shopify_client_id, shopify_client_secret")
+        .select("openai_api_key, ai_system_prompt, ai_model, shopify_store_url, shopify_client_id, shopify_client_secret, ai_provider, anthropic_api_key")
         .eq("store_id", ticket.store_id)
         .maybeSingle();
 
@@ -113,12 +115,16 @@ serve(async (req) => {
         shopifyStoreUrl = (settings as any).shopify_store_url;
         shopifyClientId = (settings as any).shopify_client_id;
         shopifyClientSecret = (settings as any).shopify_client_secret;
+        aiProvider = (settings as any).ai_provider || 'openai';
+        anthropicApiKey = (settings as any).anthropic_api_key;
       }
     }
 
-    if (!openaiApiKey) {
+    const useAnthropic = aiProvider === 'anthropic' && anthropicApiKey;
+
+    if (!useAnthropic && !openaiApiKey) {
       return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured. Please configure it in AI Agent settings for this store." }),
+        JSON.stringify({ error: "API key de IA não configurada. Configure nas configurações do Agente de IA." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -594,46 +600,87 @@ CUSTOMER'S LATEST MESSAGE:
 ${lastInboundMessage || 'No message.'}
 `.trim();
 
-    // Call OpenAI
-    const model = aiModel || "gpt-4o";
-    console.log(`Calling OpenAI API with model: ${model} for store: ${ticket.store_id}`);
+    // Call AI provider
+    const model = aiModel || (useAnthropic ? 'claude-haiku-4-5-20251001' : 'gpt-4o');
+    console.log(`Calling ${useAnthropic ? 'Anthropic' : 'OpenAI'} API with model: ${model} for store: ${ticket.store_id}`);
 
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${openaiApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
-      }),
-    });
+    let suggestedReply = '';
 
-    if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      console.error("OpenAI API error:", openaiResponse.status, errorText);
-      
-      if (openaiResponse.status === 401) {
+    if (useAnthropic) {
+      const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': anthropicApiKey!,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: [
+            { role: 'user', content: userMessage }
+          ],
+        }),
+      });
+
+      if (!anthropicResponse.ok) {
+        const err = await anthropicResponse.text();
+        console.error("Anthropic API error:", err);
+
+        if (anthropicResponse.status === 401) {
+          return new Response(
+            JSON.stringify({ error: "API Key do Anthropic inválida. Verifique nas configurações." }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         return new Response(
-          JSON.stringify({ error: "Invalid OpenAI API key. Please check your configuration." }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Failed to generate AI response" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      return new Response(
-        JSON.stringify({ error: "Failed to generate AI response" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
-    const openaiData = await openaiResponse.json();
-    const suggestedReply = openaiData.choices?.[0]?.message?.content?.trim();
+      const anthropicData = await anthropicResponse.json();
+      suggestedReply = anthropicData.content?.[0]?.text?.trim() || '';
+    } else {
+      const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+          max_tokens: 500,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!openaiResponse.ok) {
+        const errorText = await openaiResponse.text();
+        console.error("OpenAI API error:", openaiResponse.status, errorText);
+
+        if (openaiResponse.status === 401) {
+          return new Response(
+            JSON.stringify({ error: "Invalid OpenAI API key. Please check your configuration." }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ error: "Failed to generate AI response" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const openaiData = await openaiResponse.json();
+      suggestedReply = openaiData.choices?.[0]?.message?.content?.trim() || '';
+    }
 
     if (!suggestedReply) {
       return new Response(

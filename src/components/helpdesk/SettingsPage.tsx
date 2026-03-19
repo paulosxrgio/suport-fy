@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Copy, Check, ExternalLink, Key, Mail, Eye, EyeOff, Loader2, User, Store, ShoppingBag, FileText, Download } from 'lucide-react';
+import { Copy, Check, ExternalLink, Key, Mail, Eye, EyeOff, Loader2, User, Store, ShoppingBag, FileText, Download, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,11 +21,15 @@ export function SettingsPage() {
   const [shopifyStoreUrl, setShopifyStoreUrl] = useState('');
   const [shopifyClientId, setShopifyClientId] = useState('');
   const [shopifyClientSecret, setShopifyClientSecret] = useState('');
+  const [anthropicApiKey, setAnthropicApiKey] = useState('');
+  const [aiProvider, setAiProvider] = useState('openai');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showShopifyClientId, setShowShopifyClientId] = useState(false);
   const [showShopifyClientSecret, setShowShopifyClientSecret] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerifyingAnthropic, setIsVerifyingAnthropic] = useState(false);
   const [isVerifyingShopify, setIsVerifyingShopify] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -57,8 +62,9 @@ export function SettingsPage() {
         setShopifyStoreUrl((data as any).shopify_store_url || '');
         setShopifyClientId((data as any).shopify_client_id || '');
         setShopifyClientSecret((data as any).shopify_client_secret || '');
+        setAnthropicApiKey((data as any).anthropic_api_key || '');
+        setAiProvider((data as any).ai_provider || 'openai');
       } else {
-        // Clear form if no settings exist for this store
         setSettingsId(null);
         setEmailSignature('');
         setResendApiKey('');
@@ -67,6 +73,8 @@ export function SettingsPage() {
         setShopifyStoreUrl('');
         setShopifyClientId('');
         setShopifyClientSecret('');
+        setAnthropicApiKey('');
+        setAiProvider('openai');
       }
       setIsLoading(false);
     };
@@ -108,7 +116,34 @@ export function SettingsPage() {
     }
   };
 
-  const handleVerifyShopify = async () => {
+  const handleVerifyAnthropic = async () => {
+    if (!anthropicApiKey.trim()) {
+      toast.error('Digite a API Key do Anthropic para verificar');
+      return;
+    }
+
+    setIsVerifyingAnthropic(true);
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/models', {
+        headers: {
+          'x-api-key': anthropicApiKey,
+          'anthropic-version': '2023-06-01',
+        },
+      });
+
+      if (response.ok) {
+        toast.success('Conexão com Anthropic bem-sucedida!');
+      } else {
+        toast.error('API Key do Anthropic inválida');
+      }
+    } catch (error) {
+      console.error('Error verifying Anthropic:', error);
+      toast.error('Erro ao verificar conexão com Anthropic');
+    } finally {
+      setIsVerifyingAnthropic(false);
+    }
+  };
+
     if (!shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()) {
       toast.error('Preencha a URL, Client ID e Client Secret para verificar');
       return;
@@ -153,6 +188,8 @@ export function SettingsPage() {
         shopify_store_url: shopifyStoreUrl,
         shopify_client_id: shopifyClientId,
         shopify_client_secret: shopifyClientSecret,
+        anthropic_api_key: anthropicApiKey || null,
+        ai_provider: aiProvider,
         updated_at: new Date().toISOString()
       };
 
@@ -370,6 +407,90 @@ export function SettingsPage() {
                   className="text-primary hover:underline"
                 >
                   resend.com/api-keys
+                </a>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Anthropic Integration Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="w-5 h-5" />
+              Integração Anthropic Claude
+            </CardTitle>
+            <CardDescription>
+              Configure sua API Key do Anthropic para usar modelos Claude.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="ai-provider">Provedor de IA</Label>
+              <Select value={aiProvider} onValueChange={setAiProvider}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o provedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="openai">OpenAI</SelectItem>
+                  <SelectItem value="anthropic">Anthropic Claude</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                O provedor selecionado será usado para gerar respostas automáticas.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="anthropic-api-key">API Key do Anthropic</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="anthropic-api-key"
+                    type={showAnthropicKey ? 'text' : 'password'}
+                    value={anthropicApiKey}
+                    onChange={(e) => setAnthropicApiKey(e.target.value)}
+                    placeholder="sk-ant-..."
+                    className="pr-10 font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                  >
+                    {showAnthropicKey ? (
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleVerifyAnthropic}
+                  disabled={isVerifyingAnthropic || !anthropicApiKey.trim()}
+                >
+                  {isVerifyingAnthropic ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Verificando...
+                    </>
+                  ) : (
+                    'Verificar Conexão'
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Você pode obter sua API Key em{' '}
+                <a 
+                  href="https://console.anthropic.com/settings/keys" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  console.anthropic.com
                 </a>
               </p>
             </div>

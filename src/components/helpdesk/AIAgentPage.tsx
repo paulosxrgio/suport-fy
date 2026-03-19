@@ -19,6 +19,8 @@ interface AISettings {
   ai_system_prompt: string | null;
   ai_response_delay: number | null;
   ai_is_active: boolean | null;
+  ai_provider: string | null;
+  anthropic_api_key: string | null;
 }
 
 export function AIAgentPage() {
@@ -34,6 +36,8 @@ export function AIAgentPage() {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [responseDelay, setResponseDelay] = useState(2);
   const [isActive, setIsActive] = useState(false);
+  const [aiProvider, setAiProvider] = useState('openai');
+  const [isActive, setIsActive] = useState(false);
 
   // Fetch current settings filtered by store
   const { data: settings, isLoading } = useQuery({
@@ -41,7 +45,7 @@ export function AIAgentPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('settings')
-        .select('openai_api_key, ai_model, ai_system_prompt, ai_response_delay, ai_is_active')
+        .select('openai_api_key, ai_model, ai_system_prompt, ai_response_delay, ai_is_active, ai_provider, anthropic_api_key')
         .eq('store_id', currentStore!.id)
         .maybeSingle();
       
@@ -59,13 +63,14 @@ export function AIAgentPage() {
       setSystemPrompt(settings.ai_system_prompt || '');
       setResponseDelay(settings.ai_response_delay || 2);
       setIsActive(settings.ai_is_active || false);
+      setAiProvider((settings as any).ai_provider || 'openai');
     } else {
-      // Reset form when no settings (new store)
       setApiKey('');
       setModel('gpt-4o');
       setSystemPrompt('');
       setResponseDelay(2);
       setIsActive(false);
+      setAiProvider('openai');
     }
   }, [settings, currentStore?.id]);
 
@@ -87,6 +92,7 @@ export function AIAgentPage() {
         ai_system_prompt: systemPrompt || null,
         ai_response_delay: responseDelay,
         ai_is_active: isActive,
+        ai_provider: aiProvider,
         updated_at: new Date().toISOString(),
       };
 
@@ -221,9 +227,19 @@ export function AIAgentPage() {
                   <SelectValue placeholder="Selecione o modelo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
-                  <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
-                  <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                  {aiProvider === 'anthropic' ? (
+                    <>
+                      <SelectItem value="claude-haiku-4-5-20251001">Claude Haiku 4.5</SelectItem>
+                      <SelectItem value="claude-sonnet-4-6">Claude Sonnet 4.6</SelectItem>
+                      <SelectItem value="claude-opus-4-5">Claude Opus 4.5</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
+                      <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                      <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
