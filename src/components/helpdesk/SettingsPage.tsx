@@ -116,7 +116,34 @@ export function SettingsPage() {
     }
   };
 
-  const handleVerifyShopify = async () => {
+  const handleVerifyAnthropic = async () => {
+    if (!anthropicApiKey.trim()) {
+      toast.error('Digite a API Key do Anthropic para verificar');
+      return;
+    }
+
+    setIsVerifyingAnthropic(true);
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/models', {
+        headers: {
+          'x-api-key': anthropicApiKey,
+          'anthropic-version': '2023-06-01',
+        },
+      });
+
+      if (response.ok) {
+        toast.success('Conexão com Anthropic bem-sucedida!');
+      } else {
+        toast.error('API Key do Anthropic inválida');
+      }
+    } catch (error) {
+      console.error('Error verifying Anthropic:', error);
+      toast.error('Erro ao verificar conexão com Anthropic');
+    } finally {
+      setIsVerifyingAnthropic(false);
+    }
+  };
+
     if (!shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()) {
       toast.error('Preencha a URL, Client ID e Client Secret para verificar');
       return;
