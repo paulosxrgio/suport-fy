@@ -130,8 +130,9 @@ serve(async (req) => {
     }
 
     // Build history in chronological order with clear roles
-    const conversationHistory = messages
-      ?.reverse()
+    const messagesSorted = [...(messages || [])].reverse();
+
+    const conversationHistory = messagesSorted
       .map((msg) => {
         const role = msg.direction === "inbound" ? "Customer" : "Sophia";
         return `${role}: ${msg.content}`;
