@@ -123,44 +123,22 @@ export function SettingsPage() {
   };
 
   const handleVerifyAI = async () => {
+    const key = aiProvider === 'openai' ? openaiApiKey : anthropicApiKey;
+    if (!key.trim()) {
+      toast.error(`Digite a API Key do ${aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} para verificar`);
+      return;
+    }
     setIsVerifyingAI(true);
     try {
-      if (aiProvider === 'openai') {
-        if (!openaiApiKey.trim()) {
-          toast.error('Digite a API Key da OpenAI para verificar');
-          setIsVerifyingAI(false);
-          return;
-        }
-        const res = await fetch('https://api.openai.com/v1/models', {
-          headers: { 'Authorization': `Bearer ${openaiApiKey}` },
-        });
-        if (res.ok) toast.success('OpenAI conectada com sucesso!');
-        else toast.error('API Key OpenAI inválida. Verifique e tente novamente.');
-      } else {
-        if (!anthropicApiKey.trim()) {
-          toast.error('Digite a API Key do Anthropic para verificar');
-          setIsVerifyingAI(false);
-          return;
-        }
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'x-api-key': anthropicApiKey,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 10,
-            messages: [{ role: 'user', content: 'Hi' }],
-          }),
-        });
-        if (res.ok) toast.success('Anthropic Claude conectado com sucesso!');
-        else toast.error('API Key Anthropic inválida. Verifique e tente novamente.');
-      }
+      const { data, error } = await supabase.functions.invoke('verify-ai-connection', {
+        body: { provider: aiProvider, api_key: key, model: aiModel },
+      });
+      if (error) throw error;
+      if (data?.success) toast.success(data.message);
+      else toast.error(data?.error || 'Erro ao verificar conexão');
     } catch (error) {
       console.error('Error verifying AI:', error);
-      toast.error('Erro ao verificar conexão de IA');
+      toast.error('Erro ao verificar conexão de IA. Tente novamente.');
     } finally {
       setIsVerifyingAI(false);
     }
