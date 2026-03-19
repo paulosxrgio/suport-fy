@@ -139,11 +139,18 @@ serve(async (req: Request) => {
           .maybeSingle();
 
         const aiProvider = (settings as any)?.ai_provider || 'openai';
-        const useAnthropic = aiProvider === 'anthropic' && (settings as any)?.anthropic_api_key;
 
-        if (!useAnthropic && !settings?.openai_api_key) {
-          throw new Error(`API key de IA não configurada para loja ${item.store_id}`);
+        if (aiProvider === 'anthropic') {
+          if (!(settings as any)?.anthropic_api_key) {
+            throw new Error(`Anthropic API key não configurada para loja ${item.store_id}`);
+          }
+        } else {
+          if (!settings?.openai_api_key) {
+            throw new Error(`OpenAI API key não configurada para loja ${item.store_id}`);
+          }
         }
+
+        const useAnthropic = aiProvider === 'anthropic';
 
         if (!settings?.resend_api_key) {
           throw new Error(`Resend API key não configurada para loja ${item.store_id}`);
