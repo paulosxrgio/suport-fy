@@ -92,6 +92,7 @@ export function AIAgentPage() {
         ai_system_prompt: systemPrompt || null,
         ai_response_delay: responseDelay,
         ai_is_active: isActive,
+        ai_provider: aiProvider,
         updated_at: new Date().toISOString(),
       };
 
