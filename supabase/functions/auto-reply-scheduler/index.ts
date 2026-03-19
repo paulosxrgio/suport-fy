@@ -43,6 +43,16 @@ function stripQuotedText(text: string): string {
   return result.trim();
 }
 
+function stripMarkdownLinks(text: string): string {
+  if (!text) return text;
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '$2');
+  text = text.replace(/\[(https?:\/\/[^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '$1');
+  text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+  text = text.replace(/\*([^*]+)\*/g, '$1');
+  text = text.replace(/^#{1,3}\s+/gm, '');
+  return text.trim();
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -771,7 +781,9 @@ ${lastInboundMessage || 'No message.'}
           throw new Error('OpenAI não gerou resposta');
         }
 
-        console.log(`Item ${item.id} - Resposta IA gerada (${aiReply.length} chars)`);
+        const cleanedReply = stripMarkdownLinks(aiReply);
+
+        console.log(`Item ${item.id} - Resposta IA gerada (${cleanedReply.length} chars)`);
 
         // ========================================
         // STEP 2a.3: Classificar solicitação do cliente
@@ -863,8 +875,8 @@ If no actionable request is detected, return { "detected": false, "type": null, 
         const fromAddress = `${senderName} <${senderEmail}>`;
 
         const fullContent = emailSignature
-          ? `${aiReply}\n\n${emailSignature}`
-          : aiReply;
+          ? `${cleanedReply}\n\n${emailSignature}`
+          : cleanedReply;
 
         // Threading (RFC 2822)
         const originalSubject = ticket.thread_subject || ticket.subject;
@@ -905,7 +917,7 @@ If no actionable request is detected, return { "detected": false, "type": null, 
           .from('messages')
           .insert({
             ticket_id: item.ticket_id,
-            content: aiReply,
+            content: cleanedReply,
             direction: 'outbound',
             sender_email: senderEmail,
             email_message_id: sentMessageId,
@@ -961,7 +973,7 @@ If no actionable request is detected, return { "detected": false, "type": null, 
                 },
                 {
                   role: 'user',
-                  content: `Customer message: ${lastInboundMessage}\n\nSophia's reply: ${aiReply}`
+                  content: `Customer message: ${lastInboundMessage}\n\nSophia's reply: ${cleanedReply}`
                 }
               ],
               max_tokens: 150,
