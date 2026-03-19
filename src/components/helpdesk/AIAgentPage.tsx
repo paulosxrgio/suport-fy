@@ -45,7 +45,7 @@ export function AIAgentPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('settings')
-        .select('openai_api_key, ai_model, ai_system_prompt, ai_response_delay, ai_is_active')
+        .select('openai_api_key, ai_model, ai_system_prompt, ai_response_delay, ai_is_active, ai_provider, anthropic_api_key')
         .eq('store_id', currentStore!.id)
         .maybeSingle();
       
