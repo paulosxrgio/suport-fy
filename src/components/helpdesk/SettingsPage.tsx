@@ -144,6 +144,7 @@ export function SettingsPage() {
     }
   };
 
+  const handleVerifyShopify = async () => {
     if (!shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()) {
       toast.error('Preencha a URL, Client ID e Client Secret para verificar');
       return;
