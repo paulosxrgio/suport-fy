@@ -122,31 +122,47 @@ export function SettingsPage() {
     }
   };
 
-  const handleVerifyAnthropic = async () => {
-    if (!anthropicApiKey.trim()) {
-      toast.error('Digite a API Key do Anthropic para verificar');
-      return;
-    }
-
-    setIsVerifyingAnthropic(true);
+  const handleVerifyAI = async () => {
+    setIsVerifyingAI(true);
     try {
-      const response = await fetch('https://api.anthropic.com/v1/models', {
-        headers: {
-          'x-api-key': anthropicApiKey,
-          'anthropic-version': '2023-06-01',
-        },
-      });
-
-      if (response.ok) {
-        toast.success('Conexão com Anthropic bem-sucedida!');
+      if (aiProvider === 'openai') {
+        if (!openaiApiKey.trim()) {
+          toast.error('Digite a API Key da OpenAI para verificar');
+          setIsVerifyingAI(false);
+          return;
+        }
+        const res = await fetch('https://api.openai.com/v1/models', {
+          headers: { 'Authorization': `Bearer ${openaiApiKey}` },
+        });
+        if (res.ok) toast.success('OpenAI conectada com sucesso!');
+        else toast.error('API Key OpenAI inválida. Verifique e tente novamente.');
       } else {
-        toast.error('API Key do Anthropic inválida');
+        if (!anthropicApiKey.trim()) {
+          toast.error('Digite a API Key do Anthropic para verificar');
+          setIsVerifyingAI(false);
+          return;
+        }
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': anthropicApiKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 10,
+            messages: [{ role: 'user', content: 'Hi' }],
+          }),
+        });
+        if (res.ok) toast.success('Anthropic Claude conectado com sucesso!');
+        else toast.error('API Key Anthropic inválida. Verifique e tente novamente.');
       }
     } catch (error) {
-      console.error('Error verifying Anthropic:', error);
-      toast.error('Erro ao verificar conexão com Anthropic');
+      console.error('Error verifying AI:', error);
+      toast.error('Erro ao verificar conexão de IA');
     } finally {
-      setIsVerifyingAnthropic(false);
+      setIsVerifyingAI(false);
     }
   };
 
