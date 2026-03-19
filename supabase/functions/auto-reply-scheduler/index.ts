@@ -917,7 +917,7 @@ If no actionable request is detected, return { "detected": false, "type": null, 
           .from('messages')
           .insert({
             ticket_id: item.ticket_id,
-            content: aiReply,
+            content: cleanedReply,
             direction: 'outbound',
             sender_email: senderEmail,
             email_message_id: sentMessageId,
