@@ -956,6 +956,31 @@ If no actionable request is detected, return { "detected": false, "type": null, 
             store_id: item.store_id,
           });
 
+        // Análise de qualidade da resposta (não bloqueante)
+        try {
+          await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/analyze-response`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            },
+            body: JSON.stringify({
+              store_id: item.store_id,
+              ticket_id: item.ticket_id,
+              customer_email: ticket.customer_email,
+              customer_message: lastInboundMessage,
+              ai_response: cleanedReply,
+              sentiment,
+              openai_api_key: settings.openai_api_key,
+              anthropic_api_key: settings.anthropic_api_key,
+              ai_provider: settings.ai_provider || 'openai',
+            }),
+          });
+          console.log('Analysis triggered successfully');
+        } catch (e) {
+          console.error('Analysis trigger failed (non-blocking):', e);
+        }
+
         // Atualizar threading do ticket
         if (sentMessageId) {
           const updatedReferences = [...(ticket.references_chain || [])];

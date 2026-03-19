@@ -157,6 +157,56 @@ export type Database = {
           },
         ]
       }
+      prompt_suggestions: {
+        Row: {
+          applied_at: string | null
+          avg_score_before: number | null
+          created_at: string | null
+          current_prompt: string | null
+          id: string
+          issues_found: Json | null
+          reason: string | null
+          responses_analyzed: number | null
+          status: string | null
+          store_id: string | null
+          suggested_prompt: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          avg_score_before?: number | null
+          created_at?: string | null
+          current_prompt?: string | null
+          id?: string
+          issues_found?: Json | null
+          reason?: string | null
+          responses_analyzed?: number | null
+          status?: string | null
+          store_id?: string | null
+          suggested_prompt?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          avg_score_before?: number | null
+          created_at?: string | null
+          current_prompt?: string | null
+          id?: string
+          issues_found?: Json | null
+          reason?: string | null
+          responses_analyzed?: number | null
+          status?: string | null
+          store_id?: string | null
+          suggested_prompt?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_suggestions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requests: {
         Row: {
           created_at: string | null
@@ -214,6 +264,66 @@ export type Database = {
           },
         ]
       }
+      response_quality_log: {
+        Row: {
+          ai_response: string | null
+          created_at: string | null
+          customer_email: string | null
+          customer_message: string | null
+          id: string
+          issues: Json | null
+          positive_aspects: Json | null
+          prompt_version: number | null
+          score: number | null
+          sentiment: string | null
+          store_id: string | null
+          ticket_id: string | null
+        }
+        Insert: {
+          ai_response?: string | null
+          created_at?: string | null
+          customer_email?: string | null
+          customer_message?: string | null
+          id?: string
+          issues?: Json | null
+          positive_aspects?: Json | null
+          prompt_version?: number | null
+          score?: number | null
+          sentiment?: string | null
+          store_id?: string | null
+          ticket_id?: string | null
+        }
+        Update: {
+          ai_response?: string | null
+          created_at?: string | null
+          customer_email?: string | null
+          customer_message?: string | null
+          id?: string
+          issues?: Json | null
+          positive_aspects?: Json | null
+          prompt_version?: number | null
+          score?: number | null
+          sentiment?: string | null
+          store_id?: string | null
+          ticket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "response_quality_log_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "response_quality_log_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           ai_is_active: boolean | null
@@ -226,6 +336,8 @@ export type Database = {
           email_signature: string | null
           id: string
           openai_api_key: string | null
+          prompt_auto_improve: boolean | null
+          prompt_version: number | null
           resend_api_key: string | null
           resend_api_key_configured: boolean | null
           sender_email: string | null
@@ -248,6 +360,8 @@ export type Database = {
           email_signature?: string | null
           id?: string
           openai_api_key?: string | null
+          prompt_auto_improve?: boolean | null
+          prompt_version?: number | null
           resend_api_key?: string | null
           resend_api_key_configured?: boolean | null
           sender_email?: string | null
@@ -270,6 +384,8 @@ export type Database = {
           email_signature?: string | null
           id?: string
           openai_api_key?: string | null
+          prompt_auto_improve?: boolean | null
+          prompt_version?: number | null
           resend_api_key?: string | null
           resend_api_key_configured?: boolean | null
           sender_email?: string | null
