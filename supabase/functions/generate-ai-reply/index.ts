@@ -600,46 +600,87 @@ CUSTOMER'S LATEST MESSAGE:
 ${lastInboundMessage || 'No message.'}
 `.trim();
 
-    // Call OpenAI
-    const model = aiModel || "gpt-4o";
-    console.log(`Calling OpenAI API with model: ${model} for store: ${ticket.store_id}`);
+    // Call AI provider
+    const model = aiModel || (useAnthropic ? 'claude-haiku-4-5-20251001' : 'gpt-4o');
+    console.log(`Calling ${useAnthropic ? 'Anthropic' : 'OpenAI'} API with model: ${model} for store: ${ticket.store_id}`);
 
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${openaiApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
-      }),
-    });
+    let suggestedReply = '';
 
-    if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      console.error("OpenAI API error:", openaiResponse.status, errorText);
-      
-      if (openaiResponse.status === 401) {
+    if (useAnthropic) {
+      const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': anthropicApiKey!,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: [
+            { role: 'user', content: userMessage }
+          ],
+        }),
+      });
+
+      if (!anthropicResponse.ok) {
+        const err = await anthropicResponse.text();
+        console.error("Anthropic API error:", err);
+
+        if (anthropicResponse.status === 401) {
+          return new Response(
+            JSON.stringify({ error: "API Key do Anthropic inválida. Verifique nas configurações." }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         return new Response(
-          JSON.stringify({ error: "Invalid OpenAI API key. Please check your configuration." }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Failed to generate AI response" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      return new Response(
-        JSON.stringify({ error: "Failed to generate AI response" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
-    const openaiData = await openaiResponse.json();
-    const suggestedReply = openaiData.choices?.[0]?.message?.content?.trim();
+      const anthropicData = await anthropicResponse.json();
+      suggestedReply = anthropicData.content?.[0]?.text?.trim() || '';
+    } else {
+      const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+          max_tokens: 500,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!openaiResponse.ok) {
+        const errorText = await openaiResponse.text();
+        console.error("OpenAI API error:", openaiResponse.status, errorText);
+
+        if (openaiResponse.status === 401) {
+          return new Response(
+            JSON.stringify({ error: "Invalid OpenAI API key. Please check your configuration." }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ error: "Failed to generate AI response" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const openaiData = await openaiResponse.json();
+      suggestedReply = openaiData.choices?.[0]?.message?.content?.trim() || '';
+    }
 
     if (!suggestedReply) {
       return new Response(
