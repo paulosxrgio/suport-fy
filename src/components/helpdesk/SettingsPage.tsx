@@ -27,6 +27,7 @@ export function SettingsPage() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerifyingShopify, setIsVerifyingShopify] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Webhook URL - this is the URL users need to copy to Resend
