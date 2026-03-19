@@ -160,6 +160,8 @@ export function SettingsPage() {
         shopify_store_url: shopifyStoreUrl,
         shopify_client_id: shopifyClientId,
         shopify_client_secret: shopifyClientSecret,
+        anthropic_api_key: anthropicApiKey || null,
+        ai_provider: aiProvider,
         updated_at: new Date().toISOString()
       };
 
