@@ -1,65 +1,23 @@
 
 
-## Plan: Add email blocking filter + new system prompt rules
+## Analysis: Orders query returns empty despite correct customer
 
-### 1. `process-inbound-email/index.ts` — Block internal/system emails
+### Current State (from logs)
+- **Customer query**: Works. Finds `GOMES` (ID: `11131624947978`), `numberOfOrders: "1"`, `amountSpent: 3.1 GBP`
+- **Orders query**: `orders(first: 5, query: "customer_id:11131624947978")` returns `nodes: []`
+- Query cost is only 5 (vs requested 29), confirming zero results — not a parsing error
 
-Insert a blocked senders check right after `customerEmail` is extracted (after line 322), before the `if (!customerEmail)` check:
+### Root Cause
+The `client_credentials` grant type used in `getShopifyToken` generates a token whose scopes are defined by the **Shopify app configuration**. The token can read customers (proven by the working query) but cannot read orders.
 
-```typescript
-const blockedSenders = [
-  'mailer@shopify.com',
-  'noreply@shopify.com',
-  'chargeflow.io',
-  'mail.chargeflow.io',
-  'hubspotemail.net',
-];
+This is **not a code issue** — the code and queries are correct. The problem is in the Shopify Dev Dashboard app configuration.
 
-const isInternalEmail = blockedSenders.some(blocked =>
-  customerEmail.toLowerCase().includes(blocked)
-);
+### Required Action (Manual — outside codebase)
+1. Go to **Shopify Partners Dashboard** → Your App → **Configuration**
+2. Under **Admin API access scopes**, ensure **`read_orders`** is checked
+3. **Important**: After adding the scope, you may need to **reinstall the app** on the store or **re-authorize** for the new scope to take effect with client credentials
+4. Some Shopify development stores also have a setting under **Settings → Checkout → Order processing** that restricts API access to orders — ensure that is not blocking
 
-if (isInternalEmail) {
-  console.log('BLOCKED: Internal/system email from', customerEmail);
-  return new Response(JSON.stringify({ success: true, skipped: true }), { status: 200 });
-}
-```
-
-### 2. System prompt changes in both `auto-reply-scheduler` and `generate-ai-reply`
-
-Add 4 new rule blocks in the "PARA CLIENTES REAIS" section, after "REEMBOLSO — QUANDO O CLIENTE INSISTE" and before "ALTERAÇÃO DE PEDIDO":
-
-```text
-REEMBOLSO — LIMITE DE PERSUASÃO:
-- Se o histórico da conversa mostrar que o cliente já pediu reembolso 2 ou mais vezes, PARE de persuadir
-- Nesse caso, responda apenas: "I completely understand, and I'm sorry for the inconvenience. I've registered your refund request and our team will be in touch with you shortly."
-- Nunca finja que o reembolso foi processado. Nunca forneça valores ou prazos de reembolso sem confirmação real.
-
-URGÊNCIA DE PRAZO:
-- Se o cliente mencionar uma data limite, evento especial, viagem ou presente, reconheça explicitamente essa urgência na abertura da resposta
-- Exemplo: "I completely understand how important it is for this to arrive before [data/evento mencionado]."
-- Seja mais empática e priorize a tranquilização emocional antes das informações técnicas
-
-LINK DE RASTREAMENTO — NÃO REPETIR:
-- Se o histórico da conversa já contiver um link de rastreamento enviado pela Sophia, NÃO envie o mesmo link novamente a menos que o cliente peça explicitamente
-- Em vez disso, confirme apenas que o pedido está em trânsito e que o link já foi enviado anteriormente
-
-RESPOSTAS CURTAS PARA CLIENTES SATISFEITOS:
-- Se o cliente mandar apenas um emoji, "Thank you!", "Great!", "👍" ou qualquer mensagem de agradecimento curta, responda com no máximo 1 a 2 linhas calorosas e simples
-- Nunca responda agradecimentos com 3 ou mais parágrafos
-- Exemplo correto: "You're very welcome, [Nome]! I'm here if you need anything else."
-- Exemplo errado: 3 parágrafos sobre como é um prazer ajudar e como vai continuar monitorando o pedido
-```
-
-And after "SEM PEDIDO ENCONTRADO", add:
-
-```text
-URGÊNCIA — RECONHECER SEMPRE:
-- Se o cliente disser que o pedido era um presente, que tem uma data especial, que vai viajar, ou que precisa urgentemente — reconheça isso na primeira linha da resposta antes de qualquer informação técnica
-```
-
-### Files modified
-- `supabase/functions/process-inbound-email/index.ts`
-- `supabase/functions/auto-reply-scheduler/index.ts`
-- `supabase/functions/generate-ai-reply/index.ts`
+### No Code Changes Required
+The two-query split is correctly implemented. Once the `read_orders` scope is properly granted and active, the orders will appear.
 

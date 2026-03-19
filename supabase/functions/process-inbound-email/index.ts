@@ -321,6 +321,24 @@ serve(async (req: Request) => {
 
     const customerEmail = extractEmail(emailContent.from);
     const customerName = extractName(emailContent.from, customerEmail);
+
+    // Block internal/system emails from creating tickets
+    const blockedSenders = [
+      'mailer@shopify.com',
+      'noreply@shopify.com',
+      'chargeflow.io',
+      'mail.chargeflow.io',
+      'hubspotemail.net',
+    ];
+
+    const isInternalEmail = blockedSenders.some(blocked =>
+      customerEmail.toLowerCase().includes(blocked)
+    );
+
+    if (isInternalEmail) {
+      console.log('BLOCKED: Internal/system email from', customerEmail);
+      return new Response(JSON.stringify({ success: true, skipped: true }), { status: 200 });
+    }
     
     // Clean quoted text from the email content
     let rawText = emailContent.text || '';
