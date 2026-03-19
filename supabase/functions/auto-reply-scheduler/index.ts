@@ -43,6 +43,16 @@ function stripQuotedText(text: string): string {
   return result.trim();
 }
 
+function stripMarkdownLinks(text: string): string {
+  if (!text) return text;
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '$2');
+  text = text.replace(/\[(https?:\/\/[^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '$1');
+  text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+  text = text.replace(/\*([^*]+)\*/g, '$1');
+  text = text.replace(/^#{1,3}\s+/gm, '');
+  return text.trim();
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
