@@ -227,9 +227,19 @@ export function AIAgentPage() {
                   <SelectValue placeholder="Selecione o modelo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
-                  <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
-                  <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                  {aiProvider === 'anthropic' ? (
+                    <>
+                      <SelectItem value="claude-haiku-4-5-20251001">Claude Haiku 4.5</SelectItem>
+                      <SelectItem value="claude-sonnet-4-6">Claude Sonnet 4.6</SelectItem>
+                      <SelectItem value="claude-opus-4-5">Claude Opus 4.5</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
+                      <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                      <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
