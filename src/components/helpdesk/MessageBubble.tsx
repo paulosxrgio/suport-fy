@@ -103,6 +103,7 @@ interface Message {
   direction: 'inbound' | 'outbound';
   sender_email: string;
   created_at: string;
+  attachments?: MessageAttachment[] | null;
 }
 
 interface MessageBubbleProps {
