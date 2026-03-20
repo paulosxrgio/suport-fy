@@ -212,6 +212,38 @@ export function MessageBubble({ message, senderName, translatedContent, isTransl
             </p>
           )}
           
+          {/* Attachments */}
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="mt-2 flex flex-col gap-2">
+              {message.attachments.map((att: MessageAttachment, i: number) => (
+                att.content_type?.startsWith('image/') ? (
+                  <div key={i} className="relative">
+                    <img
+                      src={att.url}
+                      alt={att.filename}
+                      className="max-w-[300px] max-h-[300px] rounded-lg object-cover border border-border cursor-pointer"
+                      onClick={() => window.open(att.url, '_blank')}
+                    />
+                    <span className="text-xs text-muted-foreground mt-1 block">
+                      {att.filename}
+                    </span>
+                  </div>
+                ) : (
+                  <a
+                    key={i}
+                    href={att.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-primary underline"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                    {att.filename}
+                  </a>
+                )
+              ))}
+            </div>
+          )}
+
           {/* Translation indicator */}
           {isShowingTranslation && (
             <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
