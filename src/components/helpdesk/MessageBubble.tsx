@@ -1,8 +1,9 @@
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Languages, Loader2 } from 'lucide-react';
+import { Languages, Loader2, Paperclip } from 'lucide-react';
 import { useMemo } from 'react';
+import { MessageAttachment } from '@/types/helpdesk';
 import DOMPurify from 'dompurify';
 
 // Helper: Strip quoted text from email content (fallback for old messages)
