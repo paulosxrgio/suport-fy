@@ -18,7 +18,7 @@ export function useMessages(ticketId: string | null) {
         .order('created_at', { ascending: true });
       
       if (error) throw error;
-      return data as Message[];
+      return (data || []) as unknown as Message[];
     },
     enabled: !!ticketId,
   });
