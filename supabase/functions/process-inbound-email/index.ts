@@ -586,6 +586,76 @@ serve(async (req: Request) => {
     }
 
     // ========================================
+    // STEP 7.5: PROCESSAR ATTACHMENTS DE IMAGEM
+    // ========================================
+    const rawAttachments = webhookData.attachments || [];
+    const imageAttachments = rawAttachments.filter((a: any) =>
+      a.content_type?.startsWith('image/')
+    );
+
+    const savedAttachments: { url: string; filename: string; content_type: string }[] = [];
+
+    if (imageAttachments.length > 0 && resendApiKey && emailId) {
+      console.log('Step 7.5 - Processando', imageAttachments.length, 'attachments de imagem');
+
+      for (const attachment of imageAttachments) {
+        try {
+          const attachRes = await fetch(
+            `https://api.resend.com/emails/${emailId}/attachments/${attachment.id}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${resendApiKey}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (!attachRes.ok) {
+            console.log(`Attachment ${attachment.id} fetch failed:`, attachRes.status);
+            continue;
+          }
+
+          const attachData = await attachRes.json();
+          const downloadUrl = attachData?.download_url;
+          if (!downloadUrl) continue;
+
+          const imgRes = await fetch(downloadUrl);
+          if (!imgRes.ok) continue;
+
+          const imgBuffer = await imgRes.arrayBuffer();
+          const imgBytes = new Uint8Array(imgBuffer);
+
+          const fileName = `${ticketId}/${Date.now()}_${attachment.filename}`;
+          const { error: uploadError } = await supabase.storage
+            .from('email-attachments')
+            .upload(fileName, imgBytes, {
+              contentType: attachment.content_type,
+              upsert: false,
+            });
+
+          if (uploadError) {
+            console.error('Upload error:', uploadError);
+            continue;
+          }
+
+          const { data: publicUrlData } = supabase.storage
+            .from('email-attachments')
+            .getPublicUrl(fileName);
+
+          savedAttachments.push({
+            url: publicUrlData.publicUrl,
+            filename: attachment.filename,
+            content_type: attachment.content_type,
+          });
+
+          console.log(`Attachment saved: ${attachment.filename}`);
+        } catch (e) {
+          console.error(`Error processing attachment ${attachment.id}:`, e);
+        }
+      }
+    }
+
+    // ========================================
     // STEP 8: INSERIR MENSAGEM
     // ========================================
     console.log('Step 8 - Inserindo mensagem:', {
@@ -594,6 +664,7 @@ serve(async (req: Request) => {
       emailMessageId,
       contentLength: cleanedContent.length,
       storeId,
+      attachmentsCount: savedAttachments.length,
     });
     
     const { error: messageError } = await supabase
@@ -607,6 +678,7 @@ serve(async (req: Request) => {
         resend_email_id: emailId,
         email_message_id: emailMessageId,
         store_id: storeId,
+        attachments: savedAttachments,
       });
 
     if (messageError) {

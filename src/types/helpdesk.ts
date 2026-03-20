@@ -10,6 +10,12 @@ export interface Ticket {
   store_id: string | null;
 }
 
+export interface MessageAttachment {
+  url: string;
+  filename: string;
+  content_type: string;
+}
+
 export interface Message {
   id: string;
   ticket_id: string;
@@ -20,6 +26,7 @@ export interface Message {
   email_message_id: string | null;
   created_at: string;
   store_id: string | null;
+  attachments: MessageAttachment[] | null;
 }
 
 export interface Settings {
