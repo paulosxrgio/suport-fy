@@ -1,23 +1,38 @@
 
 
-## Plan: Fix AI Connection Verify via Edge Function
+## Plan: Display Email Image Attachments in Chat
 
-### 1. Create Edge Function `verify-ai-connection`
+### 1. Database Migration
 
-New file `supabase/functions/verify-ai-connection/index.ts` — accepts `{ provider, api_key, model }`, proxies a minimal request to OpenAI or Anthropic, returns `{ success, message/error }`.
+- Add `attachments jsonb default '[]'` column to `messages` table
+- Create `email-attachments` storage bucket (public)
+- Add RLS policies for public read and service role upload on the bucket
 
-Add to `supabase/config.toml`:
-```toml
-[functions.verify-ai-connection]
-verify_jwt = false
-```
+### 2. Update `process-inbound-email` Edge Function
 
-### 2. Update `SettingsPage.tsx`
+After Step 5 (data preparation, ~line 364) and before Step 8 (message insert, ~line 599):
 
-Replace `handleVerifyAI` (lines 125-167) to use `supabase.functions.invoke('verify-ai-connection', { body: { provider, api_key, model } })` instead of direct `fetch` calls to OpenAI/Anthropic APIs.
+- Extract image attachments from `webhookData.attachments`
+- For each image attachment, fetch from Resend Attachments API using the store's `resendApiKey`
+- Download the image binary and upload to `email-attachments` bucket in Supabase Storage
+- Collect `{ url, filename, content_type }` array
+- Pass `attachments: savedAttachments` into the message insert at line 601
+
+### 3. Update `MessageBubble.tsx`
+
+- Add `attachments` to the `Message` interface (line 97-105)
+- After the text/HTML content block and before the translation indicator (~line 219), render attachments:
+  - Images: clickable `<img>` with max 300px, rounded, with filename caption
+  - Other files: `<a>` link with Paperclip icon
+- Import `Paperclip` from lucide-react
+
+### 4. Update `src/types/helpdesk.ts`
+
+- Add `attachments` field to the `Message` type
 
 ### Files modified
-- New: `supabase/functions/verify-ai-connection/index.ts`
-- Edit: `supabase/config.toml` (add function entry)
-- Edit: `src/components/helpdesk/SettingsPage.tsx` (replace handleVerifyAI)
+- New migration SQL (alter table + storage bucket + policies)
+- `supabase/functions/process-inbound-email/index.ts` (attachment processing before insert)
+- `src/components/helpdesk/MessageBubble.tsx` (render attachments)
+- `src/types/helpdesk.ts` (add attachments to Message type)
 
