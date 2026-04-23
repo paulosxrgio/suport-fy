@@ -13,7 +13,6 @@ export function AnalyticsPage({ tickets }: AnalyticsPageProps) {
     const open = tickets.filter((t) => t.status === 'open').length;
     const closed = tickets.filter((t) => t.status === 'closed').length;
     
-    // Calculate average resolution time (for closed tickets)
     const closedTickets = tickets.filter((t) => t.status === 'closed');
     const avgResolutionTime = closedTickets.length > 0
       ? closedTickets.reduce((acc, t) => {
@@ -23,41 +22,35 @@ export function AnalyticsPage({ tickets }: AnalyticsPageProps) {
         }, 0) / closedTickets.length
       : 0;
     
-    // Convert to hours
     const avgResolutionHours = Math.round(avgResolutionTime / (1000 * 60 * 60));
     
-    return {
-      total,
-      open,
-      closed,
-      avgResolutionHours,
-    };
+    return { total, open, closed, avgResolutionHours };
   }, [tickets]);
 
   const statCards = [
     {
-      title: 'Total de Tickets',
+      title: 'Total Tickets',
       value: stats.total,
       icon: Ticket,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
     },
     {
-      title: 'Tickets Abertos',
+      title: 'Open Tickets',
       value: stats.open,
       icon: Clock,
       color: 'text-status-open',
       bgColor: 'bg-status-open/10',
     },
     {
-      title: 'Tickets Fechados',
+      title: 'Closed Tickets',
       value: stats.closed,
       icon: CheckCircle,
       color: 'text-muted-foreground',
       bgColor: 'bg-muted',
     },
     {
-      title: 'Tempo Médio de Resolução',
+      title: 'Avg. Resolution Time',
       value: stats.avgResolutionHours > 0 ? `${stats.avgResolutionHours}h` : 'N/A',
       icon: BarChart3,
       color: 'text-primary',
@@ -69,9 +62,9 @@ export function AnalyticsPage({ tickets }: AnalyticsPageProps) {
     <div className="flex-1 overflow-y-auto bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
+          <h1 className="font-heading italic text-3xl text-foreground">Analytics</h1>
           <p className="text-muted-foreground mt-1">
-            Visualize métricas e estatísticas do seu help desk.
+            View metrics and statistics for your help desk.
           </p>
         </div>
 
@@ -96,11 +89,10 @@ export function AnalyticsPage({ tickets }: AnalyticsPageProps) {
           })}
         </div>
 
-        {/* Placeholder for future charts */}
         <Card className="min-h-[300px] flex items-center justify-center">
           <div className="text-center text-muted-foreground">
             <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-30" />
-            <p>Gráficos detalhados em breve</p>
+            <p>Detailed charts coming soon</p>
           </div>
         </Card>
       </div>
