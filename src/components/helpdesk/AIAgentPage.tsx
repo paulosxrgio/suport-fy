@@ -108,7 +108,7 @@ export function AIAgentPage() {
     }
   };
 
-
+  useEffect(() => {
     if (settings) {
       setSystemPrompt(settings.ai_system_prompt || '');
       setResponseDelay(settings.ai_response_delay || 2);
