@@ -56,6 +56,50 @@ export type Database = {
           },
         ]
       }
+      brain_reports: {
+        Row: {
+          conversations_analyzed: number | null
+          created_at: string
+          critical_errors: Json | null
+          id: string
+          patterns_found: Json | null
+          prompt_additions: Json | null
+          score: number | null
+          store_id: string
+          summary: string | null
+        }
+        Insert: {
+          conversations_analyzed?: number | null
+          created_at?: string
+          critical_errors?: Json | null
+          id?: string
+          patterns_found?: Json | null
+          prompt_additions?: Json | null
+          score?: number | null
+          store_id: string
+          summary?: string | null
+        }
+        Update: {
+          conversations_analyzed?: number | null
+          created_at?: string
+          critical_errors?: Json | null
+          id?: string
+          patterns_found?: Json | null
+          prompt_additions?: Json | null
+          score?: number | null
+          store_id?: string
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brain_reports_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_memory: {
         Row: {
           created_at: string | null
