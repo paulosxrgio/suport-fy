@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronRight, Mail, User, Calendar, ShoppingBag, ExternalLink, Package, Truck, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Ticket } from '@/types/helpdesk';
 import { Button } from '@/components/ui/button';
@@ -45,24 +45,24 @@ interface CustomerInfoSidebarProps {
 function getFulfillmentBadge(status: string) {
   const s = status?.toUpperCase() || '';
   if (s === 'FULFILLED' || s === 'DELIVERED')
-    return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-1.5 py-0">Entregue</Badge>;
+    return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-1.5 py-0">Delivered</Badge>;
   if (s === 'IN_TRANSIT' || s === 'SHIPPED')
-    return <Badge className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] px-1.5 py-0">Enviado</Badge>;
+    return <Badge className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] px-1.5 py-0">Shipped</Badge>;
   if (s === 'CANCELLED')
-    return <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[10px] px-1.5 py-0">Cancelado</Badge>;
-  return <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0">Pendente</Badge>;
+    return <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[10px] px-1.5 py-0">Cancelled</Badge>;
+  return <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0">Pending</Badge>;
 }
 
 function getFinancialBadge(status: string) {
   const s = status?.toUpperCase() || '';
   if (s === 'PAID')
-    return <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-emerald-700 border-emerald-200">Pago</Badge>;
+    return <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-emerald-700 border-emerald-200">Paid</Badge>;
   if (s === 'REFUNDED')
-    return <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground border-border">Reembolsado</Badge>;
+    return <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground border-border">Refunded</Badge>;
   if (s === 'PARTIALLY_REFUNDED')
-    return <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-orange-700 border-orange-200">Parcial</Badge>;
+    return <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-orange-700 border-orange-200">Partial</Badge>;
   if (s === 'PENDING')
-    return <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-700 border-amber-200">Pendente</Badge>;
+    return <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-700 border-amber-200">Pending</Badge>;
   return <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">{status}</Badge>;
 }
 
@@ -129,7 +129,7 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
         <div className="p-5">
           {/* Section label */}
           <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium mb-4">
-            Informações do Cliente
+            Customer Info
           </p>
 
           <div className="space-y-5">
@@ -139,10 +139,10 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
                 <User className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-display text-lg text-foreground truncate">
-                  {ticket.customer_name || 'Sem nome'}
+                <p className="font-heading text-lg text-foreground truncate">
+                  {ticket.customer_name || 'No name'}
                 </p>
-                <p className="text-xs text-muted-foreground">Cliente</p>
+                <p className="text-xs text-muted-foreground">Customer</p>
               </div>
             </div>
 
@@ -152,7 +152,7 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
             <div className="flex items-start gap-3">
               <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium mb-1">E-mail</p>
+                <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium mb-1">Email</p>
                 <p className="text-sm text-foreground break-all">{ticket.customer_email}</p>
               </div>
             </div>
@@ -161,9 +161,9 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
             <div className="flex items-start gap-3">
               <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium mb-1">Ticket criado</p>
+                <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium mb-1">Ticket created</p>
                 <p className="text-sm text-foreground">
-                  {format(new Date(ticket.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  {format(new Date(ticket.created_at), "MMMM dd, yyyy", { locale: enUS })}
                 </p>
                 <p className="text-xs text-muted-foreground">{format(new Date(ticket.created_at), 'HH:mm')}</p>
               </div>
@@ -185,7 +185,7 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
                 )}
 
                 {!loadingOrders && notConfigured && (
-                  <p className="text-xs text-muted-foreground italic">Integração não configurada</p>
+                  <p className="text-xs text-muted-foreground italic">Integration not configured</p>
                 )}
 
                 {!loadingOrders && !notConfigured && (
@@ -200,14 +200,14 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
                             {customer.name || ticket?.customer_name || '—'}
                           </p>
                           <p className="text-[11px] text-muted-foreground">
-                            {customer.numberOfOrders} pedido{customer.numberOfOrders !== '1' ? 's' : ''} · {customer.totalSpent?.currencyCode} {customer.totalSpent?.amount}
+                            {customer.numberOfOrders} order{customer.numberOfOrders !== '1' ? 's' : ''} · {customer.totalSpent?.currencyCode} {customer.totalSpent?.amount}
                           </p>
                         </div>
                       </div>
                     )}
 
                     {orders.length === 0 && (
-                      <p className="text-xs text-muted-foreground italic">Nenhum pedido encontrado</p>
+                      <p className="text-xs text-muted-foreground italic">No orders found</p>
                     )}
 
                     {orders.map((order, orderIdx) => (
@@ -216,7 +216,7 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
                           <div className="flex items-center gap-1.5">
                             <span className="text-sm font-semibold text-foreground">{order.order_number}</span>
                             <span className="text-[11px] text-muted-foreground">
-                              · {order.created_at ? format(new Date(order.created_at), "dd MMM yyyy", { locale: ptBR }) : '—'}
+                              · {order.created_at ? format(new Date(order.created_at), "MMM dd, yyyy", { locale: enUS }) : '—'}
                             </span>
                           </div>
                           {getFulfillmentBadge(order.status)}
@@ -272,7 +272,7 @@ export function CustomerInfoSidebar({ ticket, isOpen, onToggle }: CustomerInfoSi
                         ) : (
                           <div className="flex items-center gap-1.5">
                             <Truck className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground italic">Rastreamento não disponível</span>
+                            <span className="text-xs text-muted-foreground italic">Tracking not available</span>
                           </div>
                         )}
 
