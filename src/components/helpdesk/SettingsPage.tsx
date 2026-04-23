@@ -91,13 +91,13 @@ export function SettingsPage() {
   const handleCopyWebhook = () => {
     navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
-    toast.success('URL copiada!');
+    toast.success('URL copied!');
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleVerifyConnection = async () => {
     if (!resendApiKey.trim()) {
-      toast.error('Digite a API Key para verificar');
+      toast.error('Enter the API Key to verify');
       return;
     }
 
@@ -110,13 +110,13 @@ export function SettingsPage() {
       if (error) throw error;
 
       if (data.success) {
-        toast.success(data.message || 'Conexão realizada com sucesso!');
+        toast.success(data.message || 'Connection successful!');
       } else {
-        toast.error(data.error || 'API Key inválida');
+        toast.error(data.error || 'Invalid API Key');
       }
     } catch (error) {
       console.error('Error verifying key:', error);
-      toast.error('Erro ao verificar conexão');
+      toast.error('Failed to verify connection');
     } finally {
       setIsVerifying(false);
     }
@@ -125,7 +125,7 @@ export function SettingsPage() {
   const handleVerifyAI = async () => {
     const key = aiProvider === 'openai' ? openaiApiKey : anthropicApiKey;
     if (!key.trim()) {
-      toast.error(`Digite a API Key do ${aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} para verificar`);
+      toast.error(`Enter the ${aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} API Key to verify`);
       return;
     }
     setIsVerifyingAI(true);
@@ -135,10 +135,10 @@ export function SettingsPage() {
       });
       if (error) throw error;
       if (data?.success) toast.success(data.message);
-      else toast.error(data?.error || 'Erro ao verificar conexão');
+      else toast.error(data?.error || 'Failed to verify connection');
     } catch (error) {
       console.error('Error verifying AI:', error);
-      toast.error('Erro ao verificar conexão de IA. Tente novamente.');
+      toast.error('Failed to verify AI connection. Please try again.');
     } finally {
       setIsVerifyingAI(false);
     }
@@ -146,7 +146,7 @@ export function SettingsPage() {
 
   const handleVerifyShopify = async () => {
     if (!shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()) {
-      toast.error('Preencha a URL, Client ID e Client Secret para verificar');
+      toast.error('Fill in URL, Client ID and Client Secret to verify');
       return;
     }
 
@@ -159,13 +159,13 @@ export function SettingsPage() {
       if (error) throw error;
 
       if (data.success) {
-        toast.success(data.message || 'Conexão com Shopify realizada com sucesso!');
+        toast.success(data.message || 'Shopify connection successful!');
       } else {
-        toast.error(data.error || 'Falha ao conectar com Shopify');
+        toast.error(data.error || 'Failed to connect to Shopify');
       }
     } catch (error) {
       console.error('Error verifying Shopify:', error);
-      toast.error('Erro ao verificar conexão com Shopify');
+      toast.error('Failed to verify Shopify connection');
     } finally {
       setIsVerifyingShopify(false);
     }
@@ -173,9 +173,10 @@ export function SettingsPage() {
 
   const handleSaveSettings = async () => {
     if (!currentStore) {
-      toast.error('Selecione uma loja primeiro');
+      toast.error('Select a store first');
       return;
     }
+    if (isSaving) return; // prevent double-submit
 
     setIsSaving(true);
     try {
@@ -202,7 +203,7 @@ export function SettingsPage() {
           .from('settings')
           .update(settingsData as any)
           .eq('id', settingsId);
-        
+
         if (error) throw error;
       } else {
         // Insert new settings for this store
@@ -211,15 +212,15 @@ export function SettingsPage() {
           .insert(settingsData as any)
           .select('id')
           .single();
-        
+
         if (error) throw error;
         setSettingsId(data.id);
       }
 
-      toast.success('Configurações salvas!');
+      toast.success('Settings saved!');
     } catch (error) {
       console.error('Error saving settings:', error);
-      toast.error('Erro ao salvar configurações');
+      toast.error('Failed to save settings');
     } finally {
       setIsSaving(false);
     }
@@ -236,7 +237,7 @@ export function SettingsPage() {
         .order('created_at', { ascending: true });
 
       if (!tickets || tickets.length === 0) {
-        toast.info('Nenhum ticket encontrado.');
+        toast.info('No tickets found.');
         setExporting(false);
         return;
       }
@@ -257,36 +258,36 @@ export function SettingsPage() {
       const thinSep = '─'.repeat(60);
 
       let output = '';
-      output += `SUPORTFY — EXPORTAÇÃO COMPLETA DE CONVERSAS\n`;
-      output += `Loja: ${currentStore.name}\n`;
-      output += `Exportado em: ${new Date().toLocaleString('pt-BR')}\n`;
-      output += `Total de tickets: ${tickets.length}\n`;
+      output += `SUPORTFY — FULL CONVERSATION EXPORT\n`;
+      output += `Store: ${currentStore.name}\n`;
+      output += `Exported at: ${new Date().toLocaleString('en-US')}\n`;
+      output += `Total tickets: ${tickets.length}\n`;
       output += `${separator}\n\n`;
 
       tickets.forEach((ticket, i) => {
         const msgs = msgsByTicket[ticket.id] || [];
-        const status = ticket.status === 'open' ? 'ABERTO' : 'FECHADO';
-        const date = new Date(ticket.created_at).toLocaleString('pt-BR');
+        const status = ticket.status === 'open' ? 'OPEN' : 'CLOSED';
+        const date = new Date(ticket.created_at).toLocaleString('en-US');
 
         output += `${separator}\n`;
         output += `TICKET #${i + 1} — ${status}\n`;
         output += `${separator}\n`;
-        output += `Cliente : ${ticket.customer_name || 'Sem nome'}\n`;
-        output += `Email   : ${ticket.customer_email}\n`;
-        output += `Assunto : ${ticket.subject || 'Sem assunto'}\n`;
-        output += `Data    : ${date}\n`;
-        output += `Msgs    : ${msgs.length}\n`;
+        output += `Customer : ${ticket.customer_name || 'No name'}\n`;
+        output += `Email    : ${ticket.customer_email}\n`;
+        output += `Subject  : ${ticket.subject || 'No subject'}\n`;
+        output += `Date     : ${date}\n`;
+        output += `Msgs     : ${msgs.length}\n`;
         output += `${thinSep}\n\n`;
 
         if (msgs.length === 0) {
-          output += `  (sem mensagens)\n\n`;
+          output += `  (no messages)\n\n`;
         } else {
           msgs.forEach(msg => {
-            const time = new Date(msg.created_at).toLocaleString('pt-BR', {
+            const time = new Date(msg.created_at).toLocaleString('en-US', {
               day: '2-digit', month: '2-digit', year: 'numeric',
               hour: '2-digit', minute: '2-digit'
             });
-            const role = msg.direction === 'outbound' ? '🤖 SOPHIA' : '👤 CLIENTE';
+            const role = msg.direction === 'outbound' ? '🤖 SOPHIA' : '👤 CUSTOMER';
             output += `[${time}] ${role}\n`;
             output += `${msg.content}\n\n`;
           });
@@ -296,7 +297,7 @@ export function SettingsPage() {
       });
 
       output += `${separator}\n`;
-      output += `FIM DA EXPORTAÇÃO — ${tickets.length} tickets · ${messages?.length || 0} mensagens\n`;
+      output += `END OF EXPORT — ${tickets.length} tickets · ${messages?.length || 0} messages\n`;
       output += `${separator}\n`;
 
       const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
@@ -307,10 +308,10 @@ export function SettingsPage() {
       a.click();
       URL.revokeObjectURL(url);
 
-      toast.success(`Exportado! ${tickets.length} tickets · ${messages?.length || 0} mensagens`);
+      toast.success(`Exported! ${tickets.length} tickets · ${messages?.length || 0} messages`);
     } catch (error) {
       console.error('Error exporting:', error);
-      toast.error('Erro ao exportar dados');
+      toast.error('Failed to export data');
     } finally {
       setExporting(false);
     }
@@ -330,7 +331,7 @@ export function SettingsPage() {
       <div className="flex-1 flex items-center justify-center bg-background">
         <div className="text-center">
           <Store className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground">Selecione uma loja para configurar</p>
+          <p className="text-muted-foreground">Select a store to configure</p>
         </div>
       </div>
     );
@@ -340,9 +341,9 @@ export function SettingsPage() {
     <div className="flex-1 overflow-y-auto bg-background p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
-          <p className="text-muted-foreground mt-1">
-            Configure a integração com o Resend para a loja <strong>{currentStore.name}</strong>.
+          <h1 className="text-2xl font-heading italic text-foreground">Settings</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Configure integrations for store <strong>{currentStore.name}</strong>.
           </p>
         </div>
 
@@ -353,15 +354,15 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Key className="w-5 h-5" />
-              Integração Resend
+              Resend Integration
             </CardTitle>
             <CardDescription>
-              Configure sua API Key do Resend para habilitar o envio de e-mails.
+              Configure your Resend API Key to enable outgoing emails.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="resend-api-key">API Key do Resend</Label>
+              <Label htmlFor="resend-api-key">Resend API Key</Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
@@ -394,18 +395,18 @@ export function SettingsPage() {
                   {isVerifying ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Verificando...
+                      Verifying...
                     </>
                   ) : (
-                    'Verificar Conexão'
+                    'Verify connection'
                   )}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Você pode obter sua API Key em{' '}
-                <a 
-                  href="https://resend.com/api-keys" 
-                  target="_blank" 
+                Get your API Key at{' '}
+                <a
+                  href="https://resend.com/api-keys"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"
                 >
@@ -421,21 +422,21 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="w-5 h-5" />
-              Provedor de IA
+              AI Provider
             </CardTitle>
             <CardDescription>
-              Configure o provedor, API key e modelo para respostas automáticas.
+              Configure provider, API key and model for automated replies.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="ai-provider">Provedor</Label>
+              <Label htmlFor="ai-provider">Provider</Label>
               <Select value={aiProvider} onValueChange={(value) => {
                 setAiProvider(value);
                 setAiModel(value === 'openai' ? 'gpt-4o' : 'claude-haiku-4-5-20251001');
               }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o provedor" />
+                  <SelectValue placeholder="Select provider" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="openai">OpenAI (GPT)</SelectItem>
@@ -468,14 +469,14 @@ export function SettingsPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Obtenha em{' '}
+                    Get your key at{' '}
                     <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       platform.openai.com
                     </a>
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Modelo</Label>
+                  <Label>Model</Label>
                   <Select value={aiModel} onValueChange={setAiModel}>
                     <SelectTrigger>
                       <SelectValue />
@@ -512,21 +513,21 @@ export function SettingsPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Obtenha em{' '}
+                    Get your key at{' '}
                     <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       console.anthropic.com
                     </a>
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Modelo</Label>
+                  <Label>Model</Label>
                   <Select value={aiModel} onValueChange={setAiModel}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (mais barato)</SelectItem>
-                      <SelectItem value="claude-sonnet-4-6">Claude Sonnet 4.6 (melhor qualidade)</SelectItem>
+                      <SelectItem value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (cheapest)</SelectItem>
+                      <SelectItem value="claude-sonnet-4-6">Claude Sonnet 4.6 (best quality)</SelectItem>
                       <SelectItem value="claude-opus-4-5">Claude Opus 4.5 (premium)</SelectItem>
                     </SelectContent>
                   </Select>
@@ -542,10 +543,10 @@ export function SettingsPage() {
               {isVerifyingAI ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Verificando...
+                  Verifying...
                 </>
               ) : (
-                'Verificar Conexão'
+                'Verify connection'
               )}
             </Button>
           </CardContent>
@@ -556,38 +557,38 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              Identidade do E-mail
+              Email Identity
             </CardTitle>
             <CardDescription>
-              Configure como seus e-mails aparecerão na caixa de entrada dos clientes.
+              Configure how your emails appear in your customers' inboxes.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="sender-name">Nome de Exibição</Label>
+              <Label htmlFor="sender-name">Display name</Label>
               <Input
                 id="sender-name"
                 type="text"
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
-                placeholder="Ex: Sophia - Ivory Saint"
+                placeholder="e.g., Sophia - Ivory Saint"
               />
               <p className="text-xs text-muted-foreground">
-                Este é o nome que aparecerá na caixa de entrada do seu cliente.
+                This is the name your customer sees in their inbox.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sender-email">E-mail de Envio</Label>
+              <Label htmlFor="sender-email">Sender email</Label>
               <Input
                 id="sender-email"
                 type="email"
                 value={senderEmail}
                 onChange={(e) => setSenderEmail(e.target.value)}
-                placeholder="Ex: suporte@seudominio.com"
+                placeholder="e.g., support@yourdomain.com"
               />
               <p className="text-xs text-muted-foreground">
-                O e-mail verificado no seu painel do Resend.
+                The verified email in your Resend dashboard.
               </p>
             </div>
           </CardContent>
@@ -598,15 +599,15 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="w-5 h-5" />
-              Webhook de Recebimento
+              Inbound Webhook
             </CardTitle>
             <CardDescription>
-              Configure esta URL no painel do Resend para receber e-mails automaticamente.
+              Configure this URL in your Resend dashboard to receive emails automatically.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>URL do Webhook</Label>
+              <Label>Webhook URL</Label>
               <div className="flex gap-2">
                 <Input
                   value={webhookUrl}
@@ -636,7 +637,7 @@ export function SettingsPage() {
                   className="inline-flex items-center gap-2"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Configurar no Resend
+                  Configure on Resend
                 </a>
               </Button>
               <Button variant="outline" asChild>
@@ -647,7 +648,7 @@ export function SettingsPage() {
                   className="inline-flex items-center gap-2"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Documentação
+                  Documentation
                 </a>
               </Button>
             </div>
@@ -659,10 +660,10 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5" />
-              Integração Shopify
+              Shopify Integration
             </CardTitle>
             <CardDescription>
-              Conecte sua loja Shopify para sincronizar pedidos e produtos.
+              Connect your Shopify store to sync orders and products.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -673,11 +674,11 @@ export function SettingsPage() {
                 type="text"
                 value={shopifyStoreUrl}
                 onChange={(e) => setShopifyStoreUrl(e.target.value)}
-                placeholder="minha-loja.myshopify.com"
+                placeholder="my-store.myshopify.com"
                 className="font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                O endereço da sua loja no Shopify (ex: minha-loja.myshopify.com).
+                Your Shopify store address (e.g., my-store.myshopify.com).
               </p>
             </div>
 
@@ -689,7 +690,7 @@ export function SettingsPage() {
                   type={showShopifyClientId ? 'text' : 'password'}
                   value={shopifyClientId}
                   onChange={(e) => setShopifyClientId(e.target.value)}
-                  placeholder="Client ID da aplicação Shopify"
+                  placeholder="Shopify app Client ID"
                   className="pr-10 font-mono text-sm"
                 />
                 <Button
@@ -717,7 +718,7 @@ export function SettingsPage() {
                     type={showShopifyClientSecret ? 'text' : 'password'}
                     value={shopifyClientSecret}
                     onChange={(e) => setShopifyClientSecret(e.target.value)}
-                    placeholder="Client Secret da aplicação Shopify"
+                    placeholder="Shopify app Client Secret"
                     className="pr-10 font-mono text-sm"
                   />
                   <Button
@@ -742,15 +743,15 @@ export function SettingsPage() {
                   {isVerifyingShopify ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Verificando...
+                      Verifying...
                     </>
                   ) : (
-                    'Verificar Conexão'
+                    'Verify connection'
                   )}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Gerados em Shopify Admin → Settings → Apps → Develop apps → API credentials.
+                Generated in Shopify Admin → Settings → Apps → Develop apps → API credentials.
               </p>
             </div>
           </CardContent>
@@ -759,16 +760,16 @@ export function SettingsPage() {
         {/* Email Signature */}
         <Card>
           <CardHeader>
-            <CardTitle>Assinatura de E-mail</CardTitle>
+            <CardTitle>Email Signature</CardTitle>
             <CardDescription>
-              Esta assinatura será adicionada automaticamente às suas respostas.
+              This signature will be appended automatically to your replies.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Textarea
               value={emailSignature}
               onChange={(e) => setEmailSignature(e.target.value)}
-              placeholder="Ex: Atenciosamente,&#10;Equipe de Suporte"
+              placeholder="e.g., Best regards,&#10;Support Team"
               rows={4}
             />
           </CardContent>
@@ -779,30 +780,30 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Exportar Dados
+              Export Data
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Exporta todo o histórico de conversas da loja em formato .txt organizado —
-              incluindo todas as mensagens, datas, clientes e respostas da IA.
-              Ideal para análise de comportamento e auditoria.
+              Export the full conversation history of this store as an organized .txt file —
+              including every message, date, customer and AI reply.
+              Ideal for behavior analysis and auditing.
             </p>
             <pre className="bg-muted p-4 rounded-lg text-xs text-muted-foreground overflow-x-auto whitespace-pre leading-relaxed">
 {`══════════════════════════════
-TICKET #1 — FECHADO
+TICKET #1 — CLOSED
 ══════════════════════════════
-Cliente : Sarah Johnson
+Customer : Sarah Johnson
 ──────────────────────────────
-[27/02/2026 09:14] 👤 CLIENTE
+[02/27/2026 09:14] 👤 CUSTOMER
 Where is my order?
 
-[27/02/2026 09:18] 🤖 SOPHIA
+[02/27/2026 09:18] 🤖 SOPHIA
 Hi Sarah, I've checked this personally...`}
             </pre>
             <Button onClick={handleExportChats} disabled={exporting} variant="outline">
               <Download className="w-4 h-4" />
-              {exporting ? 'Exportando...' : 'Exportar histórico completo (.txt)'}
+              {exporting ? 'Exporting...' : 'Export full history (.txt)'}
             </Button>
           </CardContent>
         </Card>
@@ -812,11 +813,11 @@ Hi Sarah, I've checked this personally...`}
           <Button size="lg" onClick={handleSaveSettings} disabled={isSaving}>
             {isSaving ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Salvando...
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Saving...
               </>
             ) : (
-              'Salvar Todas as Configurações'
+              'Save all settings'
             )}
           </Button>
         </div>

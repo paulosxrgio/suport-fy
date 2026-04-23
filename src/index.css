@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -36,7 +36,7 @@
     --input: 220 13% 91%;
     --ring: 262 83% 58%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Status colors */
     --status-open: 142 71% 45%;
@@ -44,28 +44,28 @@
 
     /* Message bubbles */
     --bubble-inbound: 220 14% 96%;
-    --bubble-outbound: 262 83% 96%;
+    --bubble-outbound: 262 100% 97%;
 
     /* Sidebar — dark */
     --sidebar-background: 224 71% 4%;
-    --sidebar-foreground: 0 0% 100%;
+    --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 262 83% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 262 83% 20%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 13% 16%;
+    --sidebar-accent: 262 40% 15%;
+    --sidebar-accent-foreground: 262 83% 80%;
+    --sidebar-border: 0 0% 100% / 0.07;
     --sidebar-ring: 262 83% 58%;
-    --sidebar-muted: 220 9% 60%;
+    --sidebar-muted: 0 0% 100% / 0.45;
 
     /* Ticket list */
-    --ticket-hover: 220 14% 96%;
-    --ticket-selected: 262 83% 96%;
+    --ticket-hover: 220 14% 97%;
+    --ticket-selected: 262 100% 97%;
     --ticket-selected-border: 262 83% 58%;
 
     /* AI/Magic feature */
     --ai-accent: 262 83% 58%;
     --ai-accent-foreground: 0 0% 100%;
-    --ai-accent-muted: 262 83% 96%;
+    --ai-accent-muted: 262 100% 97%;
 
     /* Semantic extras */
     --success: 142 71% 45%;

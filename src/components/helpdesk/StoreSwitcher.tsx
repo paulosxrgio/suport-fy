@@ -45,18 +45,18 @@ export function StoreSwitcher() {
 
   if (isLoading) {
     return (
-      <div className="w-full px-3 py-3">
-        <div className="h-9 bg-sidebar-accent/30 animate-pulse rounded-full" />
+      <div className="w-full">
+        <div className="h-9 bg-white/5 animate-pulse rounded-lg" />
       </div>
     );
   }
 
   if (!stores || stores.length === 0) {
     return (
-      <div className="w-full px-3 py-3">
+      <div className="w-full">
         <Button
           variant="outline"
-          className="w-full justify-center gap-2 rounded-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+          className="w-full justify-center gap-2 rounded-lg bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-white/5 hover:text-sidebar-foreground"
           onClick={() => setIsDialogOpen(true)}
         >
           <Plus className="h-4 w-4" />
@@ -64,7 +64,7 @@ export function StoreSwitcher() {
         </Button>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="rounded-[14px] shadow-elevated">
+          <DialogContent className="rounded-xl shadow-elevated">
             <DialogHeader>
               <DialogTitle>Create new store</DialogTitle>
               <DialogDescription>
@@ -92,15 +92,15 @@ export function StoreSwitcher() {
   }
 
   return (
-    <div className="w-full px-3 py-3">
+    <div className="w-full">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-full border border-sidebar-border bg-sidebar-accent/30 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/60 transition-all duration-150"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-sidebar-border bg-white/5 text-sm font-medium text-sidebar-foreground hover:bg-white/10 transition-all"
           >
-            <Store className="h-4 w-4 shrink-0 text-sidebar-foreground/60" />
-            <span className="truncate flex-1 text-left">{currentStore?.name || 'Select store'}</span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/60" />
+            <Store className="h-4 w-4 shrink-0 text-sidebar-muted" />
+            <span className="truncate flex-1 text-left">{currentStore?.name ?? 'Select store'}</span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-sidebar-muted" />
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-[200px] p-1 rounded-lg shadow-elevated" align="start">
@@ -110,7 +110,7 @@ export function StoreSwitcher() {
                 key={store.id}
                 onClick={() => { setCurrentStore(store); setIsOpen(false); }}
                 className={cn(
-                  'flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-all duration-150',
+                  'flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-all',
                   'hover:bg-muted text-left',
                   currentStore?.id === store.id && 'bg-muted'
                 )}
@@ -125,7 +125,7 @@ export function StoreSwitcher() {
             <div className="border-t border-border mt-1 pt-1">
               <button
                 onClick={() => { setIsOpen(false); setIsDialogOpen(true); }}
-                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-muted w-full text-left text-muted-foreground transition-all duration-150"
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-muted w-full text-left text-muted-foreground transition-all"
               >
                 <Plus className="h-3.5 w-3.5" />
                 New store
@@ -136,7 +136,7 @@ export function StoreSwitcher() {
       </Popover>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="rounded-[14px] shadow-elevated">
+        <DialogContent className="rounded-xl shadow-elevated">
           <DialogHeader>
             <DialogTitle>Create new store</DialogTitle>
             <DialogDescription>Add a new store to manage tickets separately.</DialogDescription>

@@ -98,11 +98,11 @@ export function AIAgentPage() {
         body: { store_id: currentStore.id, force: true },
       });
       if (error) throw error;
-      toast.success('Análise concluída!');
+      toast.success('Analysis complete!');
       refetchBrain();
     } catch (err) {
       console.error('Brain force analysis error:', err);
-      toast.error('Erro ao executar análise.');
+      toast.error('Failed to run analysis.');
     } finally {
       setIsForcingBrain(false);
     }
@@ -122,7 +122,7 @@ export function AIAgentPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!currentStore) throw new Error('Nenhuma loja selecionada');
+      if (!currentStore) throw new Error('No store selected');
       const { data: existing } = await supabase
         .from('settings')
         .select('id')
@@ -147,11 +147,11 @@ export function AIAgentPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-settings', currentStore?.id] });
-      toast.success('Configurações salvas com sucesso!');
+      toast.success('Settings saved successfully!');
     },
     onError: (error) => {
       console.error('Error saving settings:', error);
-      toast.error('Erro ao salvar configurações');
+      toast.error('Failed to save settings');
     },
   });
 
@@ -194,12 +194,12 @@ export function AIAgentPage() {
         .update({ status: 'applied', applied_at: new Date().toISOString() })
         .eq('id', suggestion.id);
 
-      toast.success('Prompt atualizado com sucesso!');
+      toast.success('Prompt updated successfully!');
       queryClient.invalidateQueries({ queryKey: ['ai-settings', currentStore?.id] });
       refetchSuggestions();
     } catch (error) {
       console.error('Error applying suggestion:', error);
-      toast.error('Erro ao aplicar sugestão');
+      toast.error('Failed to apply suggestion');
     }
   };
 
@@ -209,9 +209,9 @@ export function AIAgentPage() {
         .update({ status: 'rejected' })
         .eq('id', id);
       refetchSuggestions();
-      toast.success('Sugestão rejeitada');
+      toast.success('Suggestion rejected');
     } catch (error) {
-      toast.error('Erro ao rejeitar sugestão');
+      toast.error('Failed to reject suggestion');
     }
   };
 
@@ -220,11 +220,11 @@ export function AIAgentPage() {
     try {
       const { data, error } = await supabase.functions.invoke('optimize-prompt');
       if (error) throw error;
-      toast.success(`Otimização concluída! ${data?.stores_optimized || 0} loja(s) otimizada(s).`);
+      toast.success(`Optimization complete! ${data?.stores_optimized || 0} store(s) optimized.`);
       refetchSuggestions();
     } catch (error) {
       console.error('Error generating suggestion:', error);
-      toast.error('Erro ao gerar sugestão. Tente novamente.');
+      toast.error('Failed to generate suggestion. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -235,7 +235,7 @@ export function AIAgentPage() {
       <div className="flex-1 flex items-center justify-center bg-background">
         <div className="text-center text-muted-foreground">
           <Store className="w-12 h-12 mx-auto mb-4 opacity-30" />
-          <p>Selecione uma loja para configurar o Agente de IA</p>
+          <p>Select a store to configure the AI Agent</p>
         </div>
       </div>
     );
@@ -258,47 +258,52 @@ export function AIAgentPage() {
             <Bot className="w-7 h-7 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Agente de IA</h1>
-            <p className="text-muted-foreground">
-              Configurando para: <span className="font-medium text-foreground">{currentStore.name}</span>
+            <h1 className="text-2xl font-heading italic">AI Agent</h1>
+            <p className="text-muted-foreground text-sm">
+              Configuring for: <span className="font-medium text-foreground">{currentStore.name}</span>
             </p>
           </div>
         </div>
 
-        {/* Card 1: Personalidade */}
+        {/* Card 1: Personality */}
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
-              <CardTitle className="text-lg">Personalidade & Comportamento</CardTitle>
+              <CardTitle className="text-lg">Personality & Behavior</CardTitle>
             </div>
             <CardDescription>
-              Defina como o agente deve se comportar e responder
+              Define how the agent should behave and respond
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="system-prompt">Instruções do Sistema (System Prompt)</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="system-prompt">System Prompt</Label>
+                <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                  🤖 Managed by Brain
+                </span>
+              </div>
               <Textarea
                 id="system-prompt"
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
-                placeholder="Você é um especialista de suporte útil e educado. Responda de forma clara e objetiva, sempre mantendo um tom amigável..."
-                className="min-h-[200px] resize-y"
+                placeholder="You are a helpful and polite support specialist. Reply clearly and objectively, always keeping a friendly tone..."
+                className="min-h-[200px] resize-y font-mono text-xs"
               />
               <p className="text-xs text-muted-foreground">
-                Defina a personalidade, regras e comportamentos do agente aqui.
+                Define the agent's personality, rules and behaviors here.
                 {settings?.prompt_version && (
-                  <span className="ml-2 text-primary">Versão atual: v{settings.prompt_version}</span>
+                  <span className="ml-2 text-primary">Current version: v{settings.prompt_version}</span>
                 )}
               </p>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Tempo de Espera (Delay)</Label>
+                <Label>Response delay</Label>
                 <span className="text-sm font-medium text-primary">
-                  {responseDelay} {responseDelay === 1 ? 'minuto' : 'minutos'}
+                  {responseDelay} {responseDelay === 1 ? 'minute' : 'minutes'}
                 </span>
               </div>
               <Slider
@@ -310,7 +315,7 @@ export function AIAgentPage() {
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Tempo de espera simulado para a resposta parecer humana. Use 0 para resposta imediata.
+                Simulated wait time so replies feel human. Use 0 for instant response.
               </p>
             </div>
           </CardContent>
@@ -322,7 +327,7 @@ export function AIAgentPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Bot className="w-5 h-5 text-primary" />
-                <CardTitle className="text-lg">Status do Agente</CardTitle>
+                <CardTitle className="text-lg">Agent Status</CardTitle>
               </div>
               <Switch
                 checked={isActive}
@@ -331,9 +336,9 @@ export function AIAgentPage() {
               />
             </div>
             <CardDescription>
-              {isActive 
-                ? 'O agente está ativo e responderá automaticamente aos tickets' 
-                : 'O agente está desativado. Ative para começar a automação.'
+              {isActive
+                ? 'The agent is active and will reply to tickets automatically'
+                : 'The agent is disabled. Enable it to start automation.'
               }
             </CardDescription>
           </CardHeader>
@@ -343,7 +348,7 @@ export function AIAgentPage() {
             }`}>
               <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-primary animate-pulse' : 'bg-muted-foreground'}`} />
               <span className="font-medium">
-                {isActive ? 'Agente Autônomo Ativo' : 'Agente Desativado'}
+                {isActive ? 'Autonomous Agent Active' : 'Agent Disabled'}
               </span>
             </div>
           </CardContent>
@@ -357,39 +362,39 @@ export function AIAgentPage() {
             disabled={saveMutation.isPending}
           >
             {saveMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Salvar Configurações
+            Save settings
           </Button>
         </div>
 
-        {/* Card 3: Qualidade das Respostas */}
+        {/* Card 3: Response Quality */}
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-primary" />
-              <CardTitle className="text-lg">Qualidade das Respostas</CardTitle>
+              <CardTitle className="text-lg">Response Quality</CardTitle>
             </div>
             <CardDescription>
-              Métricas de qualidade das respostas automáticas da IA
+              Quality metrics for the AI's automated replies
             </CardDescription>
           </CardHeader>
           <CardContent>
             {!qualityData || qualityData.length < 10 ? (
               <div className="flex items-center gap-3 p-6 rounded-lg bg-muted text-muted-foreground text-center justify-center">
                 <AlertTriangle className="w-5 h-5" />
-                <span>Dados insuficientes. São necessárias pelo menos 10 respostas analisadas para exibir métricas.</span>
+                <span>Not enough data. At least 10 analyzed responses are required to show metrics.</span>
               </div>
             ) : (
               <div className="space-y-6">
                 {/* Score and count cards */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className={`p-6 rounded-xl border ${getScoreBg(avgScore!)}`}>
-                    <p className="text-sm text-muted-foreground mb-1">Score Médio</p>
+                    <p className="text-sm text-muted-foreground mb-1">Average score</p>
                     <p className={`text-4xl font-bold ${getScoreColor(avgScore!)}`}>
                       {avgScore}<span className="text-lg text-muted-foreground">/100</span>
                     </p>
                   </div>
                   <div className="p-6 rounded-xl border bg-muted/50">
-                    <p className="text-sm text-muted-foreground mb-1">Respostas Analisadas</p>
+                    <p className="text-sm text-muted-foreground mb-1">Responses analyzed</p>
                     <p className="text-4xl font-bold text-foreground">{qualityData.length}</p>
                   </div>
                 </div>
@@ -397,7 +402,7 @@ export function AIAgentPage() {
                 {/* Top issues */}
                 {topIssues.length > 0 && (
                   <div className="space-y-3">
-                    <p className="text-sm font-medium text-muted-foreground">Problemas mais recorrentes</p>
+                    <p className="text-sm font-medium text-muted-foreground">Most recurring issues</p>
                     <div className="space-y-2">
                       {topIssues.map(([issue, count], i) => (
                         <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
@@ -413,13 +418,13 @@ export function AIAgentPage() {
           </CardContent>
         </Card>
 
-        {/* Card 4: Sugestões de Melhoria */}
+        {/* Card 4: Improvement Suggestions */}
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Lightbulb className="w-5 h-5 text-primary" />
-                <CardTitle className="text-lg">Sugestões de Melhoria</CardTitle>
+                <CardTitle className="text-lg">Improvement Suggestions</CardTitle>
               </div>
               <Button
                 variant="outline"
@@ -432,18 +437,18 @@ export function AIAgentPage() {
                 ) : (
                   <Sparkles className="w-4 h-4 mr-2" />
                 )}
-                Gerar sugestão agora
+                Generate suggestion now
               </Button>
             </div>
             <CardDescription>
-              Sugestões automáticas de melhoria do prompt baseadas na análise de qualidade
+              Automated prompt improvement suggestions based on quality analysis
             </CardDescription>
           </CardHeader>
           <CardContent>
             {!suggestions || suggestions.length === 0 ? (
               <div className="flex items-center gap-3 p-6 rounded-lg bg-muted text-muted-foreground text-center justify-center">
                 <Lightbulb className="w-5 h-5" />
-                <span>Nenhuma sugestão disponível. Clique em "Gerar sugestão agora" ou aguarde a análise automática diária.</span>
+                <span>No suggestions yet. Click "Generate suggestion now" or wait for the daily automated analysis.</span>
               </div>
             ) : (
               <div className="space-y-4">
@@ -460,13 +465,16 @@ export function AIAgentPage() {
           </CardContent>
         </Card>
 
-        {/* Card 5: Agente Cérebro (read-only) */}
+        {/* Card 5: Brain Agent (read-only) */}
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Brain className="w-5 h-5 text-primary" />
-                <CardTitle className="text-lg">Agente Cérebro</CardTitle>
+                <CardTitle className="text-lg">Brain Agent</CardTitle>
+                <Badge variant="outline" className="ml-1 text-[10px] border-status-open text-status-open">
+                  active
+                </Badge>
               </div>
               <Button
                 variant="outline"
@@ -483,52 +491,43 @@ export function AIAgentPage() {
               </Button>
             </div>
             <CardDescription>
-              Supervisor automático que analisa diariamente as respostas e sugere regras
+              Automated supervisor that analyzes responses daily and suggests rules
             </CardDescription>
           </CardHeader>
           <CardContent>
             {!brainReport ? (
               <div className="flex items-center gap-3 p-6 rounded-lg bg-muted text-muted-foreground text-center justify-center">
                 <Brain className="w-5 h-5" />
-                <span>Nenhum relatório ainda. Clique em "Force analysis now" ou aguarde a análise diária às 23h.</span>
+                <span>No report yet. Click "Force analysis now" or wait for the daily 23:00 analysis.</span>
               </div>
             ) : (
               <div className="space-y-5">
-                {/* Score + meta */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className={`p-6 rounded-xl border ${
-                    (brainReport.score ?? 0) >= 8
-                      ? 'bg-green-500/10 border-green-500/30'
-                      : (brainReport.score ?? 0) >= 5
-                      ? 'bg-yellow-500/10 border-yellow-500/30'
-                      : 'bg-red-500/10 border-red-500/30'
-                  }`}>
-                    <p className="text-sm text-muted-foreground mb-1">Score</p>
-                    <p className={`text-4xl font-bold ${
-                      (brainReport.score ?? 0) >= 8
-                        ? 'text-green-500'
-                        : (brainReport.score ?? 0) >= 5
-                        ? 'text-yellow-500'
-                        : 'text-red-500'
-                    }`}>
-                      {brainReport.score}<span className="text-lg text-muted-foreground">/10</span>
+                {/* Stats grid */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="p-4 rounded-xl border bg-muted/40">
+                    <p className="text-3xl font-heading italic text-foreground">
+                      {brainReport.score ?? 0}<span className="text-base text-muted-foreground">/10</span>
                     </p>
+                    <p className="text-xs text-muted-foreground mt-1">Yesterday's score</p>
                   </div>
-                  <div className="p-6 rounded-xl border bg-muted/50">
-                    <p className="text-sm text-muted-foreground mb-1">Conversas analisadas</p>
-                    <p className="text-4xl font-bold text-foreground">{brainReport.conversations_analyzed ?? 0}</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(brainReport.created_at).toLocaleString('pt-BR', {
-                        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                      })}
+                  <div className="p-4 rounded-xl border bg-muted/40">
+                    <p className="text-3xl font-heading italic text-foreground">
+                      {Array.isArray(brainReport.prompt_additions) ? (brainReport.prompt_additions as unknown[]).length : 0}
                     </p>
+                    <p className="text-xs text-muted-foreground mt-1">Rules added</p>
+                  </div>
+                  <div className="p-4 rounded-xl border bg-muted/40">
+                    <p className="text-3xl font-heading italic text-foreground">
+                      {brainReport.conversations_analyzed ?? 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Conversations</p>
                   </div>
                 </div>
 
                 {/* Summary */}
                 {brainReport.summary && (
                   <div className="p-4 rounded-lg bg-muted/50">
-                    <p className="text-sm text-muted-foreground mb-1">Resumo</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Summary</p>
                     <p className="text-sm">{brainReport.summary}</p>
                   </div>
                 )}
@@ -537,12 +536,12 @@ export function AIAgentPage() {
                 {Array.isArray(brainReport.critical_errors) && (brainReport.critical_errors as string[]).length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <AlertOctagon className="w-4 h-4 text-red-500" />
-                      <p className="text-sm font-medium">Erros críticos</p>
+                      <AlertOctagon className="w-4 h-4 text-destructive" />
+                      <p className="text-sm font-medium">Critical errors</p>
                     </div>
                     <ul className="space-y-1">
                       {(brainReport.critical_errors as string[]).map((e, i) => (
-                        <li key={i} className="text-sm p-2 rounded bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400">
+                        <li key={i} className="text-sm p-2 rounded bg-destructive/10 border border-destructive/20 text-destructive">
                           {e}
                         </li>
                       ))}
@@ -555,7 +554,7 @@ export function AIAgentPage() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Eye className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-sm font-medium">Padrões encontrados</p>
+                      <p className="text-sm font-medium">Patterns found</p>
                     </div>
                     <ul className="space-y-1">
                       {(brainReport.patterns_found as string[]).map((p, i) => (
@@ -571,18 +570,24 @@ export function AIAgentPage() {
                 {Array.isArray(brainReport.prompt_additions) && (brainReport.prompt_additions as string[]).length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-green-500" />
-                      <p className="text-sm font-medium">Regras sugeridas (informativo)</p>
+                      <Sparkles className="w-4 h-4 text-status-open" />
+                      <p className="text-sm font-medium">Suggested rules (informational)</p>
                     </div>
                     <ul className="space-y-1">
                       {(brainReport.prompt_additions as string[]).map((p, i) => (
-                        <li key={i} className="text-sm p-2 rounded bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400">
+                        <li key={i} className="text-sm p-2 rounded bg-status-open/10 border border-status-open/20 text-foreground">
                           {p}
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
+
+                <p className="text-[11px] text-muted-foreground text-right">
+                  Last run: {new Date(brainReport.created_at).toLocaleString('en-US', {
+                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                  })}
+                </p>
               </div>
             )}
           </CardContent>
@@ -600,9 +605,9 @@ function SuggestionCard({ suggestion, onApply, onReject }: {
   const [isOpen, setIsOpen] = useState(false);
 
   const statusBadge = {
-    pending: { label: 'Pendente', variant: 'outline' as const, className: 'border-yellow-500 text-yellow-500' },
-    applied: { label: 'Aplicado', variant: 'outline' as const, className: 'border-green-500 text-green-500' },
-    rejected: { label: 'Rejeitado', variant: 'outline' as const, className: 'border-muted-foreground text-muted-foreground' },
+    pending: { label: 'Pending', variant: 'outline' as const, className: 'border-warning text-warning' },
+    applied: { label: 'Applied', variant: 'outline' as const, className: 'border-status-open text-status-open' },
+    rejected: { label: 'Rejected', variant: 'outline' as const, className: 'border-muted-foreground text-muted-foreground' },
   };
 
   const badge = statusBadge[suggestion.status as keyof typeof statusBadge] || statusBadge.pending;
@@ -616,18 +621,18 @@ function SuggestionCard({ suggestion, onApply, onReject }: {
             {badge.label}
           </Badge>
           <span className="text-xs text-muted-foreground">
-            {new Date(suggestion.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            {new Date(suggestion.created_at).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
         {suggestion.status === 'pending' && (
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => onReject(suggestion.id)}>
               <X className="w-4 h-4 mr-1" />
-              Rejeitar
+              Reject
             </Button>
             <Button size="sm" onClick={() => onApply(suggestion)}>
               <Check className="w-4 h-4 mr-1" />
-              Aplicar prompt
+              Apply prompt
             </Button>
           </div>
         )}
@@ -637,24 +642,24 @@ function SuggestionCard({ suggestion, onApply, onReject }: {
       <div className="flex items-center gap-4 text-sm">
         <div className="flex items-center gap-1 text-muted-foreground">
           <TrendingUp className="w-4 h-4" />
-          Score médio antes: <span className="font-medium text-foreground">{suggestion.avg_score_before}/100</span>
+          Average score before: <span className="font-medium text-foreground">{suggestion.avg_score_before}/100</span>
         </div>
         <div className="text-muted-foreground">
-          Baseado em <span className="font-medium text-foreground">{suggestion.responses_analyzed}</span> respostas
+          Based on <span className="font-medium text-foreground">{suggestion.responses_analyzed}</span> responses
         </div>
       </div>
 
       {/* Reason */}
       {suggestion.reason && (
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Melhoria esperada:</span> {suggestion.reason}
+          <span className="font-medium text-foreground">Expected improvement:</span> {suggestion.reason}
         </p>
       )}
 
       {/* Issues / changes */}
       {issuesFound.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground">Mudanças feitas:</p>
+          <p className="text-xs font-medium text-muted-foreground">Changes made:</p>
           <ul className="text-sm space-y-1">
             {issuesFound.map((issue, i) => (
               <li key={i} className="flex items-start gap-2">
@@ -670,7 +675,7 @@ function SuggestionCard({ suggestion, onApply, onReject }: {
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="w-full justify-between">
-            <span className="text-xs">Ver prompt sugerido completo</span>
+            <span className="text-xs">View full suggested prompt</span>
             <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </Button>
         </CollapsibleTrigger>
