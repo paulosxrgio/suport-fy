@@ -11,7 +11,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
-import { Bot, Brain, Loader2, Store, BarChart3, Lightbulb, ChevronDown, Check, X, Sparkles, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Bot, Brain, Loader2, Store, BarChart3, Lightbulb, ChevronDown, Check, X, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Eye, Zap } from 'lucide-react';
 
 interface AISettings {
   ai_system_prompt: string | null;
