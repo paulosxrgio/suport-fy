@@ -459,6 +459,134 @@ export function AIAgentPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Card 5: Agente Cérebro (read-only) */}
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Brain className="w-5 h-5 text-primary" />
+                <CardTitle className="text-lg">Agente Cérebro</CardTitle>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={forceBrainAnalysis}
+                disabled={isForcingBrain}
+              >
+                {isForcingBrain ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Zap className="w-4 h-4 mr-2" />
+                )}
+                Force analysis now
+              </Button>
+            </div>
+            <CardDescription>
+              Supervisor automático que analisa diariamente as respostas e sugere regras
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!brainReport ? (
+              <div className="flex items-center gap-3 p-6 rounded-lg bg-muted text-muted-foreground text-center justify-center">
+                <Brain className="w-5 h-5" />
+                <span>Nenhum relatório ainda. Clique em "Force analysis now" ou aguarde a análise diária às 23h.</span>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {/* Score + meta */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className={`p-6 rounded-xl border ${
+                    (brainReport.score ?? 0) >= 8
+                      ? 'bg-green-500/10 border-green-500/30'
+                      : (brainReport.score ?? 0) >= 5
+                      ? 'bg-yellow-500/10 border-yellow-500/30'
+                      : 'bg-red-500/10 border-red-500/30'
+                  }`}>
+                    <p className="text-sm text-muted-foreground mb-1">Score</p>
+                    <p className={`text-4xl font-bold ${
+                      (brainReport.score ?? 0) >= 8
+                        ? 'text-green-500'
+                        : (brainReport.score ?? 0) >= 5
+                        ? 'text-yellow-500'
+                        : 'text-red-500'
+                    }`}>
+                      {brainReport.score}<span className="text-lg text-muted-foreground">/10</span>
+                    </p>
+                  </div>
+                  <div className="p-6 rounded-xl border bg-muted/50">
+                    <p className="text-sm text-muted-foreground mb-1">Conversas analisadas</p>
+                    <p className="text-4xl font-bold text-foreground">{brainReport.conversations_analyzed ?? 0}</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {new Date(brainReport.created_at).toLocaleString('pt-BR', {
+                        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Summary */}
+                {brainReport.summary && (
+                  <div className="p-4 rounded-lg bg-muted/50">
+                    <p className="text-sm text-muted-foreground mb-1">Resumo</p>
+                    <p className="text-sm">{brainReport.summary}</p>
+                  </div>
+                )}
+
+                {/* Critical errors */}
+                {Array.isArray(brainReport.critical_errors) && (brainReport.critical_errors as string[]).length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <AlertOctagon className="w-4 h-4 text-red-500" />
+                      <p className="text-sm font-medium">Erros críticos</p>
+                    </div>
+                    <ul className="space-y-1">
+                      {(brainReport.critical_errors as string[]).map((e, i) => (
+                        <li key={i} className="text-sm p-2 rounded bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400">
+                          {e}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Patterns */}
+                {Array.isArray(brainReport.patterns_found) && (brainReport.patterns_found as string[]).length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-sm font-medium">Padrões encontrados</p>
+                    </div>
+                    <ul className="space-y-1">
+                      {(brainReport.patterns_found as string[]).map((p, i) => (
+                        <li key={i} className="text-sm p-2 rounded bg-muted">
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Prompt additions */}
+                {Array.isArray(brainReport.prompt_additions) && (brainReport.prompt_additions as string[]).length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-green-500" />
+                      <p className="text-sm font-medium">Regras sugeridas (informativo)</p>
+                    </div>
+                    <ul className="space-y-1">
+                      {(brainReport.prompt_additions as string[]).map((p, i) => (
+                        <li key={i} className="text-sm p-2 rounded bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400">
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
