@@ -98,11 +98,11 @@ export function AIAgentPage() {
         body: { store_id: currentStore.id, force: true },
       });
       if (error) throw error;
-      toast.success('Análise concluída!');
+      toast.success('Analysis complete!');
       refetchBrain();
     } catch (err) {
       console.error('Brain force analysis error:', err);
-      toast.error('Erro ao executar análise.');
+      toast.error('Failed to run analysis.');
     } finally {
       setIsForcingBrain(false);
     }
@@ -122,7 +122,7 @@ export function AIAgentPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!currentStore) throw new Error('Nenhuma loja selecionada');
+      if (!currentStore) throw new Error('No store selected');
       const { data: existing } = await supabase
         .from('settings')
         .select('id')
@@ -147,11 +147,11 @@ export function AIAgentPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-settings', currentStore?.id] });
-      toast.success('Configurações salvas com sucesso!');
+      toast.success('Settings saved successfully!');
     },
     onError: (error) => {
       console.error('Error saving settings:', error);
-      toast.error('Erro ao salvar configurações');
+      toast.error('Failed to save settings');
     },
   });
 
@@ -194,12 +194,12 @@ export function AIAgentPage() {
         .update({ status: 'applied', applied_at: new Date().toISOString() })
         .eq('id', suggestion.id);
 
-      toast.success('Prompt atualizado com sucesso!');
+      toast.success('Prompt updated successfully!');
       queryClient.invalidateQueries({ queryKey: ['ai-settings', currentStore?.id] });
       refetchSuggestions();
     } catch (error) {
       console.error('Error applying suggestion:', error);
-      toast.error('Erro ao aplicar sugestão');
+      toast.error('Failed to apply suggestion');
     }
   };
 
@@ -209,9 +209,9 @@ export function AIAgentPage() {
         .update({ status: 'rejected' })
         .eq('id', id);
       refetchSuggestions();
-      toast.success('Sugestão rejeitada');
+      toast.success('Suggestion rejected');
     } catch (error) {
-      toast.error('Erro ao rejeitar sugestão');
+      toast.error('Failed to reject suggestion');
     }
   };
 
@@ -220,11 +220,11 @@ export function AIAgentPage() {
     try {
       const { data, error } = await supabase.functions.invoke('optimize-prompt');
       if (error) throw error;
-      toast.success(`Otimização concluída! ${data?.stores_optimized || 0} loja(s) otimizada(s).`);
+      toast.success(`Optimization complete! ${data?.stores_optimized || 0} store(s) optimized.`);
       refetchSuggestions();
     } catch (error) {
       console.error('Error generating suggestion:', error);
-      toast.error('Erro ao gerar sugestão. Tente novamente.');
+      toast.error('Failed to generate suggestion. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -235,7 +235,7 @@ export function AIAgentPage() {
       <div className="flex-1 flex items-center justify-center bg-background">
         <div className="text-center text-muted-foreground">
           <Store className="w-12 h-12 mx-auto mb-4 opacity-30" />
-          <p>Selecione uma loja para configurar o Agente de IA</p>
+          <p>Select a store to configure the AI Agent</p>
         </div>
       </div>
     );
@@ -258,47 +258,52 @@ export function AIAgentPage() {
             <Bot className="w-7 h-7 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Agente de IA</h1>
-            <p className="text-muted-foreground">
-              Configurando para: <span className="font-medium text-foreground">{currentStore.name}</span>
+            <h1 className="text-2xl font-heading italic">AI Agent</h1>
+            <p className="text-muted-foreground text-sm">
+              Configuring for: <span className="font-medium text-foreground">{currentStore.name}</span>
             </p>
           </div>
         </div>
 
-        {/* Card 1: Personalidade */}
+        {/* Card 1: Personality */}
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
-              <CardTitle className="text-lg">Personalidade & Comportamento</CardTitle>
+              <CardTitle className="text-lg">Personality & Behavior</CardTitle>
             </div>
             <CardDescription>
-              Defina como o agente deve se comportar e responder
+              Define how the agent should behave and respond
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="system-prompt">Instruções do Sistema (System Prompt)</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="system-prompt">System Prompt</Label>
+                <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                  🤖 Managed by Brain
+                </span>
+              </div>
               <Textarea
                 id="system-prompt"
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
-                placeholder="Você é um especialista de suporte útil e educado. Responda de forma clara e objetiva, sempre mantendo um tom amigável..."
-                className="min-h-[200px] resize-y"
+                placeholder="You are a helpful and polite support specialist. Reply clearly and objectively, always keeping a friendly tone..."
+                className="min-h-[200px] resize-y font-mono text-xs"
               />
               <p className="text-xs text-muted-foreground">
-                Defina a personalidade, regras e comportamentos do agente aqui.
+                Define the agent's personality, rules and behaviors here.
                 {settings?.prompt_version && (
-                  <span className="ml-2 text-primary">Versão atual: v{settings.prompt_version}</span>
+                  <span className="ml-2 text-primary">Current version: v{settings.prompt_version}</span>
                 )}
               </p>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Tempo de Espera (Delay)</Label>
+                <Label>Response delay</Label>
                 <span className="text-sm font-medium text-primary">
-                  {responseDelay} {responseDelay === 1 ? 'minuto' : 'minutos'}
+                  {responseDelay} {responseDelay === 1 ? 'minute' : 'minutes'}
                 </span>
               </div>
               <Slider
@@ -310,7 +315,7 @@ export function AIAgentPage() {
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Tempo de espera simulado para a resposta parecer humana. Use 0 para resposta imediata.
+                Simulated wait time so replies feel human. Use 0 for instant response.
               </p>
             </div>
           </CardContent>
@@ -322,7 +327,7 @@ export function AIAgentPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Bot className="w-5 h-5 text-primary" />
-                <CardTitle className="text-lg">Status do Agente</CardTitle>
+                <CardTitle className="text-lg">Agent Status</CardTitle>
               </div>
               <Switch
                 checked={isActive}
@@ -331,9 +336,9 @@ export function AIAgentPage() {
               />
             </div>
             <CardDescription>
-              {isActive 
-                ? 'O agente está ativo e responderá automaticamente aos tickets' 
-                : 'O agente está desativado. Ative para começar a automação.'
+              {isActive
+                ? 'The agent is active and will reply to tickets automatically'
+                : 'The agent is disabled. Enable it to start automation.'
               }
             </CardDescription>
           </CardHeader>
@@ -343,7 +348,7 @@ export function AIAgentPage() {
             }`}>
               <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-primary animate-pulse' : 'bg-muted-foreground'}`} />
               <span className="font-medium">
-                {isActive ? 'Agente Autônomo Ativo' : 'Agente Desativado'}
+                {isActive ? 'Autonomous Agent Active' : 'Agent Disabled'}
               </span>
             </div>
           </CardContent>
@@ -357,7 +362,7 @@ export function AIAgentPage() {
             disabled={saveMutation.isPending}
           >
             {saveMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Salvar Configurações
+            Save settings
           </Button>
         </div>
 
