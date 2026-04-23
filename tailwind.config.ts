@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Lexend', 'system-ui', 'sans-serif'],
-        display: ['Instrument Serif', 'Georgia', 'serif'],
+        sans: ['Barlow', 'system-ui', 'sans-serif'],
+        display: ["'Instrument Serif'", 'Georgia', 'serif'],
+        heading: ["'Instrument Serif'", 'Georgia', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",

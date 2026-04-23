@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Sparkles, Languages, Printer } from 'lucide-react';
+import { Send, Loader2, Sparkles, Languages, Printer, Inbox } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,10 +55,10 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     try {
       await sendMessage.mutateAsync({ ticketId: ticket.id, content: contentToSend });
       setReplyContent('');
-      toast.success('Resposta enviada com sucesso!');
+      toast.success('Reply sent successfully!');
     } catch (error: any) {
       if (error?.message !== 'Envio já em andamento') {
-        toast.error('Erro ao enviar resposta. Verifique a configuração do Resend.');
+        toast.error('Failed to send reply. Check your Resend configuration.');
       }
     }
   };
@@ -68,9 +68,9 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     setIsTranslateEnabled(newState);
     if (newState && messages && ticket) {
       await translateMessages(messages, ticket.id, ticket.store_id || undefined);
-      toast.success('Tradução ativada!');
+      toast.success('Translation enabled!');
     } else {
-      toast.info('Tradução desativada');
+      toast.info('Translation disabled');
     }
   };
 
@@ -83,9 +83,9 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
         lastMessageContent: lastInboundMessage?.content,
       });
       setReplyContent(reply);
-      toast.success('Resposta gerada com sucesso!');
+      toast.success('Reply generated successfully!');
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Erro ao gerar resposta';
+      const message = error instanceof Error ? error.message : 'Failed to generate reply';
       toast.error(message);
     }
   };
@@ -97,7 +97,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
 
     const html = `<!DOCTYPE html>
 <html><head>
-<title>Conversa - ${ticket.customer_name || ticket.customer_email}</title>
+<title>Conversation - ${ticket.customer_name || ticket.customer_email}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 32px; background: #fff; color: #1a1a2e; }
@@ -108,8 +108,8 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
   .message.inbound { margin-right: auto; }
   .message.outbound { margin-left: auto; text-align: right; }
   .bubble { display: inline-block; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; text-align: left; }
-  .inbound .bubble { background: #f3f3f5; border: 1px solid #e8e8ed; border-radius: 12px 12px 12px 2px; }
-  .outbound .bubble { background: #ededfc; border: 1px solid rgba(91,91,214,0.2); border-radius: 12px 12px 2px 12px; }
+  .inbound .bubble { background: #f3f3f5; border: 1px solid #e8e8ed; border-radius: 16px 16px 16px 4px; }
+  .outbound .bubble { background: #ede9fe; border: 1px solid rgba(124,58,237,0.2); border-radius: 16px 16px 4px 16px; }
   .meta { font-size: 11px; color: #a0a0b0; margin-top: 4px; }
   .inbound .meta { text-align: left; }
   .outbound .meta { text-align: right; }
@@ -118,14 +118,14 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
 </head><body>
   <div class="header">
     <h2>${ticket.customer_name || ticket.customer_email}</h2>
-    <p>${ticket.customer_email} · ${ticket.subject || 'Sem assunto'} · ${new Date(ticket.created_at).toLocaleDateString('pt-BR')}</p>
+    <p>${ticket.customer_email} · ${ticket.subject || 'No subject'} · ${new Date(ticket.created_at).toLocaleDateString('en-US')}</p>
   </div>
   ${messages.map(msg => `
     <div class="message ${msg.direction}">
       <div class="bubble">${msg.content.replace(/\n/g, '<br>')}</div>
       <div class="meta">
-        ${msg.direction === 'inbound' ? (ticket.customer_name || 'Cliente') : 'Sophia'} · 
-        ${new Date(msg.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+        ${msg.direction === 'inbound' ? (ticket.customer_name || 'Customer') : 'Sophia'} · 
+        ${new Date(msg.created_at).toLocaleString('en-US', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
       </div>
     </div>
   `).join('')}
@@ -149,8 +149,9 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
         <div className="text-center text-muted-foreground">
-          <Send className="w-12 h-12 mx-auto mb-4 opacity-20" />
-          <p className="text-sm">Selecione um ticket para ver a conversa</p>
+          <Inbox className="w-14 h-14 mx-auto mb-4 opacity-25" />
+          <p className="text-base font-medium text-foreground mb-1">Select a conversation</p>
+          <p className="text-sm">Select a conversation to get started</p>
         </div>
       </div>
     );
@@ -159,9 +160,9 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
   return (
     <div className="flex-1 flex flex-col bg-background">
       {/* Header */}
-      <div className="h-16 border-b border-border px-6 flex items-center justify-between">
+      <div className="h-16 border-b border-border px-6 flex items-center justify-between bg-card">
         <div className="flex-1 min-w-0">
-          <h2 className="font-display italic text-xl text-foreground truncate">
+          <h2 className="font-heading italic text-xl text-foreground truncate">
             {ticket.customer_name || ticket.customer_email}
           </h2>
           <p className="text-sm text-muted-foreground truncate">{ticket.subject}</p>
@@ -180,7 +181,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
                   <Printer className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Imprimir conversa</TooltipContent>
+              <TooltipContent>Print conversation</TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <Button
@@ -198,12 +199,12 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
             {isTranslating ? (
               <>
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                Traduzindo...
+                Translating...
               </>
             ) : (
               <>
                 <Languages className="w-4 h-4 mr-1" />
-                {isTranslateEnabled ? 'Traduzido' : 'Traduzir'}
+                {isTranslateEnabled ? 'Translated' : 'Translate'}
               </>
             )}
           </Button>
@@ -234,20 +235,20 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
           ))
         ) : (
           <div className="text-center text-muted-foreground py-8">
-            Nenhuma mensagem neste ticket
+            No messages in this ticket
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Reply Editor */}
-      <div className="border-t border-border p-4">
+      <div className="border-t border-border p-4 bg-card">
         <div className="bg-muted rounded-xl border border-border focus-within:border-primary/60 transition-all duration-150">
           <textarea
             ref={textareaRef}
             value={replyContent}
             onChange={handleTextareaChange}
-            placeholder="Digite sua resposta..."
+            placeholder="Write your reply..."
             className="w-full bg-transparent px-4 pt-3 pb-2 text-sm resize-none outline-none min-h-[80px] max-h-[200px] placeholder:text-muted-foreground"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !sendMessage.isPending) {
@@ -260,7 +261,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
           {/* Toolbar */}
           <div className="flex items-center justify-between px-3 pb-3">
             <p className="text-[11px] text-muted-foreground">
-              Cmd+Enter para enviar
+              Cmd+Enter to send
             </p>
             <div className="flex items-center gap-2">
               <Button
@@ -273,12 +274,12 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
                 {generateAIReply.isPending ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    Escrevendo...
+                    Writing...
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                    Gerar Resposta IA
+                    Generate AI Reply
                   </>
                 )}
               </Button>
@@ -293,7 +294,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5 mr-1.5" />
-                    Enviar
+                    Send
                   </>
                 )}
               </Button>

@@ -8,24 +8,24 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 const TYPE_CONFIG: Record<string, { label: string; icon: typeof Package; color: string }> = {
-  edition_change: { label: 'Troca de Edição', icon: Repeat, color: 'bg-blue-100 text-blue-700' },
-  address_change: { label: 'Alteração de Endereço', icon: MapPin, color: 'bg-amber-100 text-amber-700' },
-  model_change: { label: 'Troca de Modelo', icon: Package, color: 'bg-purple-100 text-purple-700' },
-  cancellation: { label: 'Cancelamento', icon: XCircle, color: 'bg-red-100 text-red-700' },
+  edition_change: { label: 'Edition Change', icon: Repeat, color: 'bg-blue-100 text-blue-700' },
+  address_change: { label: 'Address Change', icon: MapPin, color: 'bg-amber-100 text-amber-700' },
+  model_change: { label: 'Model Change', icon: Package, color: 'bg-purple-100 text-purple-700' },
+  cancellation: { label: 'Cancellation', icon: XCircle, color: 'bg-red-100 text-red-700' },
 };
 
 const STATUS_FILTERS = [
-  { id: 'all', label: 'Todas' },
-  { id: 'pending', label: 'Pendentes' },
-  { id: 'resolved', label: 'Resolvidas' },
+  { id: 'all', label: 'All' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'resolved', label: 'Resolved' },
 ];
 
 const TYPE_FILTERS = [
-  { id: 'all', label: 'Todos os Tipos' },
-  { id: 'edition_change', label: 'Edição' },
-  { id: 'address_change', label: 'Endereço' },
-  { id: 'model_change', label: 'Modelo' },
-  { id: 'cancellation', label: 'Cancelamento' },
+  { id: 'all', label: 'All Types' },
+  { id: 'edition_change', label: 'Edition' },
+  { id: 'address_change', label: 'Address' },
+  { id: 'model_change', label: 'Model' },
+  { id: 'cancellation', label: 'Cancellation' },
 ];
 
 export function RequestsPage() {
@@ -37,9 +37,9 @@ export function RequestsPage() {
   const handleResolve = async (id: string) => {
     try {
       await resolveRequest.mutateAsync(id);
-      toast.success('Solicitação marcada como resolvida');
+      toast.success('Request marked as resolved');
     } catch {
-      toast.error('Erro ao resolver solicitação');
+      toast.error('Failed to resolve request');
     }
   };
 
@@ -51,21 +51,21 @@ export function RequestsPage() {
       <div className="px-8 pt-8 pb-4">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">Solicitações</h1>
+            <h1 className="font-heading italic text-3xl text-foreground">Requests</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Solicitações detectadas automaticamente pela IA
+              Requests automatically detected by AI
             </p>
           </div>
           {pendingCount > 0 && (
             <Badge className="bg-warning/15 text-warning border-warning/20 text-sm px-3 py-1">
               <Clock className="w-3.5 h-3.5 mr-1.5" />
-              {pendingCount} pendente{pendingCount !== 1 ? 's' : ''}
+              {pendingCount} pending
             </Badge>
           )}
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-6 flex-wrap">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status:</span>
@@ -88,8 +88,8 @@ export function RequestsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo:</span>
-            <div className="flex gap-1">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type:</span>
+            <div className="flex gap-1 flex-wrap">
               {TYPE_FILTERS.map((f) => (
                 <button
                   key={f.id}
@@ -122,9 +122,9 @@ export function RequestsPage() {
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
               <CheckCircle className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-medium text-foreground mb-1">Nenhuma solicitação encontrada</h3>
+            <h3 className="text-lg font-medium text-foreground mb-1">No requests found</h3>
             <p className="text-sm text-muted-foreground max-w-sm">
-              As solicitações dos clientes aparecerão aqui quando forem detectadas automaticamente pela IA.
+              Customer requests will appear here when automatically detected by AI.
             </p>
           </div>
         ) : (
@@ -166,63 +166,61 @@ export function RequestsPage() {
                               : 'border-success/30 text-success bg-success/5'
                           )}
                         >
-                          {isPending ? 'Pendente' : 'Resolvida'}
+                          {isPending ? 'Pending' : 'Resolved'}
                         </Badge>
                       </div>
 
                       <p className="text-sm text-foreground font-medium mb-1">{req.description}</p>
 
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                         <span className="font-medium">{req.customer_name || req.customer_email}</span>
                         {req.customer_name && req.customer_email && (
                           <span>{req.customer_email}</span>
                         )}
-                        <span>{format(new Date(req.created_at), 'dd/MM/yyyy HH:mm')}</span>
+                        <span>{format(new Date(req.created_at), 'MMM dd, yyyy HH:mm')}</span>
                       </div>
 
-                      {/* Details */}
                       {req.details && Object.keys(req.details).length > 0 && (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {req.details.order_number && (
                             <span className="text-xs bg-muted px-2 py-1 rounded-md text-muted-foreground">
-                              Pedido: {req.details.order_number}
+                              Order: {req.details.order_number}
                             </span>
                           )}
                           {req.details.from && (
                             <span className="text-xs bg-muted px-2 py-1 rounded-md text-muted-foreground">
-                              De: {req.details.from}
+                              From: {req.details.from}
                             </span>
                           )}
                           {req.details.to && (
                             <span className="text-xs bg-muted px-2 py-1 rounded-md text-muted-foreground">
-                              Para: {req.details.to}
+                              To: {req.details.to}
                             </span>
                           )}
                           {req.details.new_address && (
                             <span className="text-xs bg-muted px-2 py-1 rounded-md text-muted-foreground">
-                              Novo endereço: {req.details.new_address}
+                              New address: {req.details.new_address}
                             </span>
                           )}
                         </div>
                       )}
                     </div>
 
-                    {/* Resolve button */}
                     {isPending && (
                       <Button
                         size="sm"
                         onClick={() => handleResolve(req.id)}
                         disabled={resolveRequest.isPending}
-                        className="bg-success hover:bg-success/90 text-white shrink-0"
+                        className="bg-success hover:bg-success/90 text-primary-foreground shrink-0"
                       >
                         <CheckCircle className="w-4 h-4 mr-1.5" />
-                        Resolver
+                        Resolve
                       </Button>
                     )}
 
                     {!isPending && req.resolved_at && (
                       <span className="text-xs text-muted-foreground shrink-0">
-                        Resolvida em {format(new Date(req.resolved_at), 'dd/MM/yyyy')}
+                        Resolved on {format(new Date(req.resolved_at), 'MMM dd, yyyy')}
                       </span>
                     )}
                   </div>

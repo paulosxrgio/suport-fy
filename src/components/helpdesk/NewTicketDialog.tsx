@@ -33,26 +33,24 @@ export function NewTicketDialog() {
     e.preventDefault();
     
     if (!formData.to.trim() || !formData.subject.trim() || !formData.message.trim()) {
-      toast.error('Preencha todos os campos');
+      toast.error('Please fill in all fields');
       return;
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.to)) {
-      toast.error('Digite um e-mail válido');
+      toast.error('Please enter a valid email');
       return;
     }
 
     if (!currentStore) {
-      toast.error('Selecione uma loja antes de criar um ticket');
+      toast.error('Select a store before creating a ticket');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // 1. Create the ticket with store_id
       const { data: ticket, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -67,7 +65,6 @@ export function NewTicketDialog() {
 
       if (ticketError) throw ticketError;
 
-      // 2. Call edge function to send email and create message
       const { error: sendError } = await supabase.functions.invoke('send-email-reply', {
         body: {
           ticketId: ticket.id,
@@ -77,15 +74,14 @@ export function NewTicketDialog() {
 
       if (sendError) throw sendError;
 
-      // 3. Invalidate queries to refresh the list
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
 
-      toast.success('E-mail enviado com sucesso!');
+      toast.success('Email sent successfully!');
       setOpen(false);
       setFormData({ to: '', subject: '', message: '' });
     } catch (error) {
       console.error('Error creating ticket:', error);
-      toast.error('Erro ao enviar e-mail. Verifique as configurações do Resend.');
+      toast.error('Failed to send email. Check your Resend settings.');
     } finally {
       setIsSubmitting(false);
     }
@@ -96,25 +92,25 @@ export function NewTicketDialog() {
       <DialogTrigger asChild>
         <Button className="w-full gap-2">
           <Plus className="w-4 h-4" />
-          Novo Ticket
+          New Ticket
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[525px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Novo Ticket</DialogTitle>
+            <DialogTitle>New Ticket</DialogTitle>
             <DialogDescription>
-              Envie um e-mail para iniciar uma nova conversa com um cliente.
+              Send an email to start a new conversation with a customer.
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="to">Para</Label>
+              <Label htmlFor="to">To</Label>
               <Input
                 id="to"
                 type="email"
-                placeholder="cliente@exemplo.com"
+                placeholder="customer@example.com"
                 value={formData.to}
                 onChange={(e) => setFormData({ ...formData, to: e.target.value })}
                 disabled={isSubmitting}
@@ -122,11 +118,11 @@ export function NewTicketDialog() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="subject">Assunto</Label>
+              <Label htmlFor="subject">Subject</Label>
               <Input
                 id="subject"
                 type="text"
-                placeholder="Assunto do e-mail"
+                placeholder="Email subject"
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                 disabled={isSubmitting}
@@ -134,10 +130,10 @@ export function NewTicketDialog() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="message">Mensagem</Label>
+              <Label htmlFor="message">Message</Label>
               <Textarea
                 id="message"
-                placeholder="Digite sua mensagem..."
+                placeholder="Write your message..."
                 rows={6}
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
@@ -153,18 +149,18 @@ export function NewTicketDialog() {
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
             >
-              Cancelar
+              Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Enviando...
+                  Sending...
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4" />
-                  Enviar E-mail
+                  Send Email
                 </>
               )}
             </Button>
