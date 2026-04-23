@@ -30,57 +30,60 @@ export function StoreSwitcher() {
   const handleCreateStore = async () => {
     if (!newStoreName.trim() || !newStoreDomain.trim()) return;
     setIsCreating(true);
-    const store = await createStore(newStoreName.trim(), newStoreDomain.trim());
-    setIsCreating(false);
-    if (store) {
-      setNewStoreName('');
-      setNewStoreDomain('');
-      setIsDialogOpen(false);
-      setCurrentStore(store);
+    try {
+      const store = await createStore(newStoreName.trim(), newStoreDomain.trim());
+      if (store) {
+        setNewStoreName('');
+        setNewStoreDomain('');
+        setIsDialogOpen(false);
+        setCurrentStore(store);
+      }
+    } finally {
+      setIsCreating(false);
     }
   };
 
   if (isLoading) {
     return (
       <div className="w-full px-3 py-3">
-        <div className="h-9 bg-muted animate-pulse rounded-full" />
+        <div className="h-9 bg-sidebar-accent/30 animate-pulse rounded-full" />
       </div>
     );
   }
 
-  if (stores.length === 0) {
+  if (!stores || stores.length === 0) {
     return (
       <div className="w-full px-3 py-3">
         <Button
           variant="outline"
-          className="w-full justify-start gap-2 rounded-full"
+          className="w-full justify-center gap-2 rounded-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
           onClick={() => setIsDialogOpen(true)}
         >
           <Plus className="h-4 w-4" />
-          Criar primeira loja
+          Create first store
         </Button>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="rounded-[14px] shadow-elevated">
             <DialogHeader>
-              <DialogTitle>Criar nova loja</DialogTitle>
+              <DialogTitle>Create new store</DialogTitle>
               <DialogDescription>
-                Configure sua primeira loja para começar a receber tickets.
+                Configure your first store to start receiving tickets.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome da loja</Label>
-                <Input id="name" placeholder="Minha Loja" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)} className="rounded-lg h-[38px]" />
+                <Label htmlFor="name">Store name</Label>
+                <Input id="name" placeholder="My Store" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)} className="rounded-lg h-[38px]" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="domain">Domínio</Label>
-                <Input id="domain" placeholder="minhaloja.com.br" value={newStoreDomain} onChange={(e) => setNewStoreDomain(e.target.value)} className="rounded-lg h-[38px]" />
+                <Label htmlFor="domain">Domain</Label>
+                <Input id="domain" placeholder="mystore.com" value={newStoreDomain} onChange={(e) => setNewStoreDomain(e.target.value)} className="rounded-lg h-[38px]" />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancelar</Button>
-              <Button onClick={handleCreateStore} disabled={isCreating} className="rounded-lg">{isCreating ? 'Criando...' : 'Criar loja'}</Button>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancel</Button>
+              <Button onClick={handleCreateStore} disabled={isCreating} className="rounded-lg">{isCreating ? 'Creating...' : 'Create store'}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -93,11 +96,11 @@ export function StoreSwitcher() {
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-full border border-border text-sm font-medium text-foreground hover:bg-muted transition-all duration-150"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-full border border-sidebar-border bg-sidebar-accent/30 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/60 transition-all duration-150"
           >
-            <Store className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate flex-1 text-left">{currentStore?.name || 'Selecionar loja'}</span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <Store className="h-4 w-4 shrink-0 text-sidebar-foreground/60" />
+            <span className="truncate flex-1 text-left">{currentStore?.name || 'Select store'}</span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/60" />
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-[200px] p-1 rounded-lg shadow-elevated" align="start">
@@ -125,7 +128,7 @@ export function StoreSwitcher() {
                 className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-muted w-full text-left text-muted-foreground transition-all duration-150"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Nova loja
+                New store
               </button>
             </div>
           </div>
@@ -135,22 +138,22 @@ export function StoreSwitcher() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="rounded-[14px] shadow-elevated">
           <DialogHeader>
-            <DialogTitle>Criar nova loja</DialogTitle>
-            <DialogDescription>Adicione uma nova loja para gerenciar tickets separadamente.</DialogDescription>
+            <DialogTitle>Create new store</DialogTitle>
+            <DialogDescription>Add a new store to manage tickets separately.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="new-name">Nome da loja</Label>
-              <Input id="new-name" placeholder="Minha Loja" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)} className="rounded-lg h-[38px]" />
+              <Label htmlFor="new-name">Store name</Label>
+              <Input id="new-name" placeholder="My Store" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)} className="rounded-lg h-[38px]" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-domain">Domínio</Label>
-              <Input id="new-domain" placeholder="minhaloja.com.br" value={newStoreDomain} onChange={(e) => setNewStoreDomain(e.target.value)} className="rounded-lg h-[38px]" />
+              <Label htmlFor="new-domain">Domain</Label>
+              <Input id="new-domain" placeholder="mystore.com" value={newStoreDomain} onChange={(e) => setNewStoreDomain(e.target.value)} className="rounded-lg h-[38px]" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancelar</Button>
-            <Button onClick={handleCreateStore} disabled={isCreating} className="rounded-lg">{isCreating ? 'Criando...' : 'Criar loja'}</Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancel</Button>
+            <Button onClick={handleCreateStore} disabled={isCreating} className="rounded-lg">{isCreating ? 'Creating...' : 'Create store'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

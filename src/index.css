@@ -1,75 +1,76 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Lexend:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Big Mail / Superhuman Inspired Design System */
+/* Suportfy BR Design System */
 
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 235 33% 14%;
+    --foreground: 224 71% 4%;
 
     --card: 0 0% 100%;
-    --card-foreground: 235 33% 14%;
+    --card-foreground: 224 71% 4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 235 33% 14%;
+    --popover-foreground: 224 71% 4%;
 
-    --primary: 245 58% 60%;
+    --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 97%;
-    --secondary-foreground: 235 33% 14%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 224 71% 4%;
 
-    --muted: 240 5% 97%;
-    --muted-foreground: 240 5% 50%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 245 58% 60%;
+    --accent: 262 83% 58%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 4 76% 58%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 6% 93%;
-    --input: 240 6% 93%;
-    --ring: 245 58% 60%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 262 83% 58%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     /* Status colors */
-    --status-open: 152 69% 39%;
-    --status-closed: 240 5% 50%;
+    --status-open: 142 71% 45%;
+    --status-closed: 220 9% 46%;
 
     /* Message bubbles */
-    --bubble-inbound: 240 5% 97%;
-    --bubble-outbound: 245 80% 96%;
+    --bubble-inbound: 220 14% 96%;
+    --bubble-outbound: 262 83% 96%;
 
-    /* Sidebar — white bg */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 235 33% 14%;
-    --sidebar-primary: 245 58% 60%;
+    /* Sidebar — dark */
+    --sidebar-background: 224 71% 4%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 262 83% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 245 80% 96%;
-    --sidebar-accent-foreground: 245 58% 60%;
-    --sidebar-border: 240 6% 93%;
-    --sidebar-ring: 245 58% 60%;
+    --sidebar-accent: 262 83% 20%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 13% 16%;
+    --sidebar-ring: 262 83% 58%;
+    --sidebar-muted: 220 9% 60%;
 
     /* Ticket list */
-    --ticket-hover: 240 5% 96%;
-    --ticket-selected: 245 80% 96%;
-    --ticket-selected-border: 245 58% 60%;
+    --ticket-hover: 220 14% 96%;
+    --ticket-selected: 262 83% 96%;
+    --ticket-selected-border: 262 83% 58%;
 
     /* AI/Magic feature */
-    --ai-accent: 245 58% 60%;
+    --ai-accent: 262 83% 58%;
     --ai-accent-foreground: 0 0% 100%;
-    --ai-accent-muted: 245 80% 96%;
+    --ai-accent-muted: 262 83% 96%;
 
     /* Semantic extras */
-    --success: 152 69% 39%;
+    --success: 142 71% 45%;
     --warning: 38 92% 50%;
-    --danger: 4 76% 58%;
+    --danger: 0 84% 60%;
 
     /* Shadows */
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
@@ -77,56 +78,56 @@
   }
 
   .dark {
-    --background: 235 33% 6%;
-    --foreground: 240 5% 96%;
+    --background: 224 71% 4%;
+    --foreground: 0 0% 98%;
 
-    --card: 235 33% 9%;
-    --card-foreground: 240 5% 96%;
+    --card: 224 71% 6%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 235 33% 9%;
-    --popover-foreground: 240 5% 96%;
+    --popover: 224 71% 6%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 245 58% 65%;
+    --primary: 262 83% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 235 20% 15%;
-    --secondary-foreground: 240 5% 96%;
+    --secondary: 220 13% 14%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 235 20% 15%;
-    --muted-foreground: 240 5% 60%;
+    --muted: 220 13% 14%;
+    --muted-foreground: 220 9% 60%;
 
-    --accent: 245 58% 65%;
+    --accent: 262 83% 65%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 4 62% 50%;
+    --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 235 20% 18%;
-    --input: 235 20% 18%;
-    --ring: 245 58% 65%;
+    --border: 220 13% 18%;
+    --input: 220 13% 18%;
+    --ring: 262 83% 65%;
 
-    --sidebar-background: 235 33% 5%;
-    --sidebar-foreground: 240 5% 90%;
-    --sidebar-primary: 245 58% 65%;
+    --sidebar-background: 224 71% 3%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 262 83% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 235 30% 14%;
-    --sidebar-accent-foreground: 240 5% 90%;
-    --sidebar-border: 235 20% 18%;
-    --sidebar-ring: 245 58% 65%;
+    --sidebar-accent: 262 83% 25%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 13% 16%;
+    --sidebar-ring: 262 83% 65%;
 
-    --bubble-inbound: 235 20% 15%;
-    --bubble-outbound: 245 40% 20%;
-    --ticket-hover: 235 20% 12%;
-    --ticket-selected: 245 30% 15%;
-    --ticket-selected-border: 245 58% 65%;
+    --bubble-inbound: 220 13% 14%;
+    --bubble-outbound: 262 50% 22%;
+    --ticket-hover: 220 13% 12%;
+    --ticket-selected: 262 50% 16%;
+    --ticket-selected-border: 262 83% 65%;
 
-    --ai-accent: 245 58% 70%;
+    --ai-accent: 262 83% 70%;
     --ai-accent-foreground: 0 0% 100%;
-    --ai-accent-muted: 245 30% 18%;
+    --ai-accent-muted: 262 50% 20%;
 
-    --success: 152 69% 45%;
+    --success: 142 71% 50%;
     --warning: 38 92% 55%;
-    --danger: 4 62% 50%;
+    --danger: 0 62% 50%;
   }
 }
 
@@ -137,7 +138,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Lexend', system-ui, sans-serif;
+    font-family: 'Barlow', system-ui, sans-serif;
   }
 }
 
@@ -165,11 +166,11 @@
   .message-bubble-inbound {
     @apply bg-bubble-inbound text-foreground;
     border: 1px solid hsl(var(--border));
-    border-radius: 12px 12px 12px 2px;
+    border-radius: 16px 16px 16px 4px;
   }
   
   .message-bubble-outbound {
-    border-radius: 12px 12px 2px 12px;
+    border-radius: 16px 16px 4px 16px;
     background: hsl(var(--bubble-outbound));
     color: hsl(var(--foreground));
     border: 1px solid hsl(var(--primary) / 0.2);
@@ -181,7 +182,7 @@
   }
   
   .status-badge-open {
-    background: hsl(var(--success) / 0.1);
+    background: hsl(var(--success) / 0.12);
     color: hsl(var(--success));
   }
   
@@ -235,7 +236,8 @@
     background-color: hsl(var(--muted-foreground) / 0.4);
   }
 
-  .font-display {
+  .font-display,
+  .font-heading {
     font-family: 'Instrument Serif', Georgia, serif;
   }
 

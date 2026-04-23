@@ -16,17 +16,17 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
   
   const navItems = [
     { id: 'inbox' as const, icon: Inbox, label: 'Tickets' },
-    { id: 'ai-agent' as const, icon: Bot, label: 'Agente IA' },
-    { id: 'requests' as const, icon: ClipboardList, label: 'Solicitações' },
+    { id: 'ai-agent' as const, icon: Bot, label: 'AI Agent' },
+    { id: 'requests' as const, icon: ClipboardList, label: 'Requests' },
     { id: 'analytics' as const, icon: BarChart3, label: 'Analytics' },
-    { id: 'settings' as const, icon: Settings, label: 'Configurações' },
+    { id: 'settings' as const, icon: Settings, label: 'Settings' },
   ];
 
   return (
-    <div className="w-[220px] bg-sidebar flex flex-col border-r border-border">
+    <div className="w-[220px] bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
       {/* Logo */}
       <div className="h-14 flex items-center px-5">
-        <span className="font-display text-[22px] text-foreground">Suportfy</span>
+        <span className="font-heading italic text-xl text-sidebar-foreground">Suportfy</span>
       </div>
 
       {/* Store Switcher */}
@@ -47,7 +47,7 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
                 'transition-all duration-150',
                 isActive 
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground'
               )}
             >
               <Icon className="w-[18px] h-[18px]" />
@@ -58,15 +58,15 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
       </nav>
       
       {/* Account Settings & Logout */}
-      <div className="px-3 pb-4 space-y-0.5 border-t border-border pt-3">
+      <div className="px-3 pb-4 space-y-0.5 border-t border-sidebar-border pt-3">
         <AccountSettingsDialog />
         
         <button
           onClick={signOut}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium w-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-150"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium w-full text-sidebar-foreground/70 hover:bg-destructive/15 hover:text-red-400 transition-all duration-150"
         >
           <LogOut className="w-[18px] h-[18px]" />
-          <span>Sair</span>
+          <span>Sign Out</span>
         </button>
       </div>
     </div>
