@@ -76,7 +76,7 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
 
         <button
           onClick={signOut}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-sidebar-muted hover:bg-destructive/15 hover:text-red-400 transition-all"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-sidebar-muted hover:bg-destructive/15 hover:text-destructive transition-all"
         >
           <LogOut className="w-[18px] h-[18px]" />
           <span>Sign Out</span>
