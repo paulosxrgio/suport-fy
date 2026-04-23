@@ -16,7 +16,7 @@ export default {
       fontFamily: {
         sans: ['Barlow', 'system-ui', 'sans-serif'],
         display: ["'Instrument Serif'", 'Georgia', 'serif'],
-        heading: ["'Instrument Serif'", 'Georgia', 'serif'],
+        heading: ["'Instrument Serif'", 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",
