@@ -193,6 +193,98 @@ serve(async (req: Request) => {
           .maybeSingle();
         const storeName = storeData?.name || 'our store';
 
+        // ========================================
+        // STEP 2a.0: SPAM DETECTOR — auto-close before AI
+        // ========================================
+        const spamIndicators = [
+          'speak with the store owner',
+          'speak with the owner',
+          'store owner',
+          'shopify expert',
+          'i help store owners',
+          'i noticed issues with your store',
+          'i can get you',
+          'orders consistently',
+          'ecommerce consultant',
+          'can i speak with',
+          'is the store active',
+          'is this store still',
+          'are you still selling',
+          'collaboration opportunity',
+          'growth strategy',
+        ];
+
+        const consolidatedInput = (messagesSorted || [])
+          .filter((m: any) => m.direction === 'inbound')
+          .map((m: any) => m.content || '')
+          .join(' ')
+          .toLowerCase();
+
+        const isSpam = spamIndicators.some((indicator) =>
+          consolidatedInput.includes(indicator)
+        );
+
+        if (isSpam) {
+          console.log(`[SPAM AUTO-CLOSED] Item ${item.id} (ticket ${item.ticket_id})`);
+
+          const spamSenderName = settings?.sender_name || 'Sophia';
+          const spamSenderEmail = settings?.sender_email || 'support@example.com';
+          const spamReply = `Hi, this channel is for customer order support only. We're unable to assist with business inquiries here.\n\nKind regards,\nSophia — ${storeName} Support`;
+
+          try {
+            const spamResend = new Resend(settings!.resend_api_key!);
+            const spamSubject = (ticket.thread_subject || ticket.subject || '').toLowerCase().startsWith('re:')
+              ? (ticket.thread_subject || ticket.subject)
+              : `Re: ${ticket.thread_subject || ticket.subject || ''}`;
+
+            const spamHeaders: Record<string, string> = {
+              'Idempotency-Key': `spam-auto-close-${item.id}-${Date.now()}`,
+            };
+            if (ticket.last_message_id) spamHeaders['In-Reply-To'] = ticket.last_message_id;
+            const spamRefs = ticket.references_chain?.join(' ') || '';
+            if (spamRefs) spamHeaders['References'] = spamRefs;
+
+            const spamHtml = `<p>${spamReply.replace(/\n/g, '<br>')}</p>`;
+
+            const spamSendResult = await spamResend.emails.send({
+              from: `${spamSenderName} <${spamSenderEmail}>`,
+              to: [ticket.customer_email],
+              subject: spamSubject,
+              html: spamHtml,
+              text: spamReply,
+              headers: spamHeaders,
+            });
+
+            const spamMessageId = spamSendResult.data?.id ? `<${spamSendResult.data.id}@resend.dev>` : null;
+
+            await supabase.from('messages').insert({
+              ticket_id: item.ticket_id,
+              content: spamReply,
+              direction: 'outbound',
+              sender_email: spamSenderEmail,
+              email_message_id: spamMessageId,
+              store_id: item.store_id,
+            });
+          } catch (spamSendError) {
+            console.error(`[SPAM AUTO-CLOSED] Item ${item.id} - failed to send reply (non-blocking):`, spamSendError);
+          }
+
+          // Close the ticket
+          await supabase
+            .from('tickets')
+            .update({ status: 'closed' })
+            .eq('id', item.ticket_id);
+
+          // Mark queue item as done
+          await supabase
+            .from('auto_reply_queue')
+            .update({ status: 'done' })
+            .eq('id', item.id);
+
+          processedCount++;
+          continue;
+        }
+
         const defaultSystemPrompt = `You are Sophia, the customer support agent for ${storeName}.
 
 ━━━━━━━━━━━━━━━━━━━━━━
