@@ -91,13 +91,13 @@ export function SettingsPage() {
   const handleCopyWebhook = () => {
     navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
-    toast.success('URL copiada!');
+    toast.success('URL copied!');
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleVerifyConnection = async () => {
     if (!resendApiKey.trim()) {
-      toast.error('Digite a API Key para verificar');
+      toast.error('Enter the API Key to verify');
       return;
     }
 
@@ -110,13 +110,13 @@ export function SettingsPage() {
       if (error) throw error;
 
       if (data.success) {
-        toast.success(data.message || 'Conexão realizada com sucesso!');
+        toast.success(data.message || 'Connection successful!');
       } else {
-        toast.error(data.error || 'API Key inválida');
+        toast.error(data.error || 'Invalid API Key');
       }
     } catch (error) {
       console.error('Error verifying key:', error);
-      toast.error('Erro ao verificar conexão');
+      toast.error('Failed to verify connection');
     } finally {
       setIsVerifying(false);
     }
@@ -125,7 +125,7 @@ export function SettingsPage() {
   const handleVerifyAI = async () => {
     const key = aiProvider === 'openai' ? openaiApiKey : anthropicApiKey;
     if (!key.trim()) {
-      toast.error(`Digite a API Key do ${aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} para verificar`);
+      toast.error(`Enter the ${aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} API Key to verify`);
       return;
     }
     setIsVerifyingAI(true);
@@ -135,10 +135,10 @@ export function SettingsPage() {
       });
       if (error) throw error;
       if (data?.success) toast.success(data.message);
-      else toast.error(data?.error || 'Erro ao verificar conexão');
+      else toast.error(data?.error || 'Failed to verify connection');
     } catch (error) {
       console.error('Error verifying AI:', error);
-      toast.error('Erro ao verificar conexão de IA. Tente novamente.');
+      toast.error('Failed to verify AI connection. Please try again.');
     } finally {
       setIsVerifyingAI(false);
     }
@@ -146,7 +146,7 @@ export function SettingsPage() {
 
   const handleVerifyShopify = async () => {
     if (!shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()) {
-      toast.error('Preencha a URL, Client ID e Client Secret para verificar');
+      toast.error('Fill in URL, Client ID and Client Secret to verify');
       return;
     }
 
@@ -159,13 +159,13 @@ export function SettingsPage() {
       if (error) throw error;
 
       if (data.success) {
-        toast.success(data.message || 'Conexão com Shopify realizada com sucesso!');
+        toast.success(data.message || 'Shopify connection successful!');
       } else {
-        toast.error(data.error || 'Falha ao conectar com Shopify');
+        toast.error(data.error || 'Failed to connect to Shopify');
       }
     } catch (error) {
       console.error('Error verifying Shopify:', error);
-      toast.error('Erro ao verificar conexão com Shopify');
+      toast.error('Failed to verify Shopify connection');
     } finally {
       setIsVerifyingShopify(false);
     }
@@ -173,9 +173,10 @@ export function SettingsPage() {
 
   const handleSaveSettings = async () => {
     if (!currentStore) {
-      toast.error('Selecione uma loja primeiro');
+      toast.error('Select a store first');
       return;
     }
+    if (isSaving) return; // prevent double-submit
 
     setIsSaving(true);
     try {
@@ -202,7 +203,7 @@ export function SettingsPage() {
           .from('settings')
           .update(settingsData as any)
           .eq('id', settingsId);
-        
+
         if (error) throw error;
       } else {
         // Insert new settings for this store
@@ -211,15 +212,15 @@ export function SettingsPage() {
           .insert(settingsData as any)
           .select('id')
           .single();
-        
+
         if (error) throw error;
         setSettingsId(data.id);
       }
 
-      toast.success('Configurações salvas!');
+      toast.success('Settings saved!');
     } catch (error) {
       console.error('Error saving settings:', error);
-      toast.error('Erro ao salvar configurações');
+      toast.error('Failed to save settings');
     } finally {
       setIsSaving(false);
     }
