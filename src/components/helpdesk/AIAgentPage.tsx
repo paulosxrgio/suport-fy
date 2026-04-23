@@ -74,7 +74,41 @@ export function AIAgentPage() {
     enabled: !!currentStore,
   });
 
-  useEffect(() => {
+  // Brain report (latest)
+  const { data: brainReport, refetch: refetchBrain } = useQuery({
+    queryKey: ['brain-report', currentStore?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('brain_reports')
+        .select('*')
+        .eq('store_id', currentStore!.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!currentStore,
+  });
+
+  const forceBrainAnalysis = async () => {
+    if (!currentStore) return;
+    setIsForcingBrain(true);
+    try {
+      const { error } = await supabase.functions.invoke('supervisor-agent', {
+        body: { store_id: currentStore.id, force: true },
+      });
+      if (error) throw error;
+      toast.success('Análise concluída!');
+      refetchBrain();
+    } catch (err) {
+      console.error('Brain force analysis error:', err);
+      toast.error('Erro ao executar análise.');
+    } finally {
+      setIsForcingBrain(false);
+    }
+  };
+
+
     if (settings) {
       setSystemPrompt(settings.ai_system_prompt || '');
       setResponseDelay(settings.ai_response_delay || 2);
