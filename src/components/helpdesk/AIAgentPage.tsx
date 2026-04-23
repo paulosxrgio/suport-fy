@@ -28,6 +28,7 @@ export function AIAgentPage() {
   const [responseDelay, setResponseDelay] = useState(2);
   const [isActive, setIsActive] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isForcingBrain, setIsForcingBrain] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['ai-settings', currentStore?.id],
