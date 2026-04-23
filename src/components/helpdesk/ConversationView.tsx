@@ -147,12 +147,12 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
 
   if (!ticket) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-background">
-        <div className="text-center text-muted-foreground">
-          <Inbox className="w-14 h-14 mx-auto mb-4 opacity-25" />
-          <p className="text-base font-medium text-foreground mb-1">Select a conversation</p>
-          <p className="text-sm">Select a conversation to get started</p>
+      <div className="flex-1 flex flex-col items-center justify-center bg-background gap-3">
+        <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
+          <Inbox className="w-7 h-7 text-muted-foreground" />
         </div>
+        <p className="text-sm font-medium text-foreground">Select a conversation</p>
+        <p className="text-xs text-muted-foreground">Choose a ticket on the left to get started</p>
       </div>
     );
   }
