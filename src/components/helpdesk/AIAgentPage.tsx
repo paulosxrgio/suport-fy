@@ -645,7 +645,7 @@ function SuggestionCard({ suggestion, onApply, onReject }: {
           Pontuação média anterior: <span className="font-medium text-foreground">{suggestion.avg_score_before}/100</span>
         </div>
         <div className="text-muted-foreground">
-          Baseado em <span className="font-medium text-foreground">{suggestion.respostas_analyzed}</span> respostas
+          Baseado em <span className="font-medium text-foreground">{suggestion.responses_analyzed}</span> respostas
         </div>
       </div>
 

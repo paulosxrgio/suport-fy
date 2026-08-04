@@ -561,7 +561,7 @@ export function SettingsPage() {
               Identidade de E-mail
             </CardTitle>
             <CardDescription>
-              Configure como seus e-mails aparecem para os seus clientes' inboxes.
+              Configure como seus e-mails aparecem para os seus clientes.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
