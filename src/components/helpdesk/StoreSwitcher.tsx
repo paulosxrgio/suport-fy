@@ -25,11 +25,11 @@ export function StoreSwitcher() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
   const [newStoreDomain, setNewStoreDomain] = useState('');
-  const [isCriando...etIsCriando... useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleCreateStore = async () => {
     if (!newStoreName.trim() || !newStoreDomain.trim()) return;
-    setIsCriando...ue);
+    setIsCreating(true);
     try {
       const store = await createStore(newStoreName.trim(), newStoreDomain.trim());
       if (store) {
@@ -39,7 +39,7 @@ export function StoreSwitcher() {
         setCurrentStore(store);
       }
     } finally {
-      setIsCriando...lse);
+      setIsCreating(false);
     }
   };
 
@@ -83,7 +83,7 @@ export function StoreSwitcher() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancelar</Button>
-              <Button onClick={handleCreateStore} disabled={isCriando...lassName="rounded-lg">{isCriando...'Criando...' : 'Criar loja'}</Button>
+              <Button onClick={handleCreateStore} disabled={isCreating} className="rounded-lg">{isCreating ? 'Criando...' : 'Criar loja'}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -153,7 +153,7 @@ export function StoreSwitcher() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancelar</Button>
-            <Button onClick={handleCreateStore} disabled={isCriando...lassName="rounded-lg">{isCriando...'Criando...' : 'Criar loja'}</Button>
+            <Button onClick={handleCreateStore} disabled={isCreating} className="rounded-lg">{isCreating ? 'Criando...' : 'Criar loja'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

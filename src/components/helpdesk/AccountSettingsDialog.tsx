@@ -50,10 +50,10 @@ export function AccountSettingsDialog() {
   }, [storesData]);
 
   const toggleVisibilityMutation = useMutation({
-    mutationFn: async ({ storeId, isVisível }: { storeId: string; isVisível: boolean }) => {
+    mutationFn: async ({ storeId, isVisible }: { storeId: string; isVisible: boolean }) => {
       const { error } = await supabase
         .from('stores')
-        .update({ is_visible_in_dashboard: isVisível })
+        .update({ is_visible_in_dashboard: isVisible })
         .eq('id', storeId);
       if (error) throw error;
     },
@@ -84,7 +84,7 @@ export function AccountSettingsDialog() {
 
   const handleToggleVisibility = (storeId: string, currentValue: boolean) => {
     setStores(prev => prev.map(s => s.id === storeId ? { ...s, is_visible_in_dashboard: !currentValue } : s));
-    toggleVisibilityMutation.mutate({ storeId, isVisível: !currentValue });
+    toggleVisibilityMutation.mutate({ storeId, isVisible: !currentValue });
   };
 
   const handleDragStart = (index: number) => setDraggedIndex(index);
@@ -145,7 +145,7 @@ export function AccountSettingsDialog() {
           ) : (
             <>
               <div className="text-xs text-muted-foreground mb-3">
-                {visibleCount} of {stores.length} lojas visíveis no painel
+                {visibleCount} de {stores.length} lojas visíveis no painel
               </div>
               <div className="space-y-2">
                 {stores.map((store, index) => (

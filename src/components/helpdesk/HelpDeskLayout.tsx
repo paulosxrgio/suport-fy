@@ -24,13 +24,13 @@ export function HelpDeskLayout() {
   const [isCustomerInfoOpen, setIsCustomerInfoOpen] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
-  const { stores, isCarregando...sCarregando...res } = useStore();
+  const { stores, isLoading: isLoadingStores } = useStore();
 
-  const { data: allTickets, isCarregando...sCarregando...kets } = useTickets(
+  const { data: allTickets, isLoading: isLoadingTickets } = useTickets(
     statusFilter === 'all' ? undefined : statusFilter
   );
   const { data: selectedTicket } = useTicket(selectedTicketId);
-  const { data: messages, isCarregando...sCarregando...sages } = useMessages(selectedTicketId);
+  const { data: messages, isLoading: isLoadingMessages } = useMessages(selectedTicketId);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -71,7 +71,7 @@ export function HelpDeskLayout() {
   );
 
   const renderContent = () => {
-    if (isCarregando...res) {
+    if (isLoadingStores) {
       return (
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-pulse text-muted-foreground">Carregando...</div>
@@ -112,7 +112,7 @@ export function HelpDeskLayout() {
               />
               <TicketList
                 tickets={filteredTickets}
-                isCarregando...sCarregando...kets}
+                isLoading={isLoadingTickets}
                 selectedTicketId={selectedTicketId}
                 onSelectTicket={setSelectedTicketId}
               />
@@ -123,7 +123,7 @@ export function HelpDeskLayout() {
               <ConversationView
                 ticket={selectedTicket ?? null}
                 messages={messages}
-                isCarregando...sCarregando...sages}
+                isLoading={isLoadingMessages}
               />
               {selectedTicket && (
                 <CustomerInfoSidebar
