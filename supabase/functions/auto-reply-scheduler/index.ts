@@ -810,8 +810,9 @@ ${lastInboundMessage || 'No message.'}
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userMessage },
               ],
-              max_tokens: 500,
-              temperature: 0.7,
+              ...(String(model).startsWith('gpt-5')
+                ? { max_completion_tokens: 900, reasoning_effort: 'minimal' }
+                : { max_tokens: 500, temperature: 0.7 }),
             }),
           });
 

@@ -19,6 +19,8 @@ serve(async (req) => {
     }
 
     if (provider === 'openai') {
+      const openaiModel = model || 'gpt-4o-mini';
+      const isGpt5 = String(openaiModel).startsWith('gpt-5');
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -26,9 +28,11 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: model || 'gpt-4o-mini',
+          model: openaiModel,
           messages: [{ role: 'user', content: 'Hi' }],
-          max_tokens: 1,
+          ...(isGpt5
+            ? { max_completion_tokens: 16, reasoning_effort: 'minimal' }
+            : { max_tokens: 1 }),
         }),
       });
 
