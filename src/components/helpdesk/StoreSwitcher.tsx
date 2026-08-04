@@ -60,30 +60,30 @@ export function StoreSwitcher() {
           onClick={() => setIsDialogOpen(true)}
         >
           <Plus className="h-4 w-4" />
-          Create first store
+          Criar primeira loja
         </Button>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="rounded-xl shadow-elevated">
             <DialogHeader>
-              <DialogTitle>Create new store</DialogTitle>
+              <DialogTitle>Criar nova loja</DialogTitle>
               <DialogDescription>
-                Configure your first store to start receiving tickets.
+                Configure sua primeira loja para começar a receber tickets.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Store name</Label>
-                <Input id="name" placeholder="My Store" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)} className="rounded-lg h-[38px]" />
+                <Label htmlFor="name">Nome da loja</Label>
+                <Input id="name" placeholder="Minha Loja" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)} className="rounded-lg h-[38px]" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="domain">Domain</Label>
+                <Label htmlFor="domain">Domínio</Label>
                 <Input id="domain" placeholder="mystore.com" value={newStoreDomain} onChange={(e) => setNewStoreDomain(e.target.value)} className="rounded-lg h-[38px]" />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancel</Button>
-              <Button onClick={handleCreateStore} disabled={isCreating} className="rounded-lg">{isCreating ? 'Creating...' : 'Create store'}</Button>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancelar</Button>
+              <Button onClick={handleCreateStore} disabled={isCreating} className="rounded-lg">{isCreating ? 'Criando...' : 'Criar loja'}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -99,7 +99,7 @@ export function StoreSwitcher() {
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-sidebar-border bg-white/5 text-sm font-medium text-sidebar-foreground hover:bg-white/10 transition-all"
           >
             <Store className="h-4 w-4 shrink-0 text-sidebar-muted" />
-            <span className="truncate flex-1 text-left">{currentStore?.name ?? 'Select store'}</span>
+            <span className="truncate flex-1 text-left">{currentStore?.name ?? 'Selecionar loja'}</span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-sidebar-muted" />
           </button>
         </PopoverTrigger>
@@ -128,7 +128,7 @@ export function StoreSwitcher() {
                 className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-muted w-full text-left text-muted-foreground transition-all"
               >
                 <Plus className="h-3.5 w-3.5" />
-                New store
+                Nova loja
               </button>
             </div>
           </div>
@@ -138,22 +138,22 @@ export function StoreSwitcher() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="rounded-xl shadow-elevated">
           <DialogHeader>
-            <DialogTitle>Create new store</DialogTitle>
-            <DialogDescription>Add a new store to manage tickets separately.</DialogDescription>
+            <DialogTitle>Criar nova loja</DialogTitle>
+            <DialogDescription>Adicione uma nova loja para gerenciar tickets separadamente.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="new-name">Store name</Label>
-              <Input id="new-name" placeholder="My Store" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)} className="rounded-lg h-[38px]" />
+              <Label htmlFor="new-name">Nome da loja</Label>
+              <Input id="new-name" placeholder="Minha Loja" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)} className="rounded-lg h-[38px]" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-domain">Domain</Label>
+              <Label htmlFor="new-domain">Domínio</Label>
               <Input id="new-domain" placeholder="mystore.com" value={newStoreDomain} onChange={(e) => setNewStoreDomain(e.target.value)} className="rounded-lg h-[38px]" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancel</Button>
-            <Button onClick={handleCreateStore} disabled={isCreating} className="rounded-lg">{isCreating ? 'Creating...' : 'Create store'}</Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancelar</Button>
+            <Button onClick={handleCreateStore} disabled={isCreating} className="rounded-lg">{isCreating ? 'Criando...' : 'Criar loja'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

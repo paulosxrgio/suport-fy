@@ -37,7 +37,7 @@ export function HelpDeskLayout() {
     try {
       await queryClient.invalidateQueries({ queryKey: ['tickets'] });
       await queryClient.invalidateQueries({ queryKey: ['messages'] });
-      toast.success('List refreshed!');
+      toast.success('Lista atualizada!');
     } finally {
       setIsRefreshing(false);
     }
@@ -61,10 +61,10 @@ export function HelpDeskLayout() {
         <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
           <Store className="w-8 h-8 text-muted-foreground" />
         </div>
-        <h2 className="text-xl font-semibold mb-2">Create your first store</h2>
+        <h2 className="text-xl font-semibold mb-2">Crie sua primeira loja</h2>
         <p className="text-muted-foreground mb-4">
-          To start receiving support tickets, you need to create a store.
-          Use the "Create first store" button in the sidebar.
+          Para começar a receber tickets de suporte, você precisa criar uma loja.
+          Use o botão "Criar primeira loja" na barra lateral.
         </p>
       </div>
     </div>
@@ -74,7 +74,7 @@ export function HelpDeskLayout() {
     if (isLoadingStores) {
       return (
         <div className="flex-1 flex items-center justify-center">
-          <div className="animate-pulse text-muted-foreground">Loading...</div>
+          <div className="animate-pulse text-muted-foreground">Carregando...</div>
         </div>
       );
     }

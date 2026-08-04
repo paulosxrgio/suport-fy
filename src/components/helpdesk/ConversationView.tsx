@@ -55,10 +55,10 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     try {
       await sendMessage.mutateAsync({ ticketId: ticket.id, content: contentToSend });
       setReplyContent('');
-      toast.success('Reply sent successfully!');
+      toast.success('Resposta enviada com sucesso!');
     } catch (error: any) {
       if (error?.message !== 'Envio já em andamento') {
-        toast.error('Failed to send reply. Check your Resend configuration.');
+        toast.error('Falha ao enviar resposta. Verifique sua configuração do Resend.');
       }
     }
   };
@@ -68,9 +68,9 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
     setIsTranslateEnabled(newState);
     if (newState && messages && ticket) {
       await translateMessages(messages, ticket.id, ticket.store_id || undefined);
-      toast.success('Translation enabled!');
+      toast.success('Tradução ativada!');
     } else {
-      toast.info('Translation disabled');
+      toast.info('Tradução desativada');
     }
   };
 
@@ -83,9 +83,9 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
         lastMessageContent: lastInboundMessage?.content,
       });
       setReplyContent(reply);
-      toast.success('Reply generated successfully!');
+      toast.success('Resposta gerada com sucesso!');
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to generate reply';
+      const message = error instanceof Error ? error.message : 'Falha ao gerar resposta';
       toast.error(message);
     }
   };
@@ -97,7 +97,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
 
     const html = `<!DOCTYPE html>
 <html><head>
-<title>Conversation - ${ticket.customer_name || ticket.customer_email}</title>
+<title>Conversa - ${ticket.customer_name || ticket.customer_email}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 32px; background: #fff; color: #1a1a2e; }
@@ -118,14 +118,14 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
 </head><body>
   <div class="header">
     <h2>${ticket.customer_name || ticket.customer_email}</h2>
-    <p>${ticket.customer_email} · ${ticket.subject || 'No subject'} · ${new Date(ticket.created_at).toLocaleDateString('en-US')}</p>
+    <p>${ticket.customer_email} · ${ticket.subject || 'Sem assunto'} · ${new Date(ticket.created_at).toLocaleDateString('pt-BR')}</p>
   </div>
   ${messages.map(msg => `
     <div class="message ${msg.direction}">
       <div class="bubble">${msg.content.replace(/\n/g, '<br>')}</div>
       <div class="meta">
-        ${msg.direction === 'inbound' ? (ticket.customer_name || 'Customer') : 'Sophia'} · 
-        ${new Date(msg.created_at).toLocaleString('en-US', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+        ${msg.direction === 'inbound' ? (ticket.customer_name || 'Cliente') : 'Sophia'} · 
+        ${new Date(msg.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
       </div>
     </div>
   `).join('')}
@@ -151,8 +151,8 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
         <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
           <Inbox className="w-7 h-7 text-muted-foreground" />
         </div>
-        <p className="text-sm font-medium text-foreground">Select a conversation</p>
-        <p className="text-xs text-muted-foreground">Choose a ticket on the left to get started</p>
+        <p className="text-sm font-medium text-foreground">Selecione uma conversa</p>
+        <p className="text-xs text-muted-foreground">Escolha um ticket à esquerda para começar</p>
       </div>
     );
   }
@@ -181,7 +181,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
                   <Printer className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Print conversation</TooltipContent>
+              <TooltipContent>Imprimir conversa</TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <Button
@@ -199,12 +199,12 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
             {isTranslating ? (
               <>
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                Translating...
+                Traduzindo...
               </>
             ) : (
               <>
                 <Languages className="w-4 h-4 mr-1" />
-                {isTranslateEnabled ? 'Translated' : 'Translate'}
+                {isTranslateEnabled ? 'Traduzido' : 'Traduzir'}
               </>
             )}
           </Button>
@@ -235,7 +235,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
           ))
         ) : (
           <div className="text-center text-muted-foreground py-8">
-            No messages in this ticket
+            Sem mensagens neste ticket
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -248,7 +248,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
             ref={textareaRef}
             value={replyContent}
             onChange={handleTextareaChange}
-            placeholder="Write your reply..."
+            placeholder="Escreva sua resposta..."
             className="w-full bg-transparent px-4 pt-3 pb-2 text-sm resize-none outline-none min-h-[80px] max-h-[200px] placeholder:text-muted-foreground"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !sendMessage.isPending) {
@@ -261,7 +261,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
           {/* Toolbar */}
           <div className="flex items-center justify-between px-3 pb-3">
             <p className="text-[11px] text-muted-foreground">
-              Cmd+Enter to send
+              Cmd+Enter para enviar
             </p>
             <div className="flex items-center gap-2">
               <Button
@@ -274,12 +274,12 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
                 {generateAIReply.isPending ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    Writing...
+                    Escrevendo...
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                    Generate AI Reply
+                    Gerar Resposta com IA
                   </>
                 )}
               </Button>
@@ -294,7 +294,7 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5 mr-1.5" />
-                    Send
+                    Enviar
                   </>
                 )}
               </Button>

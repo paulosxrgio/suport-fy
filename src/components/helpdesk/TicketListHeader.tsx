@@ -23,9 +23,9 @@ export function TicketListHeader({
   isRefreshing,
 }: TicketListHeaderProps) {
   const filters: Array<{ key: 'all' | 'open' | 'closed'; label: string }> = [
-    { key: 'all', label: 'All' },
-    { key: 'open', label: 'Open' },
-    { key: 'closed', label: 'Closed' },
+    { key: 'all', label: 'Todos' },
+    { key: 'open', label: 'Abertos' },
+    { key: 'closed', label: 'Fechados' },
   ];
 
   return (
@@ -45,7 +45,7 @@ export function TicketListHeader({
           className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={onRefresh}
           disabled={isRefreshing}
-          title="Refresh list"
+          title="Atualizar lista"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', isRefreshing && 'animate-spin')} />
         </Button>
@@ -57,7 +57,7 @@ export function TicketListHeader({
         <input
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search tickets..."
+          placeholder="Pesquisar tickets..."
           className="w-full h-8 pl-8 pr-3 text-xs bg-muted rounded-lg border-0 outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
         />
       </div>

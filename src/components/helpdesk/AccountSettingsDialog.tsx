@@ -61,7 +61,7 @@ export function AccountSettingsDialog() {
       queryClient.invalidateQueries({ queryKey: ['stores'] });
       queryClient.invalidateQueries({ queryKey: ['all-stores-settings'] });
     },
-    onError: () => toast.error('Failed to update visibility'),
+    onError: () => toast.error('Falha ao atualizar visibilidade'),
   });
 
   const updateOrderMutation = useMutation({
@@ -77,9 +77,9 @@ export function AccountSettingsDialog() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stores'] });
       queryClient.invalidateQueries({ queryKey: ['all-stores-settings'] });
-      toast.success('Order updated!');
+      toast.success('Ordem atualizada!');
     },
-    onError: () => toast.error('Failed to update order'),
+    onError: () => toast.error('Falha ao atualizar ordem'),
   });
 
   const handleToggleVisibility = (storeId: string, currentValue: boolean) => {
@@ -117,16 +117,16 @@ export function AccountSettingsDialog() {
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium w-full text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground transition-all duration-150"
         >
           <User className="w-[18px] h-[18px]" />
-          <span>My Stores</span>
+          <span>Minhas Lojas</span>
         </button>
       </DialogTrigger>
 
       <DialogContent className="max-w-md rounded-[14px] shadow-elevated backdrop-blur-sm">
         <DialogHeader>
-          <DialogTitle>Manage Stores</DialogTitle>
+          <DialogTitle>Gerenciar Lojas</DialogTitle>
           <DialogDescription>
-            Choose which stores appear in the panel and their display order.
-            Drag to reorder.
+            Escolha quais lojas aparecem no painel e sua ordem de exibição.
+            Arraste para reordenar.
           </DialogDescription>
         </DialogHeader>
 
@@ -140,12 +140,12 @@ export function AccountSettingsDialog() {
           ) : stores.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <StoreIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p>No stores found</p>
+              <p>Nenhuma loja encontrada</p>
             </div>
           ) : (
             <>
               <div className="text-xs text-muted-foreground mb-3">
-                {visibleCount} of {stores.length} stores visible in panel
+                {visibleCount} de {stores.length} lojas visíveis no painel
               </div>
               <div className="space-y-2">
                 {stores.map((store, index) => (
@@ -169,7 +169,7 @@ export function AccountSettingsDialog() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Label htmlFor={`visible-${store.id}`} className="text-xs text-muted-foreground">
-                        Visible
+                        Visível
                       </Label>
                       <Switch
                         id={`visible-${store.id}`}
@@ -186,7 +186,7 @@ export function AccountSettingsDialog() {
 
         <div className="mt-4 pt-4 border-t border-border">
           <Button variant="outline" className="w-full rounded-lg" onClick={() => setIsOpen(false)}>
-            Close
+            Fechar
           </Button>
         </div>
       </DialogContent>

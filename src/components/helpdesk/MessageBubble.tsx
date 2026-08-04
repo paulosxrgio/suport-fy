@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from 'date-fns';
-import { enUS } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Languages, Loader2, Paperclip } from 'lucide-react';
 import { useMemo } from 'react';
@@ -152,7 +152,7 @@ export function MessageBubble({ message, senderName, translatedContent, isTransl
     if (isOutbound) return null;
     if (senderName) return senderName;
     // Fallback: use email prefix
-    return message.sender_email.split('@')[0] || 'Customer';
+    return message.sender_email.split('@')[0] || 'Cliente';
   }, [isOutbound, senderName, message.sender_email]);
   
   const avatarColor = useMemo(() => getAvatarColor(message.sender_email), [message.sender_email]);
@@ -194,7 +194,7 @@ export function MessageBubble({ message, senderName, translatedContent, isTransl
           {isTranslating && isInbound && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
               <Loader2 className="w-3 h-3 animate-spin" />
-              <span>Translating...</span>
+              <span>Traduzindo...</span>
             </div>
           )}
           
@@ -248,7 +248,7 @@ export function MessageBubble({ message, senderName, translatedContent, isTransl
           {isShowingTranslation && (
             <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
               <Languages className="w-3 h-3 text-primary" />
-              <span className="text-xs text-primary font-medium">Translated</span>
+              <span className="text-xs text-primary font-medium">Traduzido</span>
             </div>
           )}
         </div>
@@ -257,7 +257,7 @@ export function MessageBubble({ message, senderName, translatedContent, isTransl
         <span className="text-[11px] text-muted-foreground mt-1 px-1">
           {formatDistanceToNow(new Date(message.created_at), { 
             addSuffix: true, 
-            locale: enUS 
+            locale: ptBR 
           })}
         </span>
       </div>
