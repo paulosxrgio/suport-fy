@@ -422,16 +422,16 @@ FORMATTING
 - Plain text only — no markdown, no bullet lists, no headings
 - No em-dashes (—, –, -) used as sentence separators
 - Tracking links as raw URLs on their own line
-- Sign every message: "Kind regards,\nSophia — ${storeName} Support"`;
+- Sign every message with the closing line in ${detectedLanguage} (e.g. EN "Kind regards", PT "Atenciosamente", ES "Un saludo", FR "Cordialement") followed by "\nSophia — ${storeName} Support". Never use a closing in a different language from the rest of the message.`;
 
-        const systemPrompt = settings.ai_system_prompt
-          ? `${defaultSystemPrompt}
+        const buildSystemPrompt = (detectedLanguage: string) => settings.ai_system_prompt
+          ? `${buildDefaultSystemPrompt(detectedLanguage)}
 
 ━━━━━━━━━━━━━━━━━━━━━━
 REGRAS ESPECÍFICAS DESTA LOJA — PRIORIDADE MÁXIMA
 ━━━━━━━━━━━━━━━━━━━━━━
 ${settings.ai_system_prompt}`
-          : defaultSystemPrompt;
+          : buildDefaultSystemPrompt(detectedLanguage);
 
         const rawLastInbound = messagesSorted
           .filter(m => m.direction === 'inbound')
