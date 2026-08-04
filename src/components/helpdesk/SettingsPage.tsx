@@ -770,7 +770,7 @@ export function SettingsPage() {
             <Textarea
               value={emailSignature}
               onChange={(e) => setEmailSignature(e.target.value)}
-              placeholder="ex: Atenciosamente,placeholder="e.g., Best regards,&#10;Support Team"#10;Equipe de Suporte"
+              placeholder="ex: Atenciosamente,&#10;Equipe de Suporte"
               rows={4}
             />
           </CardContent>
