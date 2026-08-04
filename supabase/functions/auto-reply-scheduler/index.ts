@@ -687,7 +687,7 @@ CUSTOMER MEMORY (from previous interactions — use this to personalize your res
         // STEP 2a.4: Detectar sentimento do cliente
         // ========================================
         let sentiment = 'neutral';
-        let detectedLanguage = 'English';
+        let detectedLanguage = "the exact language of the customer's last message";
         try {
           const sentimentResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -724,12 +724,14 @@ Classification rules:
             const sentimentData = await sentimentResponse.json();
             const parsed = JSON.parse(sentimentData.choices?.[0]?.message?.content?.trim());
             sentiment = parsed.sentiment || 'neutral';
-            detectedLanguage = parsed.language || 'English';
+            detectedLanguage = parsed.language || detectedLanguage;
             console.log(`Item ${item.id} - SENTIMENT: ${sentiment} | LANGUAGE: ${detectedLanguage} | REASON: ${parsed.reason}`);
           }
         } catch (sentimentError) {
           console.log(`Item ${item.id} - Sentiment detection skipped:`, sentimentError);
         }
+
+        const systemPrompt = buildSystemPrompt(detectedLanguage);
 
         const sentimentInstruction = {
           positive: `TONE INSTRUCTION: The customer is happy and satisfied. Be warm, friendly and concise. Match their positive energy.`,
@@ -738,7 +740,7 @@ Classification rules:
           furious: `TONE INSTRUCTION: The customer is furious and may be threatening a dispute or chargeback. Stay completely calm and do NOT match their energy. Start with a sincere, humble apology. Acknowledge their frustration fully before any explanation. Be extremely empathetic and solution-focused. Never be defensive. Use phrases like "I'm truly sorry this has been your experience" and "I want to make this right for you personally."`,
         }[sentiment] || `TONE INSTRUCTION: Be warm, friendly and professional.`;
 
-        const languageInstruction = `LANGUAGE INSTRUCTION: The customer wrote in ${detectedLanguage}. You MUST respond in ${detectedLanguage} only. Do not mix languages.`;
+        const languageInstruction = `LANGUAGE INSTRUCTION (MANDATORY): The customer wrote in ${detectedLanguage}. Write the ENTIRE reply — greeting, body, closing line and signature — 100% in ${detectedLanguage}. Never mix languages, and do not use words or expressions from any other language. Before finishing, review the reply and rewrite anything that is not in ${detectedLanguage}.`;
 
         const userMessage = (() => {
           const orderContext = shopifyContext && !shopifyContext.includes('Nenhum pedido encontrado') 
