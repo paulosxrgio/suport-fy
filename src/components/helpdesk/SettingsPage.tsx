@@ -125,7 +125,7 @@ export function SettingsPage() {
   const handleVerifyAI = async () => {
     const key = aiProvider === 'openai' ? openaiApiKey : anthropicApiKey;
     if (!key.trim()) {
-      toast.error(`Enter the ${aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} API Key to verify`);
+      toast.error(`Insira a API Key da ${aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} para verificar`);
       return;
     }
     setIsVerifyingAI(true);
@@ -258,36 +258,36 @@ export function SettingsPage() {
       const thinSep = '─'.repeat(60);
 
       let output = '';
-      output += `SUPORTFY — FULL CONVERSATION EXPORT\n`;
-      output += `Store: ${currentStore.name}\n`;
-      output += `Exported at: ${new Date().toLocaleString('en-US')}\n`;
-      output += `Total tickets: ${tickets.length}\n`;
+      output += `SUPORTFY — EXPORTAÇÃO COMPLETA DE CONVERSAS\n`;
+      output += `Loja: ${currentStore.name}\n`;
+      output += `Exported at: ${new Date().toLocaleString('pt-BR')}\n`;
+      output += `Total de tickets: ${tickets.length}\n`;
       output += `${separator}\n\n`;
 
       tickets.forEach((ticket, i) => {
         const msgs = msgsByTicket[ticket.id] || [];
         const status = ticket.status === 'open' ? 'OPEN' : 'CLOSED';
-        const date = new Date(ticket.created_at).toLocaleString('en-US');
+        const date = new Date(ticket.created_at).toLocaleString('pt-BR');
 
         output += `${separator}\n`;
         output += `TICKET #${i + 1} — ${status}\n`;
         output += `${separator}\n`;
         output += `Customer : ${ticket.customer_name || 'No name'}\n`;
-        output += `Email    : ${ticket.customer_email}\n`;
+        output += `E-mail   : ${ticket.customer_email}\n`;
         output += `Subject  : ${ticket.subject || 'No subject'}\n`;
-        output += `Date     : ${date}\n`;
+        output += `Data     : ${date}\n`;
         output += `Msgs     : ${msgs.length}\n`;
         output += `${thinSep}\n\n`;
 
         if (msgs.length === 0) {
-          output += `  (no messages)\n\n`;
+          output += `  (sem mensagens)\n\n`;
         } else {
           msgs.forEach(msg => {
             const time = new Date(msg.created_at).toLocaleString('en-US', {
               day: '2-digit', month: '2-digit', year: 'numeric',
               hour: '2-digit', minute: '2-digit'
             });
-            const role = msg.direction === 'outbound' ? '🤖 SOPHIA' : '👤 CUSTOMER';
+            const role = msg.direction === 'outbound' ? '🤖 SOPHIA' : '👤 CLIENTE';
             output += `[${time}] ${role}\n`;
             output += `${msg.content}\n\n`;
           });
@@ -297,7 +297,7 @@ export function SettingsPage() {
       });
 
       output += `${separator}\n`;
-      output += `END OF EXPORT — ${tickets.length} tickets · ${messages?.length || 0} messages\n`;
+      output += `FIM DA EXPORTAÇÃO — ${tickets.length} tickets · ${messages?.length || 0} mensagens\n`;
       output += `${separator}\n`;
 
       const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
@@ -308,7 +308,7 @@ export function SettingsPage() {
       a.click();
       URL.revokeObjectURL(url);
 
-      toast.success(`Exported! ${tickets.length} tickets · ${messages?.length || 0} messages`);
+      toast.success(`Exportado! ${tickets.length} tickets · ${messages?.length || 0} mensagens`);
     } catch (error) {
       console.error('Error exporting:', error);
       toast.error('Failed to export data');
@@ -436,7 +436,7 @@ export function SettingsPage() {
                 setAiModel(value === 'openai' ? 'gpt-4o' : 'claude-haiku-4-5-20251001');
               }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select provider" />
+                  <SelectValue placeholder="Selecione o provedor" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="openai">OpenAI (GPT)</SelectItem>
@@ -572,7 +572,7 @@ export function SettingsPage() {
                 type="text"
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
-                placeholder="e.g., Sophia - Ivory Saint"
+                placeholder="ex: Sophia - Suporte"
               />
               <p className="text-xs text-muted-foreground">
                 This is the name your customer sees in their inbox.
@@ -586,7 +586,7 @@ export function SettingsPage() {
                 type="email"
                 value={senderEmail}
                 onChange={(e) => setSenderEmail(e.target.value)}
-                placeholder="e.g., support@yourdomain.com"
+                placeholder="ex: suporte@seudominio.com.br"
               />
               <p className="text-xs text-muted-foreground">
                 The verified email in your Resend dashboard.
@@ -770,7 +770,7 @@ export function SettingsPage() {
             <Textarea
               value={emailSignature}
               onChange={(e) => setEmailSignature(e.target.value)}
-              placeholder="e.g., Best regards,&#10;Support Team"
+              placeholder="ex: Atenciosamente,placeholder="e.g., Best regards,&#10;Support Team"#10;Equipe de Suporte"
               rows={4}
             />
           </CardContent>

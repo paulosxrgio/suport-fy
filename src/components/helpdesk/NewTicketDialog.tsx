@@ -33,18 +33,18 @@ export function NewTicketDialog() {
     e.preventDefault();
     
     if (!formData.to.trim() || !formData.subject.trim() || !formData.message.trim()) {
-      toast.error('Please fill in all fields');
+      toast.error('Por favor, preencha todos os campos');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.to)) {
-      toast.error('Please enter a valid email');
+      toast.error('Por favor, insira um e-mail válido');
       return;
     }
 
     if (!currentStore) {
-      toast.error('Select a store before creating a ticket');
+      toast.error('Selecione uma loja antes de criar um ticket');
       return;
     }
 
@@ -76,12 +76,12 @@ export function NewTicketDialog() {
 
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
 
-      toast.success('Email sent successfully!');
+      toast.success('E-mail enviado com sucesso!');
       setOpen(false);
       setFormData({ to: '', subject: '', message: '' });
     } catch (error) {
       console.error('Error creating ticket:', error);
-      toast.error('Failed to send email. Check your Resend settings.');
+      toast.error('Falha ao enviar e-mail. Verifique suas configurações do Resend.');
     } finally {
       setIsSubmitting(false);
     }
@@ -92,21 +92,21 @@ export function NewTicketDialog() {
       <DialogTrigger asChild>
         <Button className="w-full gap-2">
           <Plus className="w-4 h-4" />
-          New Ticket
+          Novo Ticket
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[525px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>New Ticket</DialogTitle>
+            <DialogTitle>Novo Ticket</DialogTitle>
             <DialogDescription>
-              Send an email to start a new conversation with a customer.
+              Envie um e-mail para iniciar uma nova conversa com um cliente.
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="to">To</Label>
+              <Label htmlFor="to">Para</Label>
               <Input
                 id="to"
                 type="email"
@@ -118,11 +118,11 @@ export function NewTicketDialog() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="subject">Subject</Label>
+              <Label htmlFor="subject">Assunto</Label>
               <Input
                 id="subject"
                 type="text"
-                placeholder="Email subject"
+                placeholder="Assunto do e-mail"
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                 disabled={isSubmitting}
@@ -130,10 +130,10 @@ export function NewTicketDialog() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="message">Message</Label>
+              <Label htmlFor="message">Mensagem</Label>
               <Textarea
                 id="message"
-                placeholder="Write your message..."
+                placeholder="Escreva sua mensagem..."
                 rows={6}
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
@@ -149,18 +149,18 @@ export function NewTicketDialog() {
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Sending...
+                  Enviando...
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4" />
-                  Send Email
+                  Enviar E-mail
                 </>
               )}
             </Button>

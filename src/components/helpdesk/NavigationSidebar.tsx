@@ -16,9 +16,9 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
 
   const navItems = [
     { id: 'inbox' as const, icon: Inbox, label: 'Tickets' },
-    { id: 'ai-agent' as const, icon: Bot, label: 'AI Agent' },
-    { id: 'requests' as const, icon: ClipboardList, label: 'Requests' },
-    { id: 'analytics' as const, icon: BarChart3, label: 'Analytics' },
+    { id: 'ai-agent' as const, icon: Bot, label: 'Agente IA' },
+    { id: 'requests' as const, icon: ClipboardList, label: 'Solicitações' },
+    { id: 'analytics' as const, icon: BarChart3, label: 'Relatórios' },
   ];
 
   return (
@@ -69,7 +69,7 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
           )}
         >
           <Settings className="w-[18px] h-[18px]" />
-          <span>Settings</span>
+          <span>Configurações</span>
         </button>
 
         <AccountSettingsDialog />
@@ -79,7 +79,7 @@ export function NavigationSidebar({ activeNav, onNavChange }: NavigationSidebarP
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-sidebar-muted hover:bg-destructive/15 hover:text-destructive transition-all"
         >
           <LogOut className="w-[18px] h-[18px]" />
-          <span>Sign Out</span>
+          <span>Sair</span>
         </button>
       </div>
     </div>

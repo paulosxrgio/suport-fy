@@ -29,29 +29,29 @@ export function AnalyticsPage({ tickets }: AnalyticsPageProps) {
 
   const statCards = [
     {
-      title: 'Total Tickets',
+      title: 'Total de Tickets',
       value: stats.total,
       icon: Ticket,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
     },
     {
-      title: 'Open Tickets',
+      title: 'Tickets Abertos',
       value: stats.open,
       icon: Clock,
       color: 'text-status-open',
       bgColor: 'bg-status-open/10',
     },
     {
-      title: 'Closed Tickets',
+      title: 'Tickets Fechados',
       value: stats.closed,
       icon: CheckCircle,
       color: 'text-muted-foreground',
       bgColor: 'bg-muted',
     },
     {
-      title: 'Avg. Resolution Time',
-      value: stats.avgResolutionHours > 0 ? `${stats.avgResolutionHours}h` : 'N/A',
+      title: 'Tempo Médio de Resolução',
+      value: stats.avgResolutionHours > 0 ? `${stats.avgResolutionHours}h` : 'N/D',
       icon: BarChart3,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
@@ -62,9 +62,9 @@ export function AnalyticsPage({ tickets }: AnalyticsPageProps) {
     <div className="flex-1 overflow-y-auto bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
         <div>
-          <h1 className="font-heading italic text-3xl text-foreground">Analytics</h1>
+          <h1 className="font-heading italic text-3xl text-foreground">Análise</h1>
           <p className="text-muted-foreground mt-1">
-            View metrics and statistics for your help desk.
+            Veja métricas e estatísticas para sua central de suporte.
           </p>
         </div>
 
@@ -92,7 +92,7 @@ export function AnalyticsPage({ tickets }: AnalyticsPageProps) {
         <Card className="min-h-[300px] flex items-center justify-center">
           <div className="text-center text-muted-foreground">
             <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-30" />
-            <p>Detailed charts coming soon</p>
+            <p>Gráficos detalhados em breve</p>
           </div>
         </Card>
       </div>

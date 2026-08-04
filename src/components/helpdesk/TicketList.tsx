@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from 'date-fns';
-import { enUS } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Ticket } from '@/types/helpdesk';
 import { Mail } from 'lucide-react';
@@ -44,7 +44,7 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-12">
         <Mail className="w-12 h-12 mb-4 opacity-30" />
-        <p className="text-sm">No tickets found</p>
+        <p className="text-sm">Nenhum ticket encontrado</p>
       </div>
     );
   }
@@ -95,7 +95,7 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
                     >
                       {formatDistanceToNow(new Date(ticket.last_message_at), {
                         addSuffix: true,
-                        locale: enUS,
+                        locale: ptBR,
                       })}
                     </span>
                     {isUnread && <span className="w-2 h-2 rounded-full bg-primary shrink-0" />}
@@ -118,7 +118,7 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
                       ticket.status === 'open' ? 'text-status-open' : 'text-muted-foreground'
                     )}
                   >
-                    {ticket.status === 'open' ? '● Open' : '○ Closed'}
+                    {ticket.status === 'open' ? '● Aberto' : '○ Fechado'}
                   </span>
                 </div>
               </div>

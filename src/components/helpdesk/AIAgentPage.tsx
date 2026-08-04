@@ -220,7 +220,7 @@ export function AIAgentPage() {
     try {
       const { data, error } = await supabase.functions.invoke('optimize-prompt');
       if (error) throw error;
-      toast.success(`Optimization complete! ${data?.stores_optimized || 0} store(s) optimized.`);
+      toast.success(`Otimização concluída! ${data?.stores_optimized || 0} loja(s) otimizada(s).`);
       refetchSuggestions();
     } catch (error) {
       console.error('Error generating suggestion:', error);
@@ -288,7 +288,7 @@ export function AIAgentPage() {
                 id="system-prompt"
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
-                placeholder="You are a helpful and polite support specialist. Reply clearly and objectively, always keeping a friendly tone..."
+                placeholder="Você é um especialista em suporte prestativo e educado. Responda de forma clara e objetiva, mantendo sempre um tom amigável..."
                 className="min-h-[200px] resize-y font-mono text-xs"
               />
               <p className="text-xs text-muted-foreground">
