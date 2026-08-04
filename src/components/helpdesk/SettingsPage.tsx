@@ -29,10 +29,10 @@ export function SettingsPage() {
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showShopifyClientId, setShowShopifyClientId] = useState(false);
   const [showShopifyClientSecret, setShowShopifyClientSecret] = useState(false);
-  const [isSalvando...etIsSalvando... useState(false);
-  const [isVerificando...etIsVerificando... useState(false);
-  const [isVerificando... setIsVerificando... = useState(false);
-  const [isVerificando...pify, setIsVerificando...pify] = useState(false);
+  const [isSaving, setIsSaving useState(false);
+  const [isVerifying, setIsVerifying useState(false);
+  const [isVerifyingAI, setIsVerifyingAI = useState(false);
+  const [isVerifyingShopify, setIsVerifyingShopify] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -91,17 +91,17 @@ export function SettingsPage() {
   const handleCopyWebhook = () => {
     navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
-    toast.success('URL copied!');
+    toast.success('URL copiada!');
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleVerifyConnection = async () => {
     if (!resendApiKey.trim()) {
-      toast.error('Enter the API Key to verify');
+      toast.error('Insira a API Key para verificar');
       return;
     }
 
-    setIsVerificando...ue);
+    setIsVerifying(true);
     try {
       const { data, error } = await supabase.functions.invoke('verify-resend-key', {
         body: { apiKey: resendApiKey }
@@ -110,15 +110,15 @@ export function SettingsPage() {
       if (error) throw error;
 
       if (data.success) {
-        toast.success(data.message || 'Connection successful!');
+        toast.success(data.message || 'Conexão bem-sucedida!');
       } else {
-        toast.error(data.error || 'Invalid API Key');
+        toast.error(data.error || 'API Key inválida');
       }
     } catch (error) {
       console.error('Error verifying key:', error);
-      toast.error('Failed to verify connection');
+      toast.error('Falha ao verificar conexão');
     } finally {
-      setIsVerificando...lse);
+      setIsVerifying(false);
     }
   };
 
@@ -128,7 +128,7 @@ export function SettingsPage() {
       toast.error(`Insira a API Key da ${aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} para verificar`);
       return;
     }
-    setIsVerificando...true);
+    setIsVerifyingAI(true);
     try {
       const { data, error } = await supabase.functions.invoke('verify-ai-connection', {
         body: { provider: aiProvider, api_key: key, model: aiModel },
@@ -138,19 +138,19 @@ export function SettingsPage() {
       else toast.error(data?.error || 'Failed to verify connection');
     } catch (error) {
       console.error('Error verifying AI:', error);
-      toast.error('Failed to verify AI connection. Please try again.');
+      toast.error('Falha ao verificar conexão de IA. Por favor, tente novamente.');
     } finally {
-      setIsVerificando...false);
+      setIsVerifyingAI(false);
     }
   };
 
   const handleVerifyShopify = async () => {
     if (!shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()) {
-      toast.error('Fill in URL, Client ID and Client Secret to verify');
+      toast.error('Preencha a URL, Client ID e Client Secret para verificar');
       return;
     }
 
-    setIsVerificando...pify(true);
+    setIsVerifyingShopify(true);
     try {
       const { data, error } = await supabase.functions.invoke('verify-shopify-token', {
         body: { storeUrl: shopifyStoreUrl, clientId: shopifyClientId, clientSecret: shopifyClientSecret }
@@ -159,26 +159,26 @@ export function SettingsPage() {
       if (error) throw error;
 
       if (data.success) {
-        toast.success(data.message || 'Shopify connection successful!');
+        toast.success(data.message || 'Conexão com Shopify bem-sucedida!');
       } else {
-        toast.error(data.error || 'Failed to connect to Shopify');
+        toast.error(data.error || 'Falha ao conectar ao Shopify');
       }
     } catch (error) {
       console.error('Error verifying Shopify:', error);
-      toast.error('Failed to verify Shopify connection');
+      toast.error('Falha ao verificar conexão com Shopify');
     } finally {
-      setIsVerificando...pify(false);
+      setIsVerifyingShopify(false);
     }
   };
 
   const handleSaveSettings = async () => {
     if (!currentStore) {
-      toast.error('Select a store first');
+      toast.error('Selecione uma loja primeiro');
       return;
     }
-    if (isSalvando...eturn; // prevent double-submit
+    if (isSaving) return; // prevent double-submit
 
-    setIsSalvando...ue);
+    setIsSaving(true);
     try {
       const settingsData = {
         store_id: currentStore.id,
@@ -217,12 +217,12 @@ export function SettingsPage() {
         setSettingsId(data.id);
       }
 
-      toast.success('Settings saved!');
+      toast.success('Configurações salvas!');
     } catch (error) {
       console.error('Error saving settings:', error);
-      toast.error('Failed to save settings');
+      toast.error('Falha ao salvar configurações');
     } finally {
-      setIsSalvando...lse);
+      setIsSaving(false);
     }
   };
   const handleExportChats = async () => {
@@ -237,7 +237,7 @@ export function SettingsPage() {
         .order('created_at', { ascending: true });
 
       if (!tickets || tickets.length === 0) {
-        toast.info('No tickets found.');
+        toast.info('Nenhum ticket encontrado.');
         setExporting(false);
         return;
       }
@@ -272,9 +272,9 @@ export function SettingsPage() {
         output += `${separator}\n`;
         output += `TICKET #${i + 1} — ${status}\n`;
         output += `${separator}\n`;
-        output += `Customer : ${ticket.customer_name || 'No name'}\n`;
+        output += `Cliente  : ${ticket.customer_name || 'Sem nome'}\n`;
         output += `E-mail   : ${ticket.customer_email}\n`;
-        output += `Subject  : ${ticket.subject || 'No subject'}\n`;
+        output += `Assunto  : ${ticket.subject || 'Sem assunto'}\n`;
         output += `Data     : ${date}\n`;
         output += `Msgs     : ${msgs.length}\n`;
         output += `${thinSep}\n\n`;
@@ -311,7 +311,7 @@ export function SettingsPage() {
       toast.success(`Exportado! ${tickets.length} tickets · ${messages?.length || 0} mensagens`);
     } catch (error) {
       console.error('Error exporting:', error);
-      toast.error('Failed to export data');
+      toast.error('Falha ao exportar dados');
     } finally {
       setExporting(false);
     }
@@ -390,7 +390,7 @@ export function SettingsPage() {
                 <Button
                   variant="outline"
                   onClick={handleVerifyConnection}
-                  disabled={isVerificando... !resendApiKey.trim()}
+                  disabled={isVerifying || !resendApiKey.trim()}
                 >
                   {isVerificando...(
                     <>
@@ -539,9 +539,9 @@ export function SettingsPage() {
             <Button
               variant="outline"
               onClick={handleVerifyAI}
-              disabled={isVerificando...|| (aiProvider === 'openai' ? !openaiApiKey.trim() : !anthropicApiKey.trim())}
+              disabled={isVerifyingAI || (aiProvider === 'openai' ? !openaiApiKey.trim() : !anthropicApiKey.trim())}
             >
-              {isVerificando...? (
+              {isVerifyingAI ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Verificando...
@@ -739,9 +739,9 @@ export function SettingsPage() {
                 <Button
                   variant="outline"
                   onClick={handleVerifyShopify}
-                  disabled={isVerificando...pify || !shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()}
+                  disabled={isVerifyingShopify || !shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()}
                 >
-                  {isVerificando...pify ? (
+                  {isVerifyingShopify ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Verificando...
@@ -812,7 +812,7 @@ Hi Sarah, I've checked this personally...`}
         {/* Single Save Button */}
         <div className="flex justify-end pt-4 pb-8">
           <Button size="lg" onClick={handleSaveSettings} disabled={isSaving}>
-            {isSalvando...(
+            {isSaving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 Salvando...
