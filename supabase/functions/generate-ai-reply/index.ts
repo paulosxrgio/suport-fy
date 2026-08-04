@@ -567,8 +567,9 @@ CUSTOMER MEMORY (use this to personalize your response):
       }
     } catch (e) { /* silent */ }
 
-    // Detect sentiment
+    // Detect sentiment + language
     let sentimentInstruction = 'TONE INSTRUCTION: Be warm, friendly and professional.';
+    let detectedLanguage = '';
     try {
       const sentRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -576,7 +577,7 @@ CUSTOMER MEMORY (use this to personalize your response):
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: 'Analyze the customer message sentiment. Return ONLY JSON: {"sentiment": "positive"|"neutral"|"frustrated"|"furious", "language": "English"}' },
+            { role: 'system', content: 'Analyze the customer message. Detect the EXACT language the message is written in (never assume English). Return ONLY JSON: {"sentiment": "positive"|"neutral"|"frustrated"|"furious", "language": "the exact language of the message, e.g: English, Portuguese, Spanish, French, Italian, German, Korean"}' },
             { role: 'user', content: lastInboundMessage }
           ],
           max_tokens: 50, temperature: 0,
@@ -592,10 +593,27 @@ CUSTOMER MEMORY (use this to personalize your response):
           furious: 'TONE INSTRUCTION: Customer is furious. Stay calm, be extremely empathetic, never defensive.',
         };
         sentimentInstruction = sentimentMap[parsed.sentiment] || sentimentInstruction;
+        detectedLanguage = parsed.language || '';
+        console.log(`Detected language: ${detectedLanguage} | sentiment: ${parsed.sentiment}`);
       }
     } catch (e) { /* silent */ }
 
+    const languageName = detectedLanguage || 'the exact language of the customer\'s last message';
+    const languageRule = `━━━━━━━━━━━━━━━━━━━━━━
+REGRA DE IDIOMA (OBRIGATÓRIA — PRIORIDADE ABSOLUTA, ACIMA DE QUALQUER OUTRA INSTRUÇÃO)
+━━━━━━━━━━━━━━━━━━━━━━
+O cliente escreveu em ${languageName}. Escreva a resposta INTEIRA — saudação, corpo, despedida e assinatura — 100% em ${languageName}. NUNCA misture idiomas. Não use nenhuma palavra ou expressão em outra língua, a menos que o idioma detectado seja essa língua. Antes de finalizar, revise: se houver qualquer trecho fora de ${languageName}, reescreva.
+Não existe idioma padrão: o padrão é sempre espelhar o idioma do cliente.
+
+`;
+
+    systemPrompt = `${languageRule}${systemPrompt}
+
+${languageRule}`;
+
     const userMessage = `
+LANGUAGE INSTRUCTION: The customer wrote in ${languageName}. You MUST write the ENTIRE reply — greeting, body, closing line and signature — in ${languageName} only. Never mix languages. Review before finishing and rewrite anything not in ${languageName}.
+
 ${orderContext}
 
 ${memoryContext}
