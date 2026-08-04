@@ -283,7 +283,7 @@ export function SettingsPage() {
           output += `  (sem mensagens)\n\n`;
         } else {
           msgs.forEach(msg => {
-            const time = new Date(msg.created_at).toLocaleString('en-US', {
+            const time = new Date(msg.created_at).toLocaleString('pt-BR', {
               day: '2-digit', month: '2-digit', year: 'numeric',
               hour: '2-digit', minute: '2-digit'
             });

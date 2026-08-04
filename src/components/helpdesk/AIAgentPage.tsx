@@ -457,7 +457,7 @@ export function AIAgentPage() {
                     key={suggestion.id}
                     suggestion={suggestion}
                     onApply={applySuggestion}
-                    onRejeitar={rejectSuggestion}
+                    onReject={rejectSuggestion}
                   />
                 ))}
               </div>
@@ -584,7 +584,7 @@ export function AIAgentPage() {
                 )}
 
                 <p className="text-[11px] text-muted-foreground text-right">
-                  Última execução: {new Date(brainReport.created_at).toLocaleString('en-US', {
+                  Última execução: {new Date(brainReport.created_at).toLocaleString('pt-BR', {
                     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
                   })}
                 </p>
@@ -597,10 +597,10 @@ export function AIAgentPage() {
   );
 }
 
-function SuggestionCard({ suggestion, onApply, onRejeitar }: {
+function SuggestionCard({ suggestion, onApply, onReject }: {
   suggestion: any;
   onApply: (s: any) => void;
-  onRejeitar: (id: string) => void;
+  onReject: (id: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -626,7 +626,7 @@ function SuggestionCard({ suggestion, onApply, onRejeitar }: {
         </div>
         {suggestion.status === 'pending' && (
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => onRejeitar(suggestion.id)}>
+            <Button size="sm" variant="outline" onClick={() => onReject(suggestion.id)}>
               <X className="w-4 h-4 mr-1" />
               Rejeitar
             </Button>
