@@ -29,10 +29,10 @@ export function SettingsPage() {
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showShopifyClientId, setShowShopifyClientId] = useState(false);
   const [showShopifyClientSecret, setShowShopifyClientSecret] = useState(false);
-  const [isSalvando...etIsSalvando... useState(false);
-  const [isVerificando...etIsVerificando... useState(false);
-  const [isVerificando... setIsVerificando... = useState(false);
-  const [isVerificando...pify, setIsVerificando...pify] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerifyingAI, setIsVerifyingAI] = useState(false);
+  const [isVerifyingShopify, setIsVerifyingShopify] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -101,7 +101,7 @@ export function SettingsPage() {
       return;
     }
 
-    setIsVerificando...ue);
+    setIsVerifying(true));
     try {
       const { data, error } = await supabase.functions.invoke('verify-resend-key', {
         body: { apiKey: resendApiKey }
@@ -118,7 +118,7 @@ export function SettingsPage() {
       console.error('Error verifying key:', error);
       toast.error('Failed to verify connection');
     } finally {
-      setIsVerificando...lse);
+      setIsVerifying(false));
     }
   };
 
@@ -128,7 +128,7 @@ export function SettingsPage() {
       toast.error(`Insira a API Key da ${aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} para verificar`);
       return;
     }
-    setIsVerificando...true);
+    setIsVerifyingAI(true));
     try {
       const { data, error } = await supabase.functions.invoke('verify-ai-connection', {
         body: { provider: aiProvider, api_key: key, model: aiModel },
@@ -140,7 +140,7 @@ export function SettingsPage() {
       console.error('Error verifying AI:', error);
       toast.error('Failed to verify AI connection. Please try again.');
     } finally {
-      setIsVerificando...false);
+      setIsVerifyingAI(false));
     }
   };
 
@@ -150,7 +150,7 @@ export function SettingsPage() {
       return;
     }
 
-    setIsVerificando...pify(true);
+    setIsVerifyingShopify(true);
     try {
       const { data, error } = await supabase.functions.invoke('verify-shopify-token', {
         body: { storeUrl: shopifyStoreUrl, clientId: shopifyClientId, clientSecret: shopifyClientSecret }
@@ -167,7 +167,7 @@ export function SettingsPage() {
       console.error('Error verifying Shopify:', error);
       toast.error('Failed to verify Shopify connection');
     } finally {
-      setIsVerificando...pify(false);
+      setIsVerifyingShopify(false);
     }
   };
 
@@ -176,9 +176,9 @@ export function SettingsPage() {
       toast.error('Select a store first');
       return;
     }
-    if (isSalvando...eturn; // prevent double-submit
+    if (isSaving) return; // prevent double-submit
 
-    setIsSalvando...ue);
+    setIsSaving(true));
     try {
       const settingsData = {
         store_id: currentStore.id,
