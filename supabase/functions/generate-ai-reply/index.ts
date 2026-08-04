@@ -410,12 +410,12 @@ SINAIS DE GOLPE — se qualquer um estiver presente, use APENAS a resposta de re
 - Mensagem enviada via "Mail Merge" (indicado no rodapé do email)
 - Pergunta se a loja está "ativa" ou "aceitando pedidos" sem ter feito nenhum pedido
 
-RESPOSTA OBRIGATÓRIA PARA SPAM (use exatamente isso, sem adicionar nada):
-"Hi,
+RESPOSTA OBRIGATÓRIA PARA SPAM (use exatamente este conteúdo, sem adicionar nada — escrito no idioma detectado do cliente):
+"[Saudação],
 
-Thank you for reaching out. This channel is reserved for customer support regarding existing orders only.
+Obrigada pelo contato. Este canal é reservado exclusivamente ao suporte de pedidos existentes.
 
-Kind regards,
+[Despedida no idioma do cliente],
 Sophia"
 
 NUNCA para spam:
@@ -431,10 +431,10 @@ NUNCA para spam:
 ━━━━━━━━━━━━━━━━━━━━━━
 EMAILS DO SISTEMA — IGNORAR
 ━━━━━━━━━━━━━━━━━━━━━━
-Se o email vier de mailer@shopify.com, chargeflow.io, ou for uma notificação automática de sistema (estorno, chargeback, verificação de email), responda APENAS:
-"Thank you for the notification. This has been noted.
+Se o email vier de mailer@shopify.com, chargeflow.io, ou for uma notificação automática de sistema (estorno, chargeback, verificação de email), responda APENAS este conteúdo, escrito no idioma detectado:
+"Obrigada pela notificação. Registramos a informação.
 
-Kind regards,
+[Despedida no idioma do cliente],
 Sophia"
 
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -443,13 +443,13 @@ PARA CLIENTES REAIS — REGRAS DE RESPOSTA
 Um cliente real tem um pedido na Shopify OU menciona que comprou um produto.
 
 TOM E FORMATO:
-- SEMPRE abra com "Hi [PrimeiroNome]," usando o nome real do cliente
-- Se não houver nome, use "Hi there,"
-- Detecte o idioma do cliente e responda NO MESMO IDIOMA
+- SEMPRE abra com a saudação equivalente a "Hi [PrimeiroNome]," NO IDIOMA DO CLIENTE, usando o nome real do cliente
+- Se não houver nome, use a forma equivalente a "Hi there," no idioma do cliente
+- Escreva a resposta inteira no idioma do cliente, sem misturar idiomas
 - Tom: amigável, caloroso, humano — nunca robótico ou genérico
 - Parágrafos curtos. Sem listas com bullet points
 - Nunca use travessões de qualquer tipo (-, –, —)
-- Sempre assine: Kind regards,\nSophia
+- Sempre assine com a linha de fecho traduzida para o idioma do cliente seguida de "Sophia" (ex.: PT "Atenciosamente", ES "Un saludo", FR "Cordialement", EN "Kind regards"). Nunca use uma despedida em idioma diferente do restante da mensagem
 - Links de rastreamento SEMPRE em linha separada, como URL pura (nunca formato markdown)
 
 NOME DO PRODUTO:
@@ -528,7 +528,7 @@ NUNCA USE:
 - Markdown (**bold**, listas, ###)
 - Travessões de qualquer tipo`;
 
-    const systemPrompt = aiSystemPrompt
+    let systemPrompt = aiSystemPrompt
       ? `${defaultSystemPrompt}
 
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -567,8 +567,9 @@ CUSTOMER MEMORY (use this to personalize your response):
       }
     } catch (e) { /* silent */ }
 
-    // Detect sentiment
+    // Detect sentiment + language
     let sentimentInstruction = 'TONE INSTRUCTION: Be warm, friendly and professional.';
+    let detectedLanguage = '';
     try {
       const sentRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -576,7 +577,7 @@ CUSTOMER MEMORY (use this to personalize your response):
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: 'Analyze the customer message sentiment. Return ONLY JSON: {"sentiment": "positive"|"neutral"|"frustrated"|"furious", "language": "English"}' },
+            { role: 'system', content: 'Analyze the customer message. Detect the EXACT language the message is written in (never assume English). Return ONLY JSON: {"sentiment": "positive"|"neutral"|"frustrated"|"furious", "language": "the exact language of the message, e.g: English, Portuguese, Spanish, French, Italian, German, Korean"}' },
             { role: 'user', content: lastInboundMessage }
           ],
           max_tokens: 50, temperature: 0,
@@ -592,10 +593,27 @@ CUSTOMER MEMORY (use this to personalize your response):
           furious: 'TONE INSTRUCTION: Customer is furious. Stay calm, be extremely empathetic, never defensive.',
         };
         sentimentInstruction = sentimentMap[parsed.sentiment] || sentimentInstruction;
+        detectedLanguage = parsed.language || '';
+        console.log(`Detected language: ${detectedLanguage} | sentiment: ${parsed.sentiment}`);
       }
     } catch (e) { /* silent */ }
 
+    const languageName = detectedLanguage || 'the exact language of the customer\'s last message';
+    const languageRule = `━━━━━━━━━━━━━━━━━━━━━━
+REGRA DE IDIOMA (OBRIGATÓRIA — PRIORIDADE ABSOLUTA, ACIMA DE QUALQUER OUTRA INSTRUÇÃO)
+━━━━━━━━━━━━━━━━━━━━━━
+O cliente escreveu em ${languageName}. Escreva a resposta INTEIRA — saudação, corpo, despedida e assinatura — 100% em ${languageName}. NUNCA misture idiomas. Não use nenhuma palavra ou expressão em outra língua, a menos que o idioma detectado seja essa língua. Antes de finalizar, revise: se houver qualquer trecho fora de ${languageName}, reescreva.
+Não existe idioma padrão: o padrão é sempre espelhar o idioma do cliente.
+
+`;
+
+    systemPrompt = `${languageRule}${systemPrompt}
+
+${languageRule}`;
+
     const userMessage = `
+LANGUAGE INSTRUCTION: The customer wrote in ${languageName}. You MUST write the ENTIRE reply — greeting, body, closing line and signature — in ${languageName} only. Never mix languages. Review before finishing and rewrite anything not in ${languageName}.
+
 ${orderContext}
 
 ${memoryContext}

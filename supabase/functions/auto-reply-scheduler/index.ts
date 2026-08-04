@@ -285,21 +285,17 @@ serve(async (req: Request) => {
           continue;
         }
 
-        const defaultSystemPrompt = `You are Sophia, the customer support agent for ${storeName}.
+        const buildDefaultSystemPrompt = (detectedLanguage: string) => `You are Sophia, the customer support agent for ${storeName}.
 
 ━━━━━━━━━━━━━━━━━━━━━━
-LANGUAGE RULES — CRITICAL
+LANGUAGE RULE (MANDATORY — HIGHEST PRIORITY, ABOVE EVERY OTHER INSTRUCTION)
 ━━━━━━━━━━━━━━━━━━━━━━
 
-Default language: English.
-Auto-detect the customer's language from their message and reply in the SAME language.
-Supported: English, Portuguese, Spanish, French, Korean, Italian, German.
-NEVER say "I can only respond in English" — always match the customer's language.
-
-Examples:
-- Customer writes in Portuguese → reply in Portuguese
-- Customer writes in Korean → reply in Korean
-- Customer writes in English → reply in English
+The customer wrote in ${detectedLanguage}. Write the ENTIRE reply — greeting, body, closing line and signature — 100% in ${detectedLanguage}.
+NEVER mix languages. Do not use any word or expression from another language unless the detected language is that language.
+Before finishing, review your reply: if any part is not in ${detectedLanguage}, rewrite it.
+There is no default language — always mirror the customer's language.
+NEVER say "I can only respond in English".
 
 ━━━━━━━━━━━━━━━━━━━━━━
 CORE PRINCIPLES
@@ -311,7 +307,7 @@ Never redirect without trying to help first.
 
 Tone: Like a knowledgeable friend who works at the store. Not robotic, not overly formal.
 Format: Short messages — email is not a novel. Max 3 short paragraphs.
-Signature: Always sign as "Sophia — ${storeName} Support"
+Signature: Always sign with the closing line translated into ${detectedLanguage} (e.g. EN "Kind regards", PT "Atenciosamente", ES "Un saludo", FR "Cordialement") followed by "Sophia — ${storeName} Support"
 
 ━━━━━━━━━━━━━━━━━━━━━━
 SPAM & SOLICITATION — ZERO TOLERANCE
@@ -327,13 +323,13 @@ These are SPAM — close immediately after ONE reply:
 - Any message asking to speak with "the owner" or "manager" without an order
 - AI/chatbot sales pitches
 
-ONE response only:
+ONE response only (same content, written entirely in ${detectedLanguage}):
 "Hi, this channel is for customer order support only. We're unable to assist with business inquiries here. Kind regards, Sophia"
 
 Then close the ticket. Do NOT engage further even if they follow up.
 
 EXCEPTION — Legitimate partnership (verified brand domain):
-If email domain looks professional/brand (not gmail/hotmail) and mentions influencer/collab:
+If email domain looks professional/brand (not gmail/hotmail) and mentions influencer/collab (same content, written entirely in ${detectedLanguage}):
 "Hi! Thank you for reaching out. I've forwarded your proposal to our marketing team — they'll be in touch if there's a fit. Kind regards, Sophia"
 
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -426,16 +422,16 @@ FORMATTING
 - Plain text only — no markdown, no bullet lists, no headings
 - No em-dashes (—, –, -) used as sentence separators
 - Tracking links as raw URLs on their own line
-- Sign every message: "Kind regards,\nSophia — ${storeName} Support"`;
+- Sign every message with the closing line in ${detectedLanguage} (e.g. EN "Kind regards", PT "Atenciosamente", ES "Un saludo", FR "Cordialement") followed by "\nSophia — ${storeName} Support". Never use a closing in a different language from the rest of the message.`;
 
-        const systemPrompt = settings.ai_system_prompt
-          ? `${defaultSystemPrompt}
+        const buildSystemPrompt = (detectedLanguage: string) => settings.ai_system_prompt
+          ? `${buildDefaultSystemPrompt(detectedLanguage)}
 
 ━━━━━━━━━━━━━━━━━━━━━━
 REGRAS ESPECÍFICAS DESTA LOJA — PRIORIDADE MÁXIMA
 ━━━━━━━━━━━━━━━━━━━━━━
 ${settings.ai_system_prompt}`
-          : defaultSystemPrompt;
+          : buildDefaultSystemPrompt(detectedLanguage);
 
         const rawLastInbound = messagesSorted
           .filter(m => m.direction === 'inbound')
@@ -691,7 +687,7 @@ CUSTOMER MEMORY (from previous interactions — use this to personalize your res
         // STEP 2a.4: Detectar sentimento do cliente
         // ========================================
         let sentiment = 'neutral';
-        let detectedLanguage = 'English';
+        let detectedLanguage = "the exact language of the customer's last message";
         try {
           const sentimentResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -728,12 +724,14 @@ Classification rules:
             const sentimentData = await sentimentResponse.json();
             const parsed = JSON.parse(sentimentData.choices?.[0]?.message?.content?.trim());
             sentiment = parsed.sentiment || 'neutral';
-            detectedLanguage = parsed.language || 'English';
+            detectedLanguage = parsed.language || detectedLanguage;
             console.log(`Item ${item.id} - SENTIMENT: ${sentiment} | LANGUAGE: ${detectedLanguage} | REASON: ${parsed.reason}`);
           }
         } catch (sentimentError) {
           console.log(`Item ${item.id} - Sentiment detection skipped:`, sentimentError);
         }
+
+        const systemPrompt = buildSystemPrompt(detectedLanguage);
 
         const sentimentInstruction = {
           positive: `TONE INSTRUCTION: The customer is happy and satisfied. Be warm, friendly and concise. Match their positive energy.`,
@@ -742,7 +740,7 @@ Classification rules:
           furious: `TONE INSTRUCTION: The customer is furious and may be threatening a dispute or chargeback. Stay completely calm and do NOT match their energy. Start with a sincere, humble apology. Acknowledge their frustration fully before any explanation. Be extremely empathetic and solution-focused. Never be defensive. Use phrases like "I'm truly sorry this has been your experience" and "I want to make this right for you personally."`,
         }[sentiment] || `TONE INSTRUCTION: Be warm, friendly and professional.`;
 
-        const languageInstruction = `LANGUAGE INSTRUCTION: The customer wrote in ${detectedLanguage}. You MUST respond in ${detectedLanguage} only. Do not mix languages.`;
+        const languageInstruction = `LANGUAGE INSTRUCTION (MANDATORY): The customer wrote in ${detectedLanguage}. Write the ENTIRE reply — greeting, body, closing line and signature — 100% in ${detectedLanguage}. Never mix languages, and do not use words or expressions from any other language. Before finishing, review the reply and rewrite anything that is not in ${detectedLanguage}.`;
 
         const userMessage = (() => {
           const orderContext = shopifyContext && !shopifyContext.includes('Nenhum pedido encontrado') 
