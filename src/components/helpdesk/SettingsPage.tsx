@@ -91,7 +91,7 @@ export function SettingsPage() {
   const handleCopyWebhook = () => {
     navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
-    toast.success('URL copiada!');
+    toast.success('URL copied!');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -101,7 +101,7 @@ export function SettingsPage() {
       return;
     }
 
-    setIsVerifying(true));
+    setIsVerifying(true);
     try {
       const { data, error } = await supabase.functions.invoke('verify-resend-key', {
         body: { apiKey: resendApiKey }
@@ -110,7 +110,7 @@ export function SettingsPage() {
       if (error) throw error;
 
       if (data.success) {
-        toast.success(data.message || 'Conexão bem-sucedida!');
+        toast.success(data.message || 'Connection successful!');
       } else {
         toast.error(data.error || 'Invalid API Key');
       }
@@ -118,7 +118,7 @@ export function SettingsPage() {
       console.error('Error verifying key:', error);
       toast.error('Failed to verify connection');
     } finally {
-      setIsVerifying(false));
+      setIsVerifying(false);
     }
   };
 
@@ -128,7 +128,7 @@ export function SettingsPage() {
       toast.error(`Insira a API Key da ${aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} para verificar`);
       return;
     }
-    setIsVerifyingAI(true));
+    setIsVerifyingAI(true);
     try {
       const { data, error } = await supabase.functions.invoke('verify-ai-connection', {
         body: { provider: aiProvider, api_key: key, model: aiModel },
@@ -140,7 +140,7 @@ export function SettingsPage() {
       console.error('Error verifying AI:', error);
       toast.error('Failed to verify AI connection. Please try again.');
     } finally {
-      setIsVerifyingAI(false));
+      setIsVerifyingAI(false);
     }
   };
 
@@ -178,7 +178,7 @@ export function SettingsPage() {
     }
     if (isSaving) return; // prevent double-submit
 
-    setIsSaving(true));
+    setIsSaving(true);
     try {
       const settingsData = {
         store_id: currentStore.id,
@@ -217,12 +217,12 @@ export function SettingsPage() {
         setSettingsId(data.id);
       }
 
-      toast.success('Configurações salvas!');
+      toast.success('Settings saved!');
     } catch (error) {
       console.error('Error saving settings:', error);
       toast.error('Failed to save settings');
     } finally {
-      setIsSalvando...lse);
+      setIsSaving(false);
     }
   };
   const handleExportChats = async () => {
@@ -331,7 +331,7 @@ export function SettingsPage() {
       <div className="flex-1 flex items-center justify-center bg-background">
         <div className="text-center">
           <Store className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground">Selecione uma loja para configurar</p>
+          <p className="text-muted-foreground">Select a store to configure</p>
         </div>
       </div>
     );
@@ -341,28 +341,28 @@ export function SettingsPage() {
     <div className="flex-1 overflow-y-auto bg-background p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-heading italic text-foreground">Configurações</h1>
+          <h1 className="text-2xl font-heading italic text-foreground">Settings</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Configure as integrações para a loja <strong>{currentStore.name}</strong>.
+            Configure integrations for store <strong>{currentStore.name}</strong>.
           </p>
         </div>
 
         <Separator />
 
-        {/* Integração com Resend Card */}
+        {/* Resend Integration Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Key className="w-5 h-5" />
-              Integração com Resend
+              Resend Integration
             </CardTitle>
             <CardDescription>
-              Configure sua API Key do Resend para habilitar o envio de e-mails.
+              Configure your Resend API Key to enable outgoing emails.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="resend-api-key">API Key do Resend</Label>
+              <Label htmlFor="resend-api-key">Resend API Key</Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
@@ -390,20 +390,20 @@ export function SettingsPage() {
                 <Button
                   variant="outline"
                   onClick={handleVerifyConnection}
-                  disabled={isVerificando... !resendApiKey.trim()}
+                  disabled={isVerifying || !resendApiKey.trim()}
                 >
-                  {isVerificando...(
+                  {isVerifying ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Verificando...
+                      Verifying...
                     </>
                   ) : (
-                    'Verificar conexão'
+                    'Verify connection'
                   )}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Obtenha sua API Key em{' '}
+                Get your API Key at{' '}
                 <a
                   href="https://resend.com/api-keys"
                   target="_blank"
@@ -417,20 +417,20 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Provedor de IA Card */}
+        {/* AI Provider Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="w-5 h-5" />
-              Provedor de IA
+              AI Provider
             </CardTitle>
             <CardDescription>
-              Configure o provedor, a chave de API e o modelo para respostas automáticas.
+              Configure provider, API key and model for automated replies.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="ai-provider">Provedor</Label>
+              <Label htmlFor="ai-provider">Provider</Label>
               <Select value={aiProvider} onValueChange={(value) => {
                 setAiProvider(value);
                 setAiModel(value === 'openai' ? 'gpt-4o' : 'claude-haiku-4-5-20251001');
@@ -448,7 +448,7 @@ export function SettingsPage() {
             {aiProvider === 'openai' ? (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="openai-api-key">API Key da OpenAI</Label>
+                  <Label htmlFor="openai-api-key">OpenAI API Key</Label>
                   <div className="relative">
                     <Input
                       id="openai-api-key"
@@ -469,14 +469,14 @@ export function SettingsPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Obtenha sua chave em{' '}
+                    Get your key at{' '}
                     <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       platform.openai.com
                     </a>
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Modelo</Label>
+                  <Label>Model</Label>
                   <Select value={aiModel} onValueChange={setAiModel}>
                     <SelectTrigger>
                       <SelectValue />
@@ -493,7 +493,7 @@ export function SettingsPage() {
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="anthropic-api-key">API Key da Anthropic</Label>
+                  <Label htmlFor="anthropic-api-key">Anthropic API Key</Label>
                   <div className="relative">
                     <Input
                       id="anthropic-api-key"
@@ -514,21 +514,21 @@ export function SettingsPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Obtenha sua chave em{' '}
+                    Get your key at{' '}
                     <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       console.anthropic.com
                     </a>
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Modelo</Label>
+                  <Label>Model</Label>
                   <Select value={aiModel} onValueChange={setAiModel}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (mais barato)</SelectItem>
-                      <SelectItem value="claude-sonnet-4-6">Claude Sonnet 4.6 (melhor qualidade)</SelectItem>
+                      <SelectItem value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (cheapest)</SelectItem>
+                      <SelectItem value="claude-sonnet-4-6">Claude Sonnet 4.6 (best quality)</SelectItem>
                       <SelectItem value="claude-opus-4-5">Claude Opus 4.5 (premium)</SelectItem>
                     </SelectContent>
                   </Select>
@@ -539,15 +539,15 @@ export function SettingsPage() {
             <Button
               variant="outline"
               onClick={handleVerifyAI}
-              disabled={isVerificando...|| (aiProvider === 'openai' ? !openaiApiKey.trim() : !anthropicApiKey.trim())}
+              disabled={isVerifyingAI || (aiProvider === 'openai' ? !openaiApiKey.trim() : !anthropicApiKey.trim())}
             >
-              {isVerificando...? (
+              {isVerifyingAI ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Verificando...
+                  Verifying...
                 </>
               ) : (
-                'Verificar conexão'
+                'Verify connection'
               )}
             </Button>
           </CardContent>
@@ -558,15 +558,15 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              Identidade de E-mail
+              Email Identity
             </CardTitle>
             <CardDescription>
-              Configure como seus e-mails aparecem na caixa de entrada dos seus clientes.
+              Configure how your emails appear in your customers' inboxes.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="sender-name">Nome de exibição</Label>
+              <Label htmlFor="sender-name">Display name</Label>
               <Input
                 id="sender-name"
                 type="text"
@@ -575,12 +575,12 @@ export function SettingsPage() {
                 placeholder="ex: Sophia - Suporte"
               />
               <p className="text-xs text-muted-foreground">
-                Este é o nome que seu cliente vê na caixa de entrada.
+                This is the name your customer sees in their inbox.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sender-email">E-mail do remetente</Label>
+              <Label htmlFor="sender-email">Sender email</Label>
               <Input
                 id="sender-email"
                 type="email"
@@ -589,7 +589,7 @@ export function SettingsPage() {
                 placeholder="ex: suporte@seudominio.com.br"
               />
               <p className="text-xs text-muted-foreground">
-                O e-mail verificado no painel do Resend.
+                The verified email in your Resend dashboard.
               </p>
             </div>
           </CardContent>
@@ -600,10 +600,10 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="w-5 h-5" />
-              Webhook de Entrada
+              Inbound Webhook
             </CardTitle>
             <CardDescription>
-              Configure esta URL no painel do Resend para receber e-mails automaticamente.
+              Configure this URL in your Resend dashboard to receive emails automatically.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -638,7 +638,7 @@ export function SettingsPage() {
                   className="inline-flex items-center gap-2"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Configurar no Resend
+                  Configure on Resend
                 </a>
               </Button>
               <Button variant="outline" asChild>
@@ -649,27 +649,27 @@ export function SettingsPage() {
                   className="inline-flex items-center gap-2"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Documentação
+                  Documentation
                 </a>
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Integração com Shopify */}
+        {/* Shopify Integration */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5" />
-              Integração com Shopify
+              Shopify Integration
             </CardTitle>
             <CardDescription>
-              Conecte sua loja Shopify para sincronizar pedidos e produtos.
+              Connect your Shopify store to sync orders and products.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="shopify-store-url">URL da Loja Shopify</Label>
+              <Label htmlFor="shopify-store-url">Shopify Store URL</Label>
               <Input
                 id="shopify-store-url"
                 type="text"
@@ -679,7 +679,7 @@ export function SettingsPage() {
                 className="font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                O endereço da sua loja Shopify (ex: minha-loja.myshopify.com).
+                Your Shopify store address (e.g., my-store.myshopify.com).
               </p>
             </div>
 
@@ -691,7 +691,7 @@ export function SettingsPage() {
                   type={showShopifyClientId ? 'text' : 'password'}
                   value={shopifyClientId}
                   onChange={(e) => setShopifyClientId(e.target.value)}
-                  placeholder="Client ID do app Shopify"
+                  placeholder="Shopify app Client ID"
                   className="pr-10 font-mono text-sm"
                 />
                 <Button
@@ -719,7 +719,7 @@ export function SettingsPage() {
                     type={showShopifyClientSecret ? 'text' : 'password'}
                     value={shopifyClientSecret}
                     onChange={(e) => setShopifyClientSecret(e.target.value)}
-                    placeholder="Client Secret do app Shopify"
+                    placeholder="Shopify app Client Secret"
                     className="pr-10 font-mono text-sm"
                   />
                   <Button
@@ -739,20 +739,20 @@ export function SettingsPage() {
                 <Button
                   variant="outline"
                   onClick={handleVerifyShopify}
-                  disabled={isVerificando...pify || !shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()}
+                  disabled={isVerifyingShopify || !shopifyStoreUrl.trim() || !shopifyClientId.trim() || !shopifyClientSecret.trim()}
                 >
-                  {isVerificando...pify ? (
+                  {isVerifyingShopify ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Verificando...
+                      Verifying...
                     </>
                   ) : (
-                    'Verificar conexão'
+                    'Verify connection'
                   )}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Gerado no Admin do Shopify → Configurações → Apps → Desenvolver apps → Credenciais de API.
+                Generated in Shopify Admin → Settings → Apps → Develop apps → API credentials.
               </p>
             </div>
           </CardContent>
@@ -761,9 +761,9 @@ export function SettingsPage() {
         {/* Email Signature */}
         <Card>
           <CardHeader>
-            <CardTitle>Assinatura de E-mail</CardTitle>
+            <CardTitle>Email Signature</CardTitle>
             <CardDescription>
-              Esta assinatura será adicionada automaticamente às suas respostas.
+              This signature will be appended automatically to your replies.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -776,12 +776,12 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Exportar Dados */}
+        {/* Export Data */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Exportar Dados
+              Export Data
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -804,7 +804,7 @@ Hi Sarah, I've checked this personally...`}
             </pre>
             <Button onClick={handleExportChats} disabled={exporting} variant="outline">
               <Download className="w-4 h-4" />
-              {exporting ? 'Exporting...' : 'Exportar histórico completo (.txt)'}
+              {exporting ? 'Exporting...' : 'Export full history (.txt)'}
             </Button>
           </CardContent>
         </Card>
@@ -812,13 +812,13 @@ Hi Sarah, I've checked this personally...`}
         {/* Single Save Button */}
         <div className="flex justify-end pt-4 pb-8">
           <Button size="lg" onClick={handleSaveSettings} disabled={isSaving}>
-            {isSalvando...(
+            {isSaving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Salvando...
+                Saving...
               </>
             ) : (
-              'Salvar todas as configurações'
+              'Save all settings'
             )}
           </Button>
         </div>
