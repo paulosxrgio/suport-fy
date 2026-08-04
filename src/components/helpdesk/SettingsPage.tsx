@@ -91,7 +91,7 @@ export function SettingsPage() {
   const handleCopyWebhook = () => {
     navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
-    toast.success('URL copied!');
+    toast.success('URL copiada!');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -110,7 +110,7 @@ export function SettingsPage() {
       if (error) throw error;
 
       if (data.success) {
-        toast.success(data.message || 'Connection successful!');
+        toast.success(data.message || 'Conexão bem-sucedida!');
       } else {
         toast.error(data.error || 'Invalid API Key');
       }
@@ -217,7 +217,7 @@ export function SettingsPage() {
         setSettingsId(data.id);
       }
 
-      toast.success('Settings saved!');
+      toast.success('Configurações salvas!');
     } catch (error) {
       console.error('Error saving settings:', error);
       toast.error('Failed to save settings');

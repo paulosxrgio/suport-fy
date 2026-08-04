@@ -98,11 +98,11 @@ export function AIAgentPage() {
         body: { store_id: currentStore.id, force: true },
       });
       if (error) throw error;
-      toast.success('Analysis complete!');
+      toast.success('Análise concluída!');
       refetchBrain();
     } catch (err) {
       console.error('Brain force analysis error:', err);
-      toast.error('Failed to run analysis.');
+      toast.error('Falha ao executar análise.');
     } finally {
       setIsForcingBrain(false);
     }
@@ -147,11 +147,11 @@ export function AIAgentPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-settings', currentStore?.id] });
-      toast.success('Settings saved successfully!');
+      toast.success('Configurações salvas com sucesso!');
     },
     onError: (error) => {
       console.error('Error saving settings:', error);
-      toast.error('Failed to save settings');
+      toast.error('Falha ao salvar configurações');
     },
   });
 
@@ -194,12 +194,12 @@ export function AIAgentPage() {
         .update({ status: 'applied', applied_at: new Date().toISOString() })
         .eq('id', suggestion.id);
 
-      toast.success('Prompt updated successfully!');
+      toast.success('Prompt atualizado com sucesso!');
       queryClient.invalidateQueries({ queryKey: ['ai-settings', currentStore?.id] });
       refetchSuggestions();
     } catch (error) {
       console.error('Error applying suggestion:', error);
-      toast.error('Failed to apply suggestion');
+      toast.error('Falha ao aplicar sugestão');
     }
   };
 
@@ -209,9 +209,9 @@ export function AIAgentPage() {
         .update({ status: 'rejected' })
         .eq('id', id);
       refetchSuggestions();
-      toast.success('Suggestion rejected');
+      toast.success('Sugestão rejeitada');
     } catch (error) {
-      toast.error('Failed to reject suggestion');
+      toast.error('Falha ao rejeitar sugestão');
     }
   };
 
@@ -224,7 +224,7 @@ export function AIAgentPage() {
       refetchSuggestions();
     } catch (error) {
       console.error('Error generating suggestion:', error);
-      toast.error('Failed to generate suggestion. Please try again.');
+      toast.error('Falha ao gerar sugestão. Por favor, tente novamente.');
     } finally {
       setIsGenerating(false);
     }
@@ -448,7 +448,7 @@ export function AIAgentPage() {
             {!suggestions || suggestions.length === 0 ? (
               <div className="flex items-center gap-3 p-6 rounded-lg bg-muted text-muted-foreground text-center justify-center">
                 <Lightbulb className="w-5 h-5" />
-                <span>No suggestions yet. Click "Gerar sugestão agora" or wait for the daily automated analysis.</span>
+                <span>Ainda não há sugestões. Clique em "Gerar sugestão agora" ou aguarde a análise automática diária.</span>
               </div>
             ) : (
               <div className="space-y-4">
@@ -498,7 +498,7 @@ export function AIAgentPage() {
             {!brainReport ? (
               <div className="flex items-center gap-3 p-6 rounded-lg bg-muted text-muted-foreground text-center justify-center">
                 <Brain className="w-5 h-5" />
-                <span>No report yet. Click "Forçar análise agora" or wait for the daily 23:00 analysis.</span>
+                <span>Ainda não há relatório. Clique em "Forçar análise agora" ou aguarde a análise diária às 23:00.</span>
               </div>
             ) : (
               <div className="space-y-5">
