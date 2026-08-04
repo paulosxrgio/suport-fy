@@ -528,7 +528,7 @@ NUNCA USE:
 - Markdown (**bold**, listas, ###)
 - Travessões de qualquer tipo`;
 
-    const systemPrompt = aiSystemPrompt
+    let systemPrompt = aiSystemPrompt
       ? `${defaultSystemPrompt}
 
 ━━━━━━━━━━━━━━━━━━━━━━
