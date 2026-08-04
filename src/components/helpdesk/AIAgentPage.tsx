@@ -457,7 +457,7 @@ export function AIAgentPage() {
                     key={suggestion.id}
                     suggestion={suggestion}
                     onApply={applySuggestion}
-                    onReject={rejectSuggestion}
+                    onRejeitar={rejectSuggestion}
                   />
                 ))}
               </div>
@@ -597,10 +597,10 @@ export function AIAgentPage() {
   );
 }
 
-function SuggestionCard({ suggestion, onApply, onReject }: {
+function SuggestionCard({ suggestion, onApply, onRejeitar }: {
   suggestion: any;
   onApply: (s: any) => void;
-  onReject: (id: string) => void;
+  onRejeitar: (id: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -626,13 +626,13 @@ function SuggestionCard({ suggestion, onApply, onReject }: {
         </div>
         {suggestion.status === 'pending' && (
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => onReject(suggestion.id)}>
+            <Button size="sm" variant="outline" onClick={() => onRejeitar(suggestion.id)}>
               <X className="w-4 h-4 mr-1" />
-              Reject
+              Rejeitar
             </Button>
             <Button size="sm" onClick={() => onApply(suggestion)}>
               <Check className="w-4 h-4 mr-1" />
-              Apply prompt
+              Aplicar prompt
             </Button>
           </div>
         )}
