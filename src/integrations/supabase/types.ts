@@ -17,7 +17,9 @@ export type Database = {
       auto_reply_queue: {
         Row: {
           created_at: string | null
+          error_reason: string | null
           id: string
+          processing_started_at: string | null
           scheduled_for: string
           status: string
           store_id: string
@@ -25,7 +27,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          error_reason?: string | null
           id?: string
+          processing_started_at?: string | null
           scheduled_for: string
           status?: string
           store_id: string
@@ -33,7 +37,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          error_reason?: string | null
           id?: string
+          processing_started_at?: string | null
           scheduled_for?: string
           status?: string
           store_id?: string
@@ -522,6 +528,7 @@ export type Database = {
       }
       tickets: {
         Row: {
+          anti_loop_reason: string | null
           auto_reply_count: number
           created_at: string
           customer_email: string
@@ -538,6 +545,7 @@ export type Database = {
           thread_subject: string | null
         }
         Insert: {
+          anti_loop_reason?: string | null
           auto_reply_count?: number
           created_at?: string
           customer_email: string
@@ -554,6 +562,7 @@ export type Database = {
           thread_subject?: string | null
         }
         Update: {
+          anti_loop_reason?: string | null
           auto_reply_count?: number
           created_at?: string
           customer_email?: string
