@@ -1,5 +1,7 @@
 // Anti-loop guard: detects automated emails, own-store senders, echoes and
 // no-progress loops BEFORE any AI call is made (saves tokens).
+import { stripQuotedText } from "./strip-quoted.ts";
+
 
 export interface AntiLoopHeader {
   name?: string;
@@ -31,13 +33,20 @@ export interface AntiLoopResult {
 const AUTOMATED_LOCAL_PREFIXES = [
   'no-reply',
   'noreply',
-  'contact',
-  'support',
   'mailer-daemon',
   'postmaster',
   'bounce',
   'notifications',
 ];
+
+function extractEmail(raw: string): string {
+  if (!raw) return '';
+  const m = raw.match(/<([^>]+)>/);
+  const candidate = (m ? m[1] : raw).trim().toLowerCase();
+  const m2 = candidate.match(/[^\s<>,;]+@[^\s<>,;]+/);
+  return (m2 ? m2[0] : candidate).trim();
+}
+
 
 function domainOf(email: string): string {
   const at = email.lastIndexOf('@');
@@ -127,8 +136,14 @@ function hasNewInformation(inbound: string, previousInbound: string[]): boolean 
 }
 
 export function checkAntiLoop(input: AntiLoopInput): AntiLoopResult {
-  const sender = (input.inboundSenderEmail || '').trim().toLowerCase();
-  const storeSender = (input.storeSenderEmail || '').trim().toLowerCase();
+  // 0. Resolve the real customer address: Reply-To > original From > stored sender.
+  const headersEarly = normalizeHeaders(input.headers);
+  const sender =
+    extractEmail(headersEarly['reply-to'] || '') ||
+    extractEmail(headersEarly['from'] || '') ||
+    extractEmail(input.inboundSenderEmail || '');
+  const storeSender = extractEmail(input.storeSenderEmail || '');
+
 
   // 1. Own store / automated sender
   if (sender) {
@@ -147,7 +162,8 @@ export function checkAntiLoop(input: AntiLoopInput): AntiLoopResult {
   }
 
   // 2. Automated headers
-  const h = normalizeHeaders(input.headers);
+  const h = headersEarly;
+
   const autoSubmitted = (h['auto-submitted'] || '').toLowerCase();
   if (autoSubmitted && autoSubmitted !== 'no') {
     return { blocked: true, code: 'auto_submitted_header', reason: `Header Auto-Submitted: ${autoSubmitted}` };
@@ -162,11 +178,12 @@ export function checkAntiLoop(input: AntiLoopInput): AntiLoopResult {
     }
   }
 
-  // 3. Echo of Sophia's last outbound message
+  // 3. Echo of Sophia's last outbound message (compare WITHOUT quoted history)
   const lastOutbound = [...input.messages].reverse().find((m) => m.direction === 'outbound');
-  const inboundNorm = normalizeBody(input.inboundContent || '');
+  const inboundNorm = normalizeBody(stripQuotedText(input.inboundContent || ''));
   if (lastOutbound && inboundNorm.length > 20) {
-    const outNorm = normalizeBody(lastOutbound.content || '');
+    const outNorm = normalizeBody(stripQuotedText(lastOutbound.content || ''));
+
     if (outNorm.length > 20) {
       if (inboundNorm.includes(outNorm)) {
         return { blocked: true, code: 'echo', reason: 'Mensagem recebida contém integralmente a última resposta enviada (echo)' };
@@ -183,8 +200,9 @@ export function checkAntiLoop(input: AntiLoopInput): AntiLoopResult {
   if (count >= 3) {
     const previousInbound = input.messages
       .filter((m) => m.direction === 'inbound')
-      .map((m) => m.content || '');
-    if (!hasNewInformation(input.inboundContent || '', previousInbound.slice(0, -1))) {
+      .map((m) => stripQuotedText(m.content || ''));
+    if (!hasNewInformation(stripQuotedText(input.inboundContent || ''), previousInbound.slice(0, -1))) {
+
       return {
         blocked: true,
         code: 'no_progress',
@@ -198,5 +216,6 @@ export function checkAntiLoop(input: AntiLoopInput): AntiLoopResult {
 }
 
 export function inboundHasProgress(inbound: string, previousInbound: string[]): boolean {
-  return hasNewInformation(inbound, previousInbound);
+  return hasNewInformation(stripQuotedText(inbound), previousInbound.map((p) => stripQuotedText(p)));
 }
+
