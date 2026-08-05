@@ -194,6 +194,45 @@ serve(async (req: Request) => {
         const storeName = storeData?.name || 'our store';
 
         // ========================================
+        // STEP 2a.-1: TRAVAS ANTI-LOOP (antes de qualquer chamada de IA)
+        // ========================================
+        const lastInboundMsg = [...messagesSorted].reverse().find((m: any) => m.direction === 'inbound');
+        const previousInboundContents = messagesSorted
+          .filter((m: any) => m.direction === 'inbound')
+          .map((m: any) => m.content || '')
+          .slice(0, -1);
+        const inboundHasProgress_ = inboundHasProgress(lastInboundMsg?.content || '', previousInboundContents);
+
+        const antiLoop = checkAntiLoop({
+          inboundContent: lastInboundMsg?.content || '',
+          inboundSenderEmail: (lastInboundMsg as any)?.sender_email || ticket.customer_email,
+          headers: (lastInboundMsg as any)?.email_headers,
+          storeSenderEmail: settings?.sender_email,
+          messages: messagesSorted as any,
+          autoReplyCount: (ticket as any).auto_reply_count,
+        });
+
+        if (antiLoop.blocked) {
+          console.log(`[LOOP IGNORADO] Item ${item.id} (ticket ${item.ticket_id}) - ${antiLoop.reason}`);
+
+          await supabase
+            .from('auto_reply_queue')
+            .update({ status: 'loop_ignorado' })
+            .eq('id', item.id);
+
+          if (antiLoop.needsHuman) {
+            await supabase
+              .from('tickets')
+              .update({ needs_human: true })
+              .eq('id', item.ticket_id);
+          }
+
+          processedCount++;
+          continue;
+        }
+
+
+        // ========================================
         // STEP 2a.0: SPAM DETECTOR — auto-close before AI
         // ========================================
         const spamIndicators = [
