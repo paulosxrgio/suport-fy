@@ -101,10 +101,12 @@ serve(async (req) => {
     let aiProvider: string = 'openai';
     let anthropicApiKey: string | null = null;
 
+    let storeSenderEmail: string | null = null;
+
     if (ticket.store_id) {
       const { data: settings } = await supabase
         .from("settings")
-        .select("openai_api_key, ai_system_prompt, ai_model, shopify_store_url, shopify_client_id, shopify_client_secret, ai_provider, anthropic_api_key")
+        .select("openai_api_key, ai_system_prompt, ai_model, shopify_store_url, shopify_client_id, shopify_client_secret, ai_provider, anthropic_api_key, sender_email")
         .eq("store_id", ticket.store_id)
         .maybeSingle();
 
@@ -117,6 +119,7 @@ serve(async (req) => {
         shopifyClientSecret = (settings as any).shopify_client_secret;
         aiProvider = (settings as any).ai_provider || 'openai';
         anthropicApiKey = (settings as any).anthropic_api_key;
+        storeSenderEmail = (settings as any).sender_email || null;
       }
     }
 
