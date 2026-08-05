@@ -159,7 +159,7 @@ serve(async (req: Request) => {
         // Buscar últimas 5 mensagens para contexto
         const { data: messages } = await supabase
           .from('messages')
-          .select('content, direction, created_at')
+          .select('content, direction, created_at, sender_email, email_headers')
           .eq('ticket_id', item.ticket_id)
           .order('created_at', { ascending: false })
           .limit(5);
