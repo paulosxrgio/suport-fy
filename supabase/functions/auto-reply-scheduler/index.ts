@@ -123,7 +123,7 @@ serve(async (req: Request) => {
         // Buscar ticket
         const { data: ticket, error: ticketError } = await supabase
           .from('tickets')
-          .select('subject, customer_name, customer_email, store_id, thread_subject, last_message_id, references_chain')
+          .select('subject, customer_name, customer_email, store_id, thread_subject, last_message_id, references_chain, auto_reply_count, needs_human')
           .eq('id', item.ticket_id)
           .single();
 
