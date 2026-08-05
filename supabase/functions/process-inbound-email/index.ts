@@ -679,6 +679,7 @@ serve(async (req: Request) => {
         email_message_id: emailMessageId,
         store_id: storeId,
         attachments: savedAttachments,
+        email_headers: headers,
       });
 
     if (messageError) {
