@@ -12,6 +12,7 @@ export interface Ticket {
 
 export interface MessageAttachment {
   url: string;
+  path?: string;
   filename: string;
   content_type: string;
 }
