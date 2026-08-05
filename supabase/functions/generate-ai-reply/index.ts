@@ -141,7 +141,7 @@ serve(async (req) => {
     // Fetch last 5 messages for context
     const { data: messages, error: messagesError } = await supabase
       .from("messages")
-      .select("content, direction, created_at")
+      .select("content, direction, created_at, sender_email, email_headers")
       .eq("ticket_id", ticketId)
       .order("created_at", { ascending: false })
       .limit(5);
