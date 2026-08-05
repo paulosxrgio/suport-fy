@@ -593,7 +593,7 @@ serve(async (req: Request) => {
       a.content_type?.startsWith('image/')
     );
 
-    const savedAttachments: { url: string; filename: string; content_type: string }[] = [];
+    const savedAttachments: { url: string; path: string; filename: string; content_type: string }[] = [];
 
     if (imageAttachments.length > 0 && resendApiKey && emailId) {
       console.log('Step 7.5 - Processando', imageAttachments.length, 'attachments de imagem');
