@@ -638,12 +638,9 @@ serve(async (req: Request) => {
             continue;
           }
 
-          const { data: publicUrlData } = supabase.storage
-            .from('email-attachments')
-            .getPublicUrl(fileName);
-
           savedAttachments.push({
-            url: publicUrlData.publicUrl,
+            url: '',
+            path: fileName,
             filename: attachment.filename,
             content_type: attachment.content_type,
           });
