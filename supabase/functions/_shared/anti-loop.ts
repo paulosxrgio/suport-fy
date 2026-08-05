@@ -136,8 +136,14 @@ function hasNewInformation(inbound: string, previousInbound: string[]): boolean 
 }
 
 export function checkAntiLoop(input: AntiLoopInput): AntiLoopResult {
-  const sender = (input.inboundSenderEmail || '').trim().toLowerCase();
-  const storeSender = (input.storeSenderEmail || '').trim().toLowerCase();
+  // 0. Resolve the real customer address: Reply-To > original From > stored sender.
+  const headersEarly = normalizeHeaders(input.headers);
+  const sender =
+    extractEmail(headersEarly['reply-to'] || '') ||
+    extractEmail(headersEarly['from'] || '') ||
+    extractEmail(input.inboundSenderEmail || '');
+  const storeSender = extractEmail(input.storeSenderEmail || '');
+
 
   // 1. Own store / automated sender
   if (sender) {
