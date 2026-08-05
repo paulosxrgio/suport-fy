@@ -79,7 +79,7 @@ serve(async (req) => {
     // Fetch ticket info
     const { data: ticket, error: ticketError } = await supabase
       .from("tickets")
-      .select("subject, customer_name, customer_email, store_id")
+      .select("subject, customer_name, customer_email, store_id, auto_reply_count, needs_human")
       .eq("id", ticketId)
       .single();
 
