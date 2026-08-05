@@ -970,6 +970,12 @@ If no actionable request is detected, return { "detected": false, "type": null, 
             store_id: item.store_id,
           });
 
+        // Contador anti-loop: zera quando o cliente trouxe informação nova
+        await supabase
+          .from('tickets')
+          .update({ auto_reply_count: inboundHasProgress_ ? 1 : (ticket.auto_reply_count || 0) + 1 })
+          .eq('id', item.ticket_id);
+
         // Análise de qualidade da resposta (não bloqueante)
         try {
           await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/analyze-response`, {
