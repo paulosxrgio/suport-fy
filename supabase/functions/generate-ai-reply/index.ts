@@ -2,46 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkAntiLoop } from "../_shared/anti-loop.ts";
 
-// Strip quoted text from email replies (multi-language support)
-function stripQuotedText(text: string): string {
-  if (!text) return '';
-  
-  const lines = text.split('\n');
-  const cleanLines: string[] = [];
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-    
-    if (/^Em\s.+escreveu:/i.test(trimmed)) break;
-    if (/^On\s.+wrote:/i.test(trimmed)) break;
-    if (/^Le\s.+a\s+écrit\s*:/i.test(trimmed)) break;
-    if (/^El\s.+escribi[oó]:/i.test(trimmed)) break;
-    if (/^Am\s.+schrieb/i.test(trimmed)) break;
-    if (/<[^>]+@[^>]+>\s*(wrote|escreveu|a écrit|escribió|schrieb)\s*:/i.test(trimmed)) break;
-    if (/^-{3,}\s*Original Message\s*-{3,}$/i.test(trimmed)) break;
-    if (/^-{3,}\s*Mensagem Original\s*-{3,}$/i.test(trimmed)) break;
-    if (/^-{5,}$/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^From:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^De:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Sent:\s/i.test(trimmed)) break;
-    if (/^Enviado:\s/i.test(trimmed)) break;
-    if (/^To:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Para:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Subject:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Assunto:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^--\s*$/.test(trimmed)) break;
-    if (/^—\s*$/.test(trimmed)) break;
-    if (/^_{3,}$/.test(trimmed) && cleanLines.length > 0) break;
-    if (trimmed.startsWith('>') && cleanLines.length > 0) continue;
-    
-    cleanLines.push(line);
-  }
-  
-  let result = cleanLines.join('\n');
-  result = result.replace(/\n{3,}/g, '\n\n');
-  return result.trim();
-}
+import { stripQuotedText } from "../_shared/strip-quoted.ts";
+
 
 function stripMarkdownLinks(text: string): string {
   if (!text) return text;
@@ -175,9 +137,14 @@ serve(async (req) => {
 
       if (antiLoop.blocked) {
         console.log(`[LOOP IGNORADO] ticket ${ticketId} - ${antiLoop.reason}`);
-        if (antiLoop.needsHuman) {
-          await supabase.from('tickets').update({ needs_human: true }).eq('id', ticketId);
-        }
+        await supabase
+          .from('tickets')
+          .update({
+            anti_loop_reason: antiLoop.reason || null,
+            ...(antiLoop.needsHuman ? { needs_human: true } : {}),
+          })
+          .eq('id', ticketId);
+
         return new Response(
           JSON.stringify({ blocked: true, reason: antiLoop.reason }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -499,11 +466,22 @@ RASTREAMENTO:
 - Diga que atualizações acontecem por checkpoints e podem parecer lentas
 - Prazo padrão: 8 a 12 business days from dispatch
 
+LÓGICA POR ESTADO DO PEDIDO (PRIORIDADE MÁXIMA, ACIMA DAS REGRAS DE CANCELAMENTO E REEMBOLSO ABAIXO):
+- Sempre leia primeiro o bloco "DADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY" e siga o estado real do pedido.
+- PEDIDO PAGO E AINDA NÃO ENVIADO (UNFULFILLED) + cliente pede cancelamento ou reembolso:
+  o cancelamento É possível nesta fase. Confirme que a solicitação de cancelamento foi registrada e que a equipe vai processar o cancelamento e o reembolso.
+  PROIBIDO dizer que não pode reembolsar "porque ainda não foi enviado". PROIBIDO sugerir esperar a entrega para depois devolver.
+  Não tente reter o cliente com alternativas neste caso.
+- PEDIDO ENVIADO (FULFILLED / em trânsito): cancelamento antes da entrega não é mais possível. Explique com empatia, ofereça o fluxo de devolução conforme a política e informe o rastreio.
+- A regra de retenção ("ofereça uma alternativa antes de aceitar o reembolso") NÃO se aplica a cancelamento de pedido ainda não enviado.
+- PROIBIDO afirmar qualquer coisa que contradiga o bloco "DADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY". Se o dado necessário não estiver no bloco, não invente: diga o que você PODE fazer e informe que a equipe dará sequência.
+
 CANCELAMENTO:
 - Reconheça o direito do cliente
-- Mencione que o pedido já foi enviado (se for o caso), dificultando o cancelamento
-- Ofereça alternativa risk-free: aguardar a entrega e, se não gostar, devolução sem custo
+- Se o pedido JÁ foi enviado, explique que isso dificulta o cancelamento e ofereça a devolução conforme a política
+- Se o pedido ainda NÃO foi enviado, confirme que o cancelamento foi registrado e será processado pela equipe
 - Nunca mencione cancelamento, reembolso ou disputa se o cliente NÃO mencionou
+
 
 REEMBOLSO — QUANDO O CLIENTE INSISTE:
 - Se o cliente pediu reembolso mais de uma vez, pare de persuadir
