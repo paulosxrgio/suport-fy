@@ -7,7 +7,9 @@ interface GenerateAIReplyParams {
 }
 
 interface GenerateAIReplyResponse {
-  reply: string;
+  reply?: string;
+  blocked?: boolean;
+  reason?: string;
 }
 
 export function useGenerateAIReply() {
@@ -18,11 +20,15 @@ export function useGenerateAIReply() {
       });
 
       if (error) {
-        throw new Error(error.message || 'Failed to generate AI reply');
+        throw new Error(error.message || 'Falha ao gerar resposta com IA');
+      }
+
+      if (data?.blocked) {
+        throw new Error(`Resposta automática bloqueada: ${data.reason || 'possível loop detectado'}`);
       }
 
       if (!data?.reply) {
-        throw new Error('No reply generated');
+        throw new Error('Nenhuma resposta gerada');
       }
 
       return data.reply;
