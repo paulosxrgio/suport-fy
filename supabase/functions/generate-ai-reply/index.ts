@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkAntiLoop } from "../_shared/anti-loop.ts";
 
 // Strip quoted text from email replies (multi-language support)
 function stripQuotedText(text: string): string {
