@@ -8,6 +8,9 @@ export interface Ticket {
   created_at: string;
   is_read: boolean;
   store_id: string | null;
+  needs_human?: boolean | null;
+  anti_loop_reason?: string | null;
+
 }
 
 export interface MessageAttachment {

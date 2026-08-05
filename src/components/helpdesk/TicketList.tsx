@@ -2,7 +2,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Ticket } from '@/types/helpdesk';
-import { Mail } from 'lucide-react';
+import { Mail, AlertTriangle } from 'lucide-react';
 import { useMarkTicketAsRead } from '@/hooks/useTickets';
 
 interface TicketListProps {
@@ -111,7 +111,7 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
                   {ticket.subject}
                 </p>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span
                     className={cn(
                       'text-[10px] font-medium',
@@ -120,7 +120,19 @@ export function TicketList({ tickets, isLoading, selectedTicketId, onSelectTicke
                   >
                     {ticket.status === 'open' ? '● Aberto' : '○ Fechado'}
                   </span>
+                  {(ticket.needs_human || ticket.anti_loop_reason) && (
+                    <span
+                      title={ticket.anti_loop_reason || undefined}
+                      className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400 max-w-full"
+                    >
+                      <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                      <span className="truncate">
+                        {ticket.needs_human ? 'Requer humano' : 'Auto-resposta ignorada'}
+                      </span>
+                    </span>
+                  )}
                 </div>
+
               </div>
             </div>
           </button>

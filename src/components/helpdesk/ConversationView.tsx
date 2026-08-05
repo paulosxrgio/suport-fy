@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Sparkles, Languages, Printer, Inbox } from 'lucide-react';
+import { Send, Loader2, Sparkles, Languages, Printer, Inbox, AlertTriangle } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -166,7 +166,17 @@ export function ConversationView({ ticket, messages, isLoading }: ConversationVi
             {ticket.customer_name || ticket.customer_email}
           </h2>
           <p className="text-sm text-muted-foreground truncate">{ticket.subject}</p>
+          {(ticket.needs_human || ticket.anti_loop_reason) && (
+            <p className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="w-3 h-3 shrink-0" />
+              <span className="truncate">
+                {ticket.needs_human ? 'Aguardando atendimento humano' : 'Resposta automática ignorada'}
+                {ticket.anti_loop_reason ? `: ${ticket.anti_loop_reason}` : ''}
+              </span>
+            </p>
+          )}
         </div>
+
         
         <div className="flex items-center gap-2 ml-4">
           <TooltipProvider>
