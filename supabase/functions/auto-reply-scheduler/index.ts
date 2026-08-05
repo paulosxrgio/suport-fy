@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { checkAntiLoop, inboundHasProgress } from "../_shared/anti-loop.ts";
 
 // Strip quoted text from email replies (multi-language support)
 function stripQuotedText(text: string): string {
@@ -123,7 +124,7 @@ serve(async (req: Request) => {
         // Buscar ticket
         const { data: ticket, error: ticketError } = await supabase
           .from('tickets')
-          .select('subject, customer_name, customer_email, store_id, thread_subject, last_message_id, references_chain')
+          .select('subject, customer_name, customer_email, store_id, thread_subject, last_message_id, references_chain, auto_reply_count, needs_human')
           .eq('id', item.ticket_id)
           .single();
 
@@ -159,7 +160,7 @@ serve(async (req: Request) => {
         // Buscar últimas 5 mensagens para contexto
         const { data: messages } = await supabase
           .from('messages')
-          .select('content, direction, created_at')
+          .select('content, direction, created_at, sender_email, email_headers')
           .eq('ticket_id', item.ticket_id)
           .order('created_at', { ascending: false })
           .limit(5);
@@ -192,6 +193,45 @@ serve(async (req: Request) => {
           .eq('id', item.store_id)
           .maybeSingle();
         const storeName = storeData?.name || 'our store';
+
+        // ========================================
+        // STEP 2a.-1: TRAVAS ANTI-LOOP (antes de qualquer chamada de IA)
+        // ========================================
+        const lastInboundMsg = [...messagesSorted].reverse().find((m: any) => m.direction === 'inbound');
+        const previousInboundContents = messagesSorted
+          .filter((m: any) => m.direction === 'inbound')
+          .map((m: any) => m.content || '')
+          .slice(0, -1);
+        const inboundHasProgress_ = inboundHasProgress(lastInboundMsg?.content || '', previousInboundContents);
+
+        const antiLoop = checkAntiLoop({
+          inboundContent: lastInboundMsg?.content || '',
+          inboundSenderEmail: (lastInboundMsg as any)?.sender_email || ticket.customer_email,
+          headers: (lastInboundMsg as any)?.email_headers,
+          storeSenderEmail: settings?.sender_email,
+          messages: messagesSorted as any,
+          autoReplyCount: (ticket as any).auto_reply_count,
+        });
+
+        if (antiLoop.blocked) {
+          console.log(`[LOOP IGNORADO] Item ${item.id} (ticket ${item.ticket_id}) - ${antiLoop.reason}`);
+
+          await supabase
+            .from('auto_reply_queue')
+            .update({ status: 'loop_ignorado' })
+            .eq('id', item.id);
+
+          if (antiLoop.needsHuman) {
+            await supabase
+              .from('tickets')
+              .update({ needs_human: true })
+              .eq('id', item.ticket_id);
+          }
+
+          processedCount++;
+          continue;
+        }
+
 
         // ========================================
         // STEP 2a.0: SPAM DETECTOR — auto-close before AI
@@ -969,6 +1009,12 @@ If no actionable request is detected, return { "detected": false, "type": null, 
             email_message_id: sentMessageId,
             store_id: item.store_id,
           });
+
+        // Contador anti-loop: zera quando o cliente trouxe informação nova
+        await supabase
+          .from('tickets')
+          .update({ auto_reply_count: inboundHasProgress_ ? 1 : (ticket.auto_reply_count || 0) + 1 })
+          .eq('id', item.ticket_id);
 
         // Análise de qualidade da resposta (não bloqueante)
         try {

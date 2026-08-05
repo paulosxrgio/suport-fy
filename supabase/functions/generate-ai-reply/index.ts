@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkAntiLoop } from "../_shared/anti-loop.ts";
 
 // Strip quoted text from email replies (multi-language support)
 function stripQuotedText(text: string): string {
@@ -79,7 +80,7 @@ serve(async (req) => {
     // Fetch ticket info
     const { data: ticket, error: ticketError } = await supabase
       .from("tickets")
-      .select("subject, customer_name, customer_email, store_id")
+      .select("subject, customer_name, customer_email, store_id, auto_reply_count, needs_human")
       .eq("id", ticketId)
       .single();
 
@@ -101,10 +102,12 @@ serve(async (req) => {
     let aiProvider: string = 'openai';
     let anthropicApiKey: string | null = null;
 
+    let storeSenderEmail: string | null = null;
+
     if (ticket.store_id) {
       const { data: settings } = await supabase
         .from("settings")
-        .select("openai_api_key, ai_system_prompt, ai_model, shopify_store_url, shopify_client_id, shopify_client_secret, ai_provider, anthropic_api_key")
+        .select("openai_api_key, ai_system_prompt, ai_model, shopify_store_url, shopify_client_id, shopify_client_secret, ai_provider, anthropic_api_key, sender_email")
         .eq("store_id", ticket.store_id)
         .maybeSingle();
 
@@ -117,6 +120,7 @@ serve(async (req) => {
         shopifyClientSecret = (settings as any).shopify_client_secret;
         aiProvider = (settings as any).ai_provider || 'openai';
         anthropicApiKey = (settings as any).anthropic_api_key;
+        storeSenderEmail = (settings as any).sender_email || null;
       }
     }
 
@@ -141,7 +145,7 @@ serve(async (req) => {
     // Fetch last 5 messages for context
     const { data: messages, error: messagesError } = await supabase
       .from("messages")
-      .select("content, direction, created_at")
+      .select("content, direction, created_at, sender_email, email_headers")
       .eq("ticket_id", ticketId)
       .order("created_at", { ascending: false })
       .limit(5);
@@ -156,6 +160,31 @@ serve(async (req) => {
 
     // Build history in chronological order with clear roles
     const messagesSorted = [...(messages || [])].reverse();
+
+    // ANTI-LOOP GUARD — antes de qualquer chamada de IA
+    {
+      const lastInboundMsg = [...messagesSorted].reverse().find((m: any) => m.direction === 'inbound');
+      const antiLoop = checkAntiLoop({
+        inboundContent: lastInboundMsg?.content || lastMessageContent || '',
+        inboundSenderEmail: (lastInboundMsg as any)?.sender_email || ticket.customer_email,
+        headers: (lastInboundMsg as any)?.email_headers,
+        storeSenderEmail: storeSenderEmail,
+        messages: messagesSorted as any,
+        autoReplyCount: (ticket as any).auto_reply_count,
+      });
+
+      if (antiLoop.blocked) {
+        console.log(`[LOOP IGNORADO] ticket ${ticketId} - ${antiLoop.reason}`);
+        if (antiLoop.needsHuman) {
+          await supabase.from('tickets').update({ needs_human: true }).eq('id', ticketId);
+        }
+        return new Response(
+          JSON.stringify({ blocked: true, reason: antiLoop.reason }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
 
     const conversationHistory = messagesSorted
       .map((msg) => {

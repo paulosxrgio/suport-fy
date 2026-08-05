@@ -153,6 +153,7 @@ export type Database = {
           content: string
           created_at: string
           direction: string
+          email_headers: Json
           email_message_id: string | null
           html_body: string | null
           id: string
@@ -166,6 +167,7 @@ export type Database = {
           content: string
           created_at?: string
           direction: string
+          email_headers?: Json
           email_message_id?: string | null
           html_body?: string | null
           id?: string
@@ -179,6 +181,7 @@ export type Database = {
           content?: string
           created_at?: string
           direction?: string
+          email_headers?: Json
           email_message_id?: string | null
           html_body?: string | null
           id?: string
@@ -519,6 +522,7 @@ export type Database = {
       }
       tickets: {
         Row: {
+          auto_reply_count: number
           created_at: string
           customer_email: string
           customer_name: string | null
@@ -526,6 +530,7 @@ export type Database = {
           is_read: boolean
           last_message_at: string | null
           last_message_id: string | null
+          needs_human: boolean
           references_chain: string[] | null
           status: string
           store_id: string | null
@@ -533,6 +538,7 @@ export type Database = {
           thread_subject: string | null
         }
         Insert: {
+          auto_reply_count?: number
           created_at?: string
           customer_email: string
           customer_name?: string | null
@@ -540,6 +546,7 @@ export type Database = {
           is_read?: boolean
           last_message_at?: string | null
           last_message_id?: string | null
+          needs_human?: boolean
           references_chain?: string[] | null
           status?: string
           store_id?: string | null
@@ -547,6 +554,7 @@ export type Database = {
           thread_subject?: string | null
         }
         Update: {
+          auto_reply_count?: number
           created_at?: string
           customer_email?: string
           customer_name?: string | null
@@ -554,6 +562,7 @@ export type Database = {
           is_read?: boolean
           last_message_at?: string | null
           last_message_id?: string | null
+          needs_human?: boolean
           references_chain?: string[] | null
           status?: string
           store_id?: string | null
