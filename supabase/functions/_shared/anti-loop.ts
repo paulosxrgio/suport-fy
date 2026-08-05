@@ -200,8 +200,9 @@ export function checkAntiLoop(input: AntiLoopInput): AntiLoopResult {
   if (count >= 3) {
     const previousInbound = input.messages
       .filter((m) => m.direction === 'inbound')
-      .map((m) => m.content || '');
-    if (!hasNewInformation(input.inboundContent || '', previousInbound.slice(0, -1))) {
+      .map((m) => stripQuotedText(m.content || ''));
+    if (!hasNewInformation(stripQuotedText(input.inboundContent || ''), previousInbound.slice(0, -1))) {
+
       return {
         blocked: true,
         code: 'no_progress',
@@ -215,5 +216,6 @@ export function checkAntiLoop(input: AntiLoopInput): AntiLoopResult {
 }
 
 export function inboundHasProgress(inbound: string, previousInbound: string[]): boolean {
-  return hasNewInformation(inbound, previousInbound);
+  return hasNewInformation(stripQuotedText(inbound), previousInbound.map((p) => stripQuotedText(p)));
 }
+
