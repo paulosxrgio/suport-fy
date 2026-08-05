@@ -1,5 +1,7 @@
 // Anti-loop guard: detects automated emails, own-store senders, echoes and
 // no-progress loops BEFORE any AI call is made (saves tokens).
+import { stripQuotedText } from "./strip-quoted.ts";
+
 
 export interface AntiLoopHeader {
   name?: string;
@@ -31,13 +33,20 @@ export interface AntiLoopResult {
 const AUTOMATED_LOCAL_PREFIXES = [
   'no-reply',
   'noreply',
-  'contact',
-  'support',
   'mailer-daemon',
   'postmaster',
   'bounce',
   'notifications',
 ];
+
+function extractEmail(raw: string): string {
+  if (!raw) return '';
+  const m = raw.match(/<([^>]+)>/);
+  const candidate = (m ? m[1] : raw).trim().toLowerCase();
+  const m2 = candidate.match(/[^\s<>,;]+@[^\s<>,;]+/);
+  return (m2 ? m2[0] : candidate).trim();
+}
+
 
 function domainOf(email: string): string {
   const at = email.lastIndexOf('@');
