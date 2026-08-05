@@ -7,68 +7,10 @@ const corsHeaders = {
 };
 
 // ========================================
-// HELPER: Strip quoted text from email replies
+// HELPER: Strip quoted text from email replies (shared)
 // ========================================
-function stripQuotedText(text: string): string {
-  if (!text) return '';
-  
-  const lines = text.split('\n');
-  const cleanLines: string[] = [];
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-    
-    // A) Quoted message indicators (multi-language) - more flexible patterns
-    // PT-BR: "Em dom., 25 de jan. de 2026 às 19:26, Nome <email> escreveu:"
-    if (/^Em\s.+escreveu:/i.test(trimmed)) break;
-    // EN: "On Mon, Jan 25, 2026 at 7:26 PM, Name <email> wrote:" - flexible match
-    if (/^On\s.+wrote:/i.test(trimmed)) break;
-    // FR: "Le 25 janv. 2026 à 19:26, Nom <email> a écrit :"
-    if (/^Le\s.+a\s+écrit\s*:/i.test(trimmed)) break;
-    // ES: "El 25 ene 2026 a las 19:26, Nombre <email> escribió:"
-    if (/^El\s.+escribi[oó]:/i.test(trimmed)) break;
-    // DE: "Am 25.01.2026 um 19:26 schrieb Name <email>:"
-    if (/^Am\s.+schrieb/i.test(trimmed)) break;
-    
-    // B) Detect email-style quoted headers anywhere in line
-    // Match patterns like "Name <email@domain.com> wrote:" anywhere
-    if (/<[^>]+@[^>]+>\s*(wrote|escreveu|a écrit|escribió|schrieb)\s*:/i.test(trimmed)) break;
-    
-    // C) Classic forwarding/reply delimiters
-    if (/^-{3,}\s*Original Message\s*-{3,}$/i.test(trimmed)) break;
-    if (/^-{3,}\s*Mensagem Original\s*-{3,}$/i.test(trimmed)) break;
-    if (/^-{5,}$/i.test(trimmed) && cleanLines.length > 0) break; // Generic separator
-    if (/^From:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^De:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Sent:\s/i.test(trimmed)) break;
-    if (/^Enviado:\s/i.test(trimmed)) break;
-    if (/^To:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Para:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Subject:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Assunto:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    
-    // D) Signature delimiters
-    if (/^--\s*$/.test(trimmed)) break; // Standard email signature delimiter
-    if (/^—\s*$/.test(trimmed)) break; // Em dash signature delimiter
-    if (/^_{3,}$/.test(trimmed) && cleanLines.length > 0) break; // Underscores separator
-    
-    // E) Gmail blockquote indicator (lines starting with ">")
-    if (trimmed.startsWith('>') && cleanLines.length > 0) {
-      // Skip quoted lines but continue checking
-      continue;
-    }
-    
-    cleanLines.push(line);
-  }
-  
-  // Trim trailing empty lines and return
-  let result = cleanLines.join('\n');
-  result = result.replace(/\n{3,}/g, '\n\n'); // Collapse multiple newlines
-  result = result.trim();
-  
-  return result;
-}
+import { stripQuotedText } from "../_shared/strip-quoted.ts";
+
 
 // Helper: Convert HTML to plain text for cleaning
 function htmlToPlainText(html: string): string {

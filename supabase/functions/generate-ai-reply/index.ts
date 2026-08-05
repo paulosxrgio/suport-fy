@@ -270,7 +270,7 @@ serve(async (req) => {
             }) || [];
 
             if (orders.length > 0) {
-              shopifyContext = `\n\nDADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY:\n${orders.map((o: any) => `\n- Pedido ${o.order_number} | Status: ${o.status} | Pagamento: ${o.financial_status} | Total: ${o.currency} ${o.total_price}\n  Produtos: ${o.items.map((i: any) => `${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity}`).join(', ')}\n  Rastreamento: ${o.tracking_number ? `${o.tracking_number} via ${o.tracking_company || 'courier'} — https://t.17track.net/${o.tracking_number}` : 'Não disponível ainda'}\n  Situação: ${o.status === 'FULFILLED' ? 'dispatched' : o.status === 'UNFULFILLED' ? 'processed, not yet dispatched' : 'in transit'}`).join('')}`;
+              shopifyContext = `\n\nDADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY:\n${orders.map((o: any) => `\n- Pedido ${o.order_number} | Status: ${o.status} | Pagamento: ${o.financial_status} | Total: ${o.currency} ${o.total_price}\n  Produtos: ${o.items.map((i: any) => `${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity}`).join(', ')}\n  Rastreamento: ${o.tracking_number ? `${o.tracking_number} via ${o.tracking_company || 'courier'} — https://t.17track.net/${o.tracking_number}` : 'Não disponível ainda'}\n  Situação: ${o.status === 'FULFILLED' ? 'enviado — devolução conforme política (cancelamento não é mais possível)' : o.status === 'UNFULFILLED' ? 'pago, ainda não enviado — cancelamento possível' : 'em trânsito'}`).join('')}`;
             } else {
               shopifyContext = '\n\nDADOS SHOPIFY: Nenhum pedido encontrado para este cliente.';
             }
