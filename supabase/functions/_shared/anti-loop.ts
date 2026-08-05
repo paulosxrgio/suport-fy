@@ -162,7 +162,8 @@ export function checkAntiLoop(input: AntiLoopInput): AntiLoopResult {
   }
 
   // 2. Automated headers
-  const h = normalizeHeaders(input.headers);
+  const h = headersEarly;
+
   const autoSubmitted = (h['auto-submitted'] || '').toLowerCase();
   if (autoSubmitted && autoSubmitted !== 'no') {
     return { blocked: true, code: 'auto_submitted_header', reason: `Header Auto-Submitted: ${autoSubmitted}` };
@@ -177,11 +178,12 @@ export function checkAntiLoop(input: AntiLoopInput): AntiLoopResult {
     }
   }
 
-  // 3. Echo of Sophia's last outbound message
+  // 3. Echo of Sophia's last outbound message (compare WITHOUT quoted history)
   const lastOutbound = [...input.messages].reverse().find((m) => m.direction === 'outbound');
-  const inboundNorm = normalizeBody(input.inboundContent || '');
+  const inboundNorm = normalizeBody(stripQuotedText(input.inboundContent || ''));
   if (lastOutbound && inboundNorm.length > 20) {
-    const outNorm = normalizeBody(lastOutbound.content || '');
+    const outNorm = normalizeBody(stripQuotedText(lastOutbound.content || ''));
+
     if (outNorm.length > 20) {
       if (inboundNorm.includes(outNorm)) {
         return { blocked: true, code: 'echo', reason: 'Mensagem recebida contém integralmente a última resposta enviada (echo)' };
