@@ -3,46 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { checkAntiLoop, inboundHasProgress } from "../_shared/anti-loop.ts";
 
-// Strip quoted text from email replies (multi-language support)
-function stripQuotedText(text: string): string {
-  if (!text) return '';
-  
-  const lines = text.split('\n');
-  const cleanLines: string[] = [];
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-    
-    if (/^Em\s.+escreveu:/i.test(trimmed)) break;
-    if (/^On\s.+wrote:/i.test(trimmed)) break;
-    if (/^Le\s.+a\s+écrit\s*:/i.test(trimmed)) break;
-    if (/^El\s.+escribi[oó]:/i.test(trimmed)) break;
-    if (/^Am\s.+schrieb/i.test(trimmed)) break;
-    if (/<[^>]+@[^>]+>\s*(wrote|escreveu|a écrit|escribió|schrieb)\s*:/i.test(trimmed)) break;
-    if (/^-{3,}\s*Original Message\s*-{3,}$/i.test(trimmed)) break;
-    if (/^-{3,}\s*Mensagem Original\s*-{3,}$/i.test(trimmed)) break;
-    if (/^-{5,}$/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^From:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^De:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Sent:\s/i.test(trimmed)) break;
-    if (/^Enviado:\s/i.test(trimmed)) break;
-    if (/^To:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Para:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Subject:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^Assunto:\s/i.test(trimmed) && cleanLines.length > 0) break;
-    if (/^--\s*$/.test(trimmed)) break;
-    if (/^—\s*$/.test(trimmed)) break;
-    if (/^_{3,}$/.test(trimmed) && cleanLines.length > 0) break;
-    if (trimmed.startsWith('>') && cleanLines.length > 0) continue;
-    
-    cleanLines.push(line);
-  }
-  
-  let result = cleanLines.join('\n');
-  result = result.replace(/\n{3,}/g, '\n\n');
-  return result.trim();
-}
+import { stripQuotedText } from "../_shared/strip-quoted.ts";
+
 
 function stripMarkdownLinks(text: string): string {
   if (!text) return text;
@@ -72,8 +34,27 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // ========================================
+    // STEP 0: Destravar itens presos em 'processing' há mais de 10 minutos
+    // ========================================
+    const staleCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: staleItems } = await supabase
+      .from('auto_reply_queue')
+      .update({
+        status: 'pending',
+        error_reason: 'Retomado automaticamente após ficar preso em processing por mais de 10 minutos',
+      })
+      .eq('status', 'processing')
+      .or(`processing_started_at.is.null,processing_started_at.lte.${staleCutoff}`)
+      .select('id');
+
+    if (staleItems && staleItems.length > 0) {
+      console.log(`Step 0 - ${staleItems.length} item(ns) travado(s) devolvido(s) para pending`);
+    }
+
+    // ========================================
     // STEP 1: Buscar itens prontos da fila (até 5)
     // ========================================
+
     const { data: queueItems, error: queueError } = await supabase
       .from('auto_reply_queue')
       .select('id, ticket_id, store_id')
@@ -107,9 +88,10 @@ serve(async (req: Request) => {
         // Marcar como 'processing' para evitar duplicação
         const { error: lockError } = await supabase
           .from('auto_reply_queue')
-          .update({ status: 'processing' })
+          .update({ status: 'processing', processing_started_at: new Date().toISOString() })
           .eq('id', item.id)
           .eq('status', 'pending'); // Atomic check
+
 
         if (lockError) {
           console.error(`Item ${item.id} - Erro ao travar:`, lockError);
@@ -218,19 +200,21 @@ serve(async (req: Request) => {
 
           await supabase
             .from('auto_reply_queue')
-            .update({ status: 'loop_ignorado' })
+            .update({ status: 'loop_ignorado', error_reason: antiLoop.reason || null })
             .eq('id', item.id);
 
-          if (antiLoop.needsHuman) {
-            await supabase
-              .from('tickets')
-              .update({ needs_human: true })
-              .eq('id', item.ticket_id);
-          }
+          await supabase
+            .from('tickets')
+            .update({
+              anti_loop_reason: antiLoop.reason || null,
+              ...(antiLoop.needsHuman ? { needs_human: true } : {}),
+            })
+            .eq('id', item.ticket_id);
 
           processedCount++;
           continue;
         }
+
 
 
         // ========================================
@@ -411,8 +395,28 @@ If customer asks about delay:
 3. Be honest — never promise a date you can't guarantee
 
 ━━━━━━━━━━━━━━━━━━━━━━
+ORDER STATE LOGIC (MAXIMUM PRIORITY — OVERRIDES THE REFUND & CANCELLATION SECTION BELOW)
+━━━━━━━━━━━━━━━━━━━━━━
+
+Always read the "DADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY" block first and follow the state of the order:
+
+1) PAID + NOT DISPATCHED (UNFULFILLED) and the customer asks to cancel or refund:
+   - Cancellation IS possible at this stage. Confirm that the cancellation request has been registered and that the team will process the cancellation and the refund.
+   - NEVER say you cannot refund "because the order has not shipped yet". That is false and forbidden.
+   - NEVER suggest waiting for delivery in order to return the item.
+   - Do not try to retain the customer with alternatives in this case.
+
+2) DISPATCHED (FULFILLED / in transit):
+   - Cancelling before delivery is no longer possible. Explain it kindly, offer the return flow according to the policy, and share the tracking information.
+
+3) The retention rule ("offer an alternative before accepting a refund") does NOT apply to a cancellation request for an order that has not been dispatched.
+
+4) FORBIDDEN: stating anything that contradicts the "DADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY" block. If the data you need is not in that block, never invent it — say what you CAN do and let the customer know the team will follow up.
+
+━━━━━━━━━━━━━━━━━━━━━━
 REFUND & CANCELLATION
 ━━━━━━━━━━━━━━━━━━━━━━
+
 
 First mention of refund/cancellation:
 Be empathetic, understand the reason, offer an alternative if possible (exchange, store credit).
@@ -671,7 +675,7 @@ ${settings.ai_system_prompt}`
             }
 
             if (orders.length > 0) {
-              shopifyContext = `\n\nDADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY:\n${orders.map((o: any) => `\n- Pedido ${o.order_number} | Status: ${o.status} | Pagamento: ${o.financial_status} | Total: ${o.currency} ${o.total_price}\n  Produtos: ${o.items.map((i: any) => `${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity}`).join(', ')}\n  Rastreamento: ${o.tracking_number || 'Não disponível'} ${o.tracking_company ? `via ${o.tracking_company}` : ''}`).join('')}`;
+              shopifyContext = `\n\nDADOS DOS PEDIDOS DO CLIENTE NA SHOPIFY:\n${orders.map((o: any) => `\n- Pedido ${o.order_number} | Status: ${o.status} | Pagamento: ${o.financial_status} | Total: ${o.currency} ${o.total_price}\n  Produtos: ${o.items.map((i: any) => `${i.name}${i.variant ? ` (${i.variant})` : ''} x${i.quantity}`).join(', ')}\n  Rastreamento: ${o.tracking_number ? `${o.tracking_number} via ${o.tracking_company || 'courier'} — https://t.17track.net/${o.tracking_number}` : 'Não disponível ainda'}\n  Situação: ${o.status === 'FULFILLED' ? 'enviado — devolução conforme política (cancelamento não é mais possível)' : o.status === 'UNFULFILLED' ? 'pago, ainda não enviado — cancelamento possível' : 'em trânsito'}`).join('')}`;
             } else {
               shopifyContext = '\n\nDADOS SHOPIFY: Nenhum pedido encontrado para este cliente.';
             }
@@ -874,7 +878,7 @@ ${lastInboundMessage || 'No message.'}
         // ========================================
         // STEP 2a.3: Classificar solicitação do cliente
         // ========================================
-        const lastInboundMsg = messages?.find(m => m.direction === 'inbound')?.content || '';
+        const lastInboundForClassification = messages?.find(m => m.direction === 'inbound')?.content || '';
         try {
           const classifyResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -911,7 +915,7 @@ If no actionable request is detected, return { "detected": false, "type": null, 
                 },
                 {
                   role: 'user',
-                  content: lastInboundMsg,
+                  content: lastInboundForClassification,
                 }
               ],
               max_tokens: 200,
@@ -940,6 +944,24 @@ If no actionable request is detected, return { "detected": false, "type": null, 
                 status: 'pending',
               });
               console.log(`Item ${item.id} - REQUEST CREATED:`, classification.type, classification.description);
+
+              // Cancelamento de pedido pago e ainda não enviado: o time precisa executar na Shopify
+              if (classification.type === 'cancellation') {
+                const hasUnfulfilled = (shopifyOrders || []).some(
+                  (o: any) => String(o.status || '').toUpperCase() === 'UNFULFILLED'
+                );
+                if (hasUnfulfilled) {
+                  await supabase
+                    .from('tickets')
+                    .update({
+                      needs_human: true,
+                      anti_loop_reason: 'Cancelamento solicitado com pedido pago e ainda não enviado — executar cancelamento e reembolso na Shopify',
+                    })
+                    .eq('id', item.ticket_id);
+                  console.log(`Item ${item.id} - needs_human=true (cancelamento de pedido não enviado)`);
+                }
+              }
+
             } else {
               console.log(`Item ${item.id} - No actionable request detected`);
             }
@@ -1141,8 +1163,9 @@ If no actionable request is detected, return { "detected": false, "type": null, 
         // Marcar como failed
         await supabase
           .from('auto_reply_queue')
-          .update({ status: 'failed' })
+          .update({ status: 'failed', error_reason: errMsg })
           .eq('id', item.id);
+
       }
     }
 
