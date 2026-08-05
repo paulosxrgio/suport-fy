@@ -157,6 +157,31 @@ serve(async (req) => {
     // Build history in chronological order with clear roles
     const messagesSorted = [...(messages || [])].reverse();
 
+    // ANTI-LOOP GUARD — antes de qualquer chamada de IA
+    {
+      const lastInboundMsg = [...messagesSorted].reverse().find((m: any) => m.direction === 'inbound');
+      const antiLoop = checkAntiLoop({
+        inboundContent: lastInboundMsg?.content || lastMessageContent || '',
+        inboundSenderEmail: (lastInboundMsg as any)?.sender_email || ticket.customer_email,
+        headers: (lastInboundMsg as any)?.email_headers,
+        storeSenderEmail: storeSenderEmail,
+        messages: messagesSorted as any,
+        autoReplyCount: (ticket as any).auto_reply_count,
+      });
+
+      if (antiLoop.blocked) {
+        console.log(`[LOOP IGNORADO] ticket ${ticketId} - ${antiLoop.reason}`);
+        if (antiLoop.needsHuman) {
+          await supabase.from('tickets').update({ needs_human: true }).eq('id', ticketId);
+        }
+        return new Response(
+          JSON.stringify({ blocked: true, reason: antiLoop.reason }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+
     const conversationHistory = messagesSorted
       .map((msg) => {
         const role = msg.direction === "inbound" ? "Customer" : "Sophia";
